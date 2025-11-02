@@ -2,7 +2,6 @@ package com.blog.api.domain.comment.entity
 
 import com.blog.api.global.entity.BaseTimeEntity
 import jakarta.persistence.*
-import java.time.LocalDateTime
 
 @Entity
 @Table(name = "comments")

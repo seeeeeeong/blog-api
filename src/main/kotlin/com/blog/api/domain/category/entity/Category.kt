@@ -15,6 +15,6 @@ class Category(
     var name: String,
     
     @Column(nullable = false, unique = true, length = 50)
-    var slug: String  // URL용: spring-boot, kotlin, etc.
+    var slug: String
     
 ) : BaseTimeEntity()
