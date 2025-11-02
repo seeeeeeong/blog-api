@@ -1,0 +1,36 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Application properties (민감 정보)
+application-prod.yml
+application-local.yml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Docker volumes
+mysql-data/
+redis-data/
+
+# 기존 내용...
+
+# Environment variables
+.env
+.env.local
+.env.prod
+
+```
