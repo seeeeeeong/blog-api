@@ -18,19 +18,16 @@ class UserController(
     
     @PostMapping("/signup")
     fun signup(@Valid @RequestBody request: SignupRequest): ResponseEntity<UserResponse> {
-        val user = userService.signup(request)
-        return ResponseEntity.status(HttpStatus.CREATED).body(user)
+        return ResponseEntity.status(HttpStatus.CREATED).body(userService.signup(request))
     }
     
     @PostMapping("/login")
     fun login(@Valid @RequestBody request: LoginRequest): ResponseEntity<TokenResponse> {
-        val token = userService.login(request)
-        return ResponseEntity.ok(token)
+        return ResponseEntity.ok(userService.login(request))
     }
     
     @GetMapping("/{userId}")
     fun getUser(@PathVariable userId: Long): ResponseEntity<UserResponse> {
-        val user = userService.getUserById(userId)
-        return ResponseEntity.ok(user)
+        return ResponseEntity.ok(userService.getUserById(userId))
     }
 }

@@ -56,8 +56,7 @@ class PostController(
         @RequestHeader("User-Id") userId: Long,
         @Valid @RequestBody request: UpdatePostRequest
     ): ResponseEntity<PostResponse> {
-        val post = postService.updatePost(postId, userId, request)
-        return ResponseEntity.ok(post)
+        return ResponseEntity.ok(postService.updatePost(postId, userId, request))
     }
     
     @DeleteMapping("/{postId}")

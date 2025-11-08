@@ -1,0 +1,147 @@
+### ==============================================
+### BLOG API TEST
+### ==============================================
+
+### 1. signup
+POST http://localhost:8080/api/users/signup
+Content-Type: application/json
+
+{
+  "email": "test@test.com",
+  "password": "password123",
+  "nickname": "테스트유저"
+}
+
+### 2. login
+POST http://localhost:8080/api/users/login
+Content-Type: application/json
+
+{
+  "email": "test@test.com",
+  "password": "password123"
+}
+
+### 3. getUserById
+GET http://localhost:8080/api/users/1
+
+### ==============================================
+### Category
+### ==============================================
+
+### 4. getAllCategories
+GET http://localhost:8080/api/categories
+
+### ==============================================
+### Post
+### ==============================================
+
+### 5. createPost
+POST http://localhost:8080/api/posts
+Content-Type: application/json
+User-Id: 1
+
+{
+  "categoryId": 1,
+  "title": "테스트 개시글",
+  "content": "테스트 게시글 입니다."
+}
+
+### 6. getAllPosts
+GET http://localhost:8080/api/posts?page=0&size=10
+
+### 7. getPost
+GET http://localhost:8080/api/posts/1
+
+### 8. getPostsByCategory
+GET http://localhost:8080/api/posts/category/1?page=0&size=10
+
+### 9. updatePost
+PUT http://localhost:8080/api/posts/1
+Content-Type: application/json
+User-Id: 1
+
+{
+  "categoryId": 1,
+  "title": "수정된 제목",
+  "content": "수정된 내용입니다."
+}
+
+### 10. deletePost
+DELETE http://localhost:8080/api/posts/1
+User-Id: 1
+
+### ==============================================
+### Comment
+### ==============================================
+
+### 11. createComment
+POST http://localhost:8080/api/posts/2/comments
+Content-Type: application/json
+User-Id: 1
+
+{
+  "content": "좋은 글 감사합니다!"
+}
+
+### 12. createComment (ParentsId)
+POST http://localhost:8080/api/posts/3/comments
+Content-Type: application/json
+User-Id: 1
+
+{
+  "content": "저도 동의합니다!",
+  "parentId": 1
+}
+
+### 13. getComments
+GET http://localhost:8080/api/posts/2/comments
+
+### 14. updateComments
+PUT http://localhost:8080/api/posts/2/comments/1
+Content-Type: application/json
+User-Id: 1
+
+{
+  "content": "수정된 댓글입니다."
+}
+
+### 15. deleteComments
+DELETE http://localhost:8080/api/posts/2/comments/3
+User-Id: 1
+
+### ==============================================
+### Image
+### ==============================================
+
+### 16. Presigned URL 발급
+GET http://localhost:8080/api/images/presigned-url?fileName=test.jpg&contentType=image/jpeg
+
+
+
+### ==============================================
+### Error
+### ==============================================
+
+### 16. 존재하지 않는 게시글 조회 (404)
+GET http://localhost:8080/api/posts/9999
+
+### 17. 잘못된 형식의 회원가입 (400)
+POST http://localhost:8080/api/users/signup
+Content-Type: application/json
+
+{
+  "email": "잘못된이메일",
+  "password": "123",
+  "nickname": "가"
+}
+
+### 18. 권한 없는 게시글 수정 시도 (403)
+PUT http://localhost:8080/api/posts/2
+Content-Type: application/json
+User-Id: 999
+
+{
+  "categoryId": 1,
+  "title": "권한 없는 게시글 수정 시도",
+  "content": "권한 없는 게시글 수정 시도"
+}

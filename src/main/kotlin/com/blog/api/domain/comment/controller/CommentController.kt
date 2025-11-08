@@ -21,14 +21,12 @@ class CommentController(
         @RequestHeader("User-Id") userId: Long,
         @Valid @RequestBody request: CreateCommentRequest
     ): ResponseEntity<CommentResponse> {
-        val comment = commentService.createComment(postId, userId, request)
-        return ResponseEntity.status(HttpStatus.CREATED).body(comment)
+        return ResponseEntity.status(HttpStatus.CREATED).body(commentService.createComment(postId, userId, request))
     }
     
     @GetMapping
     fun getComments(@PathVariable postId: Long): ResponseEntity<List<CommentResponse>> {
-        val comments = commentService.getCommentsByPost(postId)
-        return ResponseEntity.ok(comments)
+        return ResponseEntity.ok(commentService.getCommentsByPost(postId))
     }
     
     @PutMapping("/{commentId}")
@@ -38,8 +36,7 @@ class CommentController(
         @RequestHeader("User-Id") userId: Long,
         @Valid @RequestBody request: UpdateCommentRequest
     ): ResponseEntity<CommentResponse> {
-        val comment = commentService.updateComment(commentId, userId, request)
-        return ResponseEntity.ok(comment)
+        return ResponseEntity.ok(commentService.updateComment(commentId, userId, request))
     }
     
     @DeleteMapping("/{commentId}")

@@ -15,7 +15,6 @@ class CategoryController(
     
     @GetMapping
     fun getAllCategories(): ResponseEntity<List<CategoryResponse>> {
-        val categories = categoryService.getAllCategories()
-        return ResponseEntity.ok(categories)
+        return ResponseEntity.ok(categoryService.getAllCategories())
     }
 }
