@@ -3,7 +3,6 @@ spring:
     name: blog-api
   config:
     import: optional:file:.env[.properties]
-
   profiles:
     active: local
 
@@ -42,6 +41,13 @@ jwt:
   access-expiration: ${JWT_ACCESS_EXPIRATION:3600000}
   refresh-expiration: ${JWT_REFRESH_EXPIRATION:1209600000}
 
+aws:
+  region: ${AWS_REGION:ap-northeast-2}
+  access-key: ${AWS_ACCESS_KEY:}
+  secret-key: ${AWS_SECRET_KEY:}
+  s3:
+    bucket: ${AWS_S3_BUCKET:blog-images}
+
 logging:
   level:
     org.hibernate.SQL: debug
@@ -75,6 +81,13 @@ jwt:
   secret: ${JWT_SECRET}
   access-expiration: ${JWT_ACCESS_EXPIRATION}
   refresh-expiration: ${JWT_REFRESH_EXPIRATION}
+
+aws:
+  region: ${AWS_REGION}
+  access-key: ${AWS_ACCESS_KEY}
+  secret-key: ${AWS_SECRET_KEY}
+  s3:
+    bucket: ${AWS_S3_BUCKET}
 
 logging:
   level:

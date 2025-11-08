@@ -23,6 +23,9 @@ enum class ErrorCode(
     // Post
     POST_NOT_FOUND(404, "게시글을 찾을 수 없습니다"),
 
+    // Comment
+    COMMENT_NOT_FOUND(404, "댓글을 찾을 수 없습니다"),
+
     // Common
     INVALID_INPUT(400, "잘못된 입력값입니다"),
     INTERNAL_SERVER_ERROR(500, "서버 오류가 발생했습니다")
