@@ -21,14 +21,12 @@ class PostController(
         @RequestHeader("User-Id") userId: Long,
         @Valid @RequestBody request: CreatePostRequest
     ): ResponseEntity<PostResponse> {
-        val post = postService.createPost(userId, request)
-        return ResponseEntity.status(HttpStatus.CREATED).body(post)
+        return ResponseEntity.status(HttpStatus.CREATED).body( postService.createPost(userId, request))
     }
     
     @GetMapping("/{postId}")
     fun getPost(@PathVariable postId: Long): ResponseEntity<PostResponse> {
-        val post = postService.getPost(postId)
-        return ResponseEntity.ok(post)
+        return ResponseEntity.ok(postService.getPost(postId))
     }
     
     @GetMapping
@@ -36,8 +34,7 @@ class PostController(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "10") size: Int
     ): ResponseEntity<PostListResponse> {
-        val posts = postService.getAllPosts(page, size)
-        return ResponseEntity.ok(posts)
+        return ResponseEntity.ok(postService.getAllPosts(page, size))
     }
     
     @GetMapping("/category/{categoryId}")
@@ -46,8 +43,7 @@ class PostController(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "10") size: Int
     ): ResponseEntity<PostListResponse> {
-        val posts = postService.getPostsByCategory(categoryId, page, size)
-        return ResponseEntity.ok(posts)
+        return ResponseEntity.ok(postService.getPostsByCategory(categoryId, page, size))
     }
     
     @PutMapping("/{postId}")
