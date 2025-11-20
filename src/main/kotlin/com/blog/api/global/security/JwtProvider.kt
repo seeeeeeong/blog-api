@@ -43,6 +43,10 @@ class JwtProvider(
         return getClaims(token).subject.toLong()
     }
 
+    fun getGitHubIdFromToken(token: String): String {
+        return getClaims(token).subject
+    }
+
     fun validateToken(token: String): Boolean {
         return try {
             getClaims(token)

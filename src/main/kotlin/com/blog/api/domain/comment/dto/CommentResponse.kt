@@ -6,7 +6,9 @@ import java.time.LocalDateTime
 data class CommentResponse(
     val id: Long,
     val postId: Long,
-    val userId: Long,
+    val githubId: String,
+    val githubUsername: String,
+    val githubAvatarUrl: String?,
     val parentId: Long?,
     val content: String,
     val createdAt: LocalDateTime,
@@ -18,19 +20,23 @@ data class CommentResponse(
             return CommentResponse(
                 id = comment.id!!,
                 postId = comment.postId,
-                userId = comment.userId,
+                githubId = comment.githubId,
+                githubUsername = comment.githubUsername,
+                githubAvatarUrl = comment.githubAvatarUrl,
                 parentId = comment.parentId,
                 content = comment.content,
                 createdAt = comment.createdAt,
                 updatedAt = comment.updatedAt
             )
         }
-        
+
         fun fromWithReplies(comment: Comment, replies: List<Comment>): CommentResponse {
             return CommentResponse(
                 id = comment.id!!,
                 postId = comment.postId,
-                userId = comment.userId,
+                githubId = comment.githubId,
+                githubUsername = comment.githubUsername,
+                githubAvatarUrl = comment.githubAvatarUrl,
                 parentId = comment.parentId,
                 content = comment.content,
                 createdAt = comment.createdAt,

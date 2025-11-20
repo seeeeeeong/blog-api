@@ -14,38 +14,44 @@ import org.springframework.web.bind.annotation.*
 class CommentController(
     private val commentService: CommentService
 ) {
-    
+
     @PostMapping
     fun createComment(
         @PathVariable postId: Long,
-        @RequestHeader("User-Id") userId: Long,
+        @RequestHeader("Authorization") authorization: String,
+        @RequestHeader("GitHub-Username") githubUsername: String,
+        @RequestHeader("GitHub-Avatar-Url", required = false) githubAvatarUrl: String?,
         @Valid @RequestBody request: CreateCommentRequest
     ): ResponseEntity<CommentResponse> {
-        return ResponseEntity.status(HttpStatus.CREATED).body(commentService.createComment(postId, userId, request))
+        val token = authorization.removePrefix("Bearer ")
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(commentService.createComment(postId, token, githubUsername, githubAvatarUrl, request))
     }
-    
+
     @GetMapping
     fun getComments(@PathVariable postId: Long): ResponseEntity<List<CommentResponse>> {
         return ResponseEntity.ok(commentService.getCommentsByPost(postId))
     }
-    
+
     @PutMapping("/{commentId}")
     fun updateComment(
         @PathVariable postId: Long,
         @PathVariable commentId: Long,
-        @RequestHeader("User-Id") userId: Long,
+        @RequestHeader("Authorization") authorization: String,
         @Valid @RequestBody request: UpdateCommentRequest
     ): ResponseEntity<CommentResponse> {
-        return ResponseEntity.ok(commentService.updateComment(commentId, userId, request))
+        val token = authorization.removePrefix("Bearer ")
+        return ResponseEntity.ok(commentService.updateComment(commentId, token, request))
     }
-    
+
     @DeleteMapping("/{commentId}")
     fun deleteComment(
         @PathVariable postId: Long,
         @PathVariable commentId: Long,
-        @RequestHeader("User-Id") userId: Long
+        @RequestHeader("Authorization") authorization: String
     ): ResponseEntity<Void> {
-        commentService.deleteComment(commentId, userId)
+        val token = authorization.removePrefix("Bearer ")
+        commentService.deleteComment(commentId, token)
         return ResponseEntity.noContent().build()
     }
 }

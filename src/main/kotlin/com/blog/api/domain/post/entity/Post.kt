@@ -2,7 +2,6 @@ package com.blog.api.domain.post.entity
 
 import com.blog.api.global.entity.BaseTimeEntity
 import jakarta.persistence.*
-import java.time.LocalDateTime
 
 @Entity
 @Table(name = "posts")
@@ -28,11 +27,28 @@ class Post(
     var thumbnailUrl: String? = null,
 
     @Column(nullable = false)
-    var viewCount: Int = 0
+    var viewCount: Int = 0,
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    var status: PostStatus = PostStatus.PUBLISHED
 
 ) : BaseTimeEntity() {
+
+    fun publish() {
+        this.status = PostStatus.PUBLISHED
+    }
+
+    fun draft() {
+        this.status = PostStatus.DRAFT
+    }
 
     fun increaseViewCount() {
         this.viewCount++
     }
+}
+
+enum class PostStatus {
+    DRAFT,
+    PUBLISHED
 }

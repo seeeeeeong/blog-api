@@ -1,6 +1,7 @@
 package com.blog.api.domain.post.dto
 
 import com.blog.api.domain.post.entity.Post
+import com.blog.api.domain.post.entity.PostStatus
 import java.time.LocalDateTime
 
 data class PostResponse(
@@ -11,6 +12,7 @@ data class PostResponse(
     val content: String,
     val thumbnailUrl: String?,
     val viewCount: Int,
+    val status: PostStatus,
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime
 ) {
@@ -24,6 +26,7 @@ data class PostResponse(
                 content = post.content,
                 thumbnailUrl = post.thumbnailUrl,
                 viewCount = post.viewCount,
+                status = post.status,
                 createdAt = post.createdAt,
                 updatedAt = post.updatedAt
             )

@@ -8,6 +8,7 @@ import com.blog.api.domain.comment.repository.CommentRepository
 import com.blog.api.domain.post.repository.PostRepository
 import com.blog.api.global.exception.CustomException
 import com.blog.api.global.exception.ErrorCode
+import com.blog.api.global.security.JwtProvider
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -15,61 +16,78 @@ import org.springframework.transaction.annotation.Transactional
 @Transactional(readOnly = true)
 class CommentService(
     private val commentRepository: CommentRepository,
-    private val postRepository: PostRepository
+    private val postRepository: PostRepository,
+    private val jwtProvider: JwtProvider
 ) {
-    
+
     @Transactional
-    fun createComment(postId: Long, userId: Long, request: CreateCommentRequest): CommentResponse {
+    fun createComment(
+        postId: Long,
+        token: String,
+        githubUsername: String,
+        githubAvatarUrl: String?,
+        request: CreateCommentRequest
+    ): CommentResponse {
         postRepository.findById(postId)
             .orElseThrow { CustomException(ErrorCode.POST_NOT_FOUND) }
-        
+
         request.parentId?.let { parentId ->
             commentRepository.findById(parentId)
                 .orElseThrow { CustomException(ErrorCode.COMMENT_NOT_FOUND) }
         }
-        
+
+        val githubId = jwtProvider.getGitHubIdFromToken(token)
+
         val comment = Comment(
             postId = postId,
-            userId = userId,
+            githubId = githubId,
+            githubUsername = githubUsername,
+            githubAvatarUrl = githubAvatarUrl,
             parentId = request.parentId,
             content = request.content
         )
-        
-        return commentRepository.save(comment).let { CommentResponse.from(it) }
+
+        return CommentResponse.from(commentRepository.save(comment))
     }
-    
+
     fun getCommentsByPost(postId: Long): List<CommentResponse> {
         val parentComments = commentRepository.findByPostIdAndParentIdIsNullOrderByCreatedAtDesc(postId)
-        
+
         return parentComments.map { parent ->
             val replies = commentRepository.findByParentIdOrderByCreatedAtAsc(parent.id!!)
             CommentResponse.fromWithReplies(parent, replies)
         }
     }
-    
+
     @Transactional
-    fun updateComment(commentId: Long, userId: Long, request: UpdateCommentRequest): CommentResponse {
+    fun updateComment(
+        commentId: Long,
+        token: String,
+        request: UpdateCommentRequest
+    ): CommentResponse {
         val comment = commentRepository.findById(commentId)
             .orElseThrow { CustomException(ErrorCode.COMMENT_NOT_FOUND) }
-        
-        (comment.userId == userId)
-            .takeIf { it }
-            ?: throw CustomException(ErrorCode.FORBIDDEN)
-        
-        comment.content = request.content
-        
+
+        val githubId = jwtProvider.getGitHubIdFromToken(token)
+
+        when (comment.isAuthor(githubId)) {
+            false -> throw CustomException(ErrorCode.FORBIDDEN)
+            true -> comment.content = request.content
+        }
+
         return CommentResponse.from(comment)
     }
-    
+
     @Transactional
-    fun deleteComment(commentId: Long, userId: Long) {
+    fun deleteComment(commentId: Long, token: String) {
         val comment = commentRepository.findById(commentId)
             .orElseThrow { CustomException(ErrorCode.COMMENT_NOT_FOUND) }
-        
-        (comment.userId == userId)
-            .takeIf { it }
-            ?: throw CustomException(ErrorCode.FORBIDDEN)
-        
-        commentRepository.delete(comment)
+
+        val githubId = jwtProvider.getGitHubIdFromToken(token)
+
+        when (comment.isAuthor(githubId)) {
+            false -> throw CustomException(ErrorCode.FORBIDDEN)
+            true -> commentRepository.delete(comment)
+        }
     }
 }

@@ -33,4 +33,7 @@ redis-data/
 .env.local
 .env.prod
 
+# Test
+.http
+
 ```

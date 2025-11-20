@@ -14,8 +14,14 @@ class Comment(
     @Column(name = "post_id", nullable = false)
     val postId: Long,
 
-    @Column(name = "user_id", nullable = false)
-    val userId: Long,
+    @Column(name = "github_id", nullable = false, length = 50)
+    val githubId: String,
+
+    @Column(name = "github_username", nullable = false, length = 100)
+    val githubUsername: String,
+
+    @Column(name = "github_avatar_url", length = 500)
+    val githubAvatarUrl: String? = null,
 
     @Column(name = "parent_id")
     val parentId: Long? = null,
@@ -25,4 +31,6 @@ class Comment(
 
 ) : BaseTimeEntity() {
     fun isReply(): Boolean = parentId != null
+
+    fun isAuthor(githubId: String): Boolean = this.githubId == githubId
 }

@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit
 @Transactional(readOnly = true)
 class PostService(
     private val postRepository: PostRepository,
-    private val redisTemplate: RedisTemplate<String, String> // 추가
+    private val redisTemplate: RedisTemplate<String, String>
 ) {
 
     @Transactional
