@@ -5,6 +5,7 @@ import com.blog.api.domain.post.dto.PostListResponse
 import com.blog.api.domain.post.dto.PostResponse
 import com.blog.api.domain.post.dto.UpdatePostRequest
 import com.blog.api.domain.post.entity.Post
+import com.blog.api.domain.post.entity.PostStatus
 import com.blog.api.domain.post.repository.PostRepository
 import com.blog.api.global.exception.CustomException
 import com.blog.api.global.exception.ErrorCode
@@ -29,10 +30,11 @@ class PostService(
             categoryId = request.categoryId,
             title = request.title,
             content = request.content,
-            thumbnailUrl = request.thumbnailUrl
+            thumbnailUrl = request.thumbnailUrl,
+            status = if (request.isDraft) PostStatus.DRAFT else PostStatus.PUBLISHED
         )
 
-        return postRepository.save(post).let { PostResponse.from(it) }
+        return PostResponse.from(postRepository.save(post))
     }
 
     @Transactional
@@ -40,11 +42,18 @@ class PostService(
         val post = postRepository.findById(postId)
             .orElseThrow { CustomException(ErrorCode.POST_NOT_FOUND) }
 
-        val viewKey = "post:view:$postId:$clientIp"
-
-        if (redisTemplate.opsForValue().get(viewKey) == null) {
-            postRepository.incrementViewCount(postId)
-            redisTemplate.opsForValue().set(viewKey, "1", 1, TimeUnit.HOURS)
+        // Published 게시글만 조회수 증가
+        when (post.status) {
+            PostStatus.PUBLISHED -> {
+                val viewKey = "post:view:$postId:$clientIp"
+                when (redisTemplate.opsForValue().get(viewKey)) {
+                    null -> {
+                        postRepository.incrementViewCount(postId)
+                        redisTemplate.opsForValue().set(viewKey, "1", 1, TimeUnit.HOURS)
+                    }
+                }
+            }
+            PostStatus.DRAFT -> { /* Draft는 조회수 증가 안 함 */ }
         }
 
         return PostResponse.from(post)
@@ -52,7 +61,8 @@ class PostService(
 
     fun getAllPosts(page: Int, size: Int): PostListResponse {
         val pageable: Pageable = PageRequest.of(page, size)
-        val postPage = postRepository.findAllByOrderByCreatedAtDesc(pageable)
+        // Published 게시글만 조회
+        val postPage = postRepository.findByStatusOrderByCreatedAtDesc(PostStatus.PUBLISHED, pageable)
 
         return PostListResponse(
             posts = postPage.content.map { PostResponse.from(it) },
@@ -65,7 +75,11 @@ class PostService(
 
     fun getPostsByCategory(categoryId: Long, page: Int, size: Int): PostListResponse {
         val pageable: Pageable = PageRequest.of(page, size)
-        val postPage = postRepository.findByCategoryIdOrderByCreatedAtDesc(categoryId, pageable)
+        val postPage = postRepository.findByCategoryIdAndStatusOrderByCreatedAtDesc(
+            categoryId,
+            PostStatus.PUBLISHED,
+            pageable
+        )
 
         return PostListResponse(
             posts = postPage.content.map { PostResponse.from(it) },
@@ -81,14 +95,16 @@ class PostService(
         val post = postRepository.findById(postId)
             .orElseThrow { CustomException(ErrorCode.POST_NOT_FOUND) }
 
-        (post.userId == userId)
-            .takeIf { it }
-            ?: throw CustomException(ErrorCode.FORBIDDEN)
-
-        post.categoryId = request.categoryId
-        post.title = request.title
-        post.content = request.content
-        post.thumbnailUrl = request.thumbnailUrl
+        when (post.userId == userId) {
+            false -> throw CustomException(ErrorCode.FORBIDDEN)
+            true -> {
+                post.categoryId = request.categoryId
+                post.title = request.title
+                post.content = request.content
+                post.thumbnailUrl = request.thumbnailUrl
+                post.status = if (request.isDraft) PostStatus.DRAFT else PostStatus.PUBLISHED
+            }
+        }
 
         return PostResponse.from(post)
     }
@@ -98,10 +114,9 @@ class PostService(
         val post = postRepository.findById(postId)
             .orElseThrow { CustomException(ErrorCode.POST_NOT_FOUND) }
 
-        (post.userId == userId)
-            .takeIf { it }
-            ?: throw CustomException(ErrorCode.FORBIDDEN)
-
-        postRepository.delete(post)
+        when (post.userId == userId) {
+            false -> throw CustomException(ErrorCode.FORBIDDEN)
+            true -> postRepository.delete(post)
+        }
     }
 }
