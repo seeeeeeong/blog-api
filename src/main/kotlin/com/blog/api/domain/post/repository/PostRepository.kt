@@ -10,19 +10,13 @@ import org.springframework.data.jpa.repository.Query
 
 interface PostRepository : JpaRepository<Post, Long> {
 
-    fun findByStatusOrderByCreatedAtDesc(status: PostStatus, pageable: Pageable): Page<Post>
+    fun findByStatus(status: PostStatus, pageable: Pageable): Page<Post>
 
-    fun findByCategoryIdAndStatusOrderByCreatedAtDesc(
-        categoryId: Long,
-        status: PostStatus,
-        pageable: Pageable
-    ): Page<Post>
+    fun findByCategoryIdAndStatus(categoryId: Long, status: PostStatus, pageable: Pageable): Page<Post>
 
-    fun findAllByOrderByCreatedAtDesc(pageable: Pageable): Page<Post>
+    fun findByUserId(userId: Long, pageable: Pageable): Page<Post>
 
-    fun findByUserIdOrderByCreatedAtDesc(userId: Long, pageable: Pageable): Page<Post>
-
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("UPDATE Post p SET p.viewCount = p.viewCount + 1 WHERE p.id = :postId")
     fun incrementViewCount(postId: Long)
 }

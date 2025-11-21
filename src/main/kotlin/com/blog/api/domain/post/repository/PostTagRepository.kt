@@ -8,4 +8,6 @@ interface PostTagRepository : JpaRepository<PostTag, Long> {
     fun findByPostId(postId: Long): List<PostTag>
     
     fun deleteByPostId(postId: Long)
+
+    fun findByPostIdIn(postIds: List<Long>): List<PostTag>
 }

@@ -33,22 +33,5 @@ class Post(
     @Column(nullable = false, length = 20)
     var status: PostStatus = PostStatus.PUBLISHED
 
-) : BaseTimeEntity() {
+) : BaseTimeEntity()
 
-    fun publish() {
-        this.status = PostStatus.PUBLISHED
-    }
-
-    fun draft() {
-        this.status = PostStatus.DRAFT
-    }
-
-    fun increaseViewCount() {
-        this.viewCount++
-    }
-}
-
-enum class PostStatus {
-    DRAFT,
-    PUBLISHED
-}
