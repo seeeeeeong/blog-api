@@ -1,7 +1,6 @@
-package com.blog.api.domain.auth.controller
+package com.blog.api.infrastructure.oauth.controller
 
-import com.blog.api.domain.auth.dto.CommentAuthResponse
-import com.blog.api.domain.auth.service.GitHubOAuthService
+import com.blog.api.infrastructure.oauth.service.GitHubOAuthService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.servlet.view.RedirectView

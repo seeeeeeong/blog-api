@@ -1,4 +1,4 @@
-package com.blog.api.domain.auth.dto
+package com.blog.api.infrastructure.oauth.dto
 
 data class GitHubUserResponse(
     val id: Long,

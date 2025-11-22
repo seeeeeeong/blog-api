@@ -1,11 +1,10 @@
-package com.blog.api.domain.auth.service
+package com.blog.api.infrastructure.oauth.service
 
-import com.blog.api.domain.auth.dto.CommentAuthResponse
-import com.blog.api.domain.auth.dto.GitHubTokenResponse
-import com.blog.api.domain.auth.dto.GitHubUserResponse
 import com.blog.api.global.exception.CustomException
 import com.blog.api.global.exception.ErrorCode
 import com.blog.api.global.security.JwtProvider
+import com.blog.api.infrastructure.oauth.dto.CommentAuthResponse
+import com.blog.api.infrastructure.oauth.dto.GitHubUserResponse
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.*
 import org.springframework.stereotype.Service

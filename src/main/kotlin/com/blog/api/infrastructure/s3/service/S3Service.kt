@@ -1,4 +1,4 @@
-package com.blog.api.global.service
+package com.blog.api.infrastructure.s3.service
 
 import com.blog.api.global.config.AwsProperties
 import org.springframework.stereotype.Service

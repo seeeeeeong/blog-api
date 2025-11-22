@@ -23,31 +23,22 @@ class UserService(
 
     @Transactional
     fun signup(request: SignupRequest): UserResponse {
-        userRepository.existsByEmail(request.email)
-            .takeIf { it }
-            ?.let { throw CustomException(ErrorCode.EMAIL_ALREADY_EXISTS) }
-
-        userRepository.existsByNickname(request.nickname)
-            .takeIf { it }
-            ?.let { throw CustomException(ErrorCode.NICKNAME_ALREADY_EXISTS) }
+        validateSignUp(request)
 
         val user = User(
             email = request.email,
             password = passwordEncoder.encode(request.password),
             nickname = request.nickname
         )
-
-        return userRepository.save(user).let { UserResponse.from(it) }
+        val savedUser = userRepository.save(user)
+        return UserResponse.from(savedUser)
     }
 
     @Transactional
     fun login(request: LoginRequest): TokenResponse {
-        val user = userRepository.findByEmail(request.email)
-            ?: throw CustomException(ErrorCode.USER_NOT_FOUND)
+        val user = findUserByEmail(request.email)
 
-        passwordEncoder.matches(request.password, user.password)
-            .takeIf { it }
-            ?: throw CustomException(ErrorCode.INVALID_PASSWORD)
+        validatePassword(request.password, user.password)
 
         return TokenResponse(
             accessToken = jwtProvider.generateAccessToken(user.id!!),
@@ -60,5 +51,23 @@ class UserService(
         return userRepository.findById(userId)
             .orElseThrow { CustomException(ErrorCode.USER_NOT_FOUND) }
             .let { UserResponse.from(it) }
+    }
+
+    private fun validateSignUp(request: SignupRequest) {
+        userRepository.findByEmail(request.email)
+            ?.let { throw CustomException(ErrorCode.EMAIL_ALREADY_EXISTS) }
+
+        userRepository.findByNickname(request.nickname)
+            ?.let { throw CustomException(ErrorCode.NICKNAME_ALREADY_EXISTS) }
+    }
+
+    private fun findUserByEmail(email: String): User {
+        return userRepository.findByEmail(email)
+            ?: throw CustomException(ErrorCode.USER_NOT_FOUND)
+    }
+
+    private fun validatePassword(rawPassword: String, encodedPassword: String) {
+        if (passwordEncoder.matches(rawPassword, encodedPassword)) return
+        throw CustomException(ErrorCode.INVALID_PASSWORD)
     }
 }

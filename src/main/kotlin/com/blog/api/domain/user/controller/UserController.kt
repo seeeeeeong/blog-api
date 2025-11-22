@@ -5,6 +5,7 @@ import com.blog.api.domain.user.dto.SignupRequest
 import com.blog.api.domain.user.dto.TokenResponse
 import com.blog.api.domain.user.dto.UserResponse
 import com.blog.api.domain.user.service.UserService
+import com.blog.api.global.response.ApiResponse
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -17,17 +18,17 @@ class UserController(
 ) {
     
     @PostMapping("/signup")
-    fun signup(@Valid @RequestBody request: SignupRequest): ResponseEntity<UserResponse> {
-        return ResponseEntity.status(HttpStatus.CREATED).body(userService.signup(request))
+    fun signup(@Valid @RequestBody request: SignupRequest): ApiResponse<UserResponse> {
+        return ApiResponse.success(userService.signup(request))
     }
     
     @PostMapping("/login")
-    fun login(@Valid @RequestBody request: LoginRequest): ResponseEntity<TokenResponse> {
-        return ResponseEntity.ok(userService.login(request))
+    fun login(@Valid @RequestBody request: LoginRequest): ApiResponse<TokenResponse> {
+        return ApiResponse.success(userService.login(request))
     }
     
     @GetMapping("/{userId}")
-    fun getUser(@PathVariable userId: Long): ResponseEntity<UserResponse> {
-        return ResponseEntity.ok(userService.getUserById(userId))
+    fun getUser(@PathVariable userId: Long): ApiResponse<UserResponse> {
+        return ApiResponse.success(userService.getUserById(userId))
     }
 }
