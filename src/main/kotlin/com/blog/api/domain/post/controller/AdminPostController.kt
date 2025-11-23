@@ -1,35 +1,21 @@
 package com.blog.api.domain.post.controller
 
-import com.blog.api.domain.post.dto.PostListResponse
-import com.blog.api.domain.post.repository.PostRepository
+import com.blog.api.domain.post.service.AdminPostService
 import com.blog.api.global.response.ApiResponse
 import org.springframework.data.domain.Pageable
-import org.springframework.data.domain.Sort
-import org.springframework.data.web.PageableDefault
-import org.springframework.web.bind.annotation.DeleteMapping
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/api/admin/posts")
 class AdminPostController(
-    private val postRepository: PostRepository
+    private val adminPostService: AdminPostService
 ) {
 
     @GetMapping
-    fun getAllPosts(
-        @PageableDefault(size = 20, sort = ["createdAt"], direction = Sort.Direction.DESC)
-        pageable: Pageable
-    ): ApiResponse<PostListResponse> {
-        val postPage = postRepository.findAll(pageable)
-        return ApiResponse.Companion.success(PostListResponse.Companion.from(postPage))
-    }
+    fun getAllPosts(pageable: Pageable) =
+        ApiResponse.success(adminPostService.getAllPosts(pageable))
 
     @DeleteMapping("/{postId}")
-    fun deletePost(@PathVariable postId: Long): ApiResponse<Unit> {
-        postRepository.deleteById(postId)
-        return ApiResponse.Companion.success()
-    }
+    fun deletePost(@PathVariable postId: Long) =
+        adminPostService.deletePost(postId).let { ApiResponse.success(Unit) }
 }

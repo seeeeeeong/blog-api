@@ -7,8 +7,6 @@ import com.blog.api.domain.user.dto.UserResponse
 import com.blog.api.domain.user.service.UserService
 import com.blog.api.global.response.ApiResponse
 import jakarta.validation.Valid
-import org.springframework.http.HttpStatus
-import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
 @RestController
@@ -16,19 +14,16 @@ import org.springframework.web.bind.annotation.*
 class UserController(
     private val userService: UserService
 ) {
-    
-    @PostMapping("/signup")
-    fun signup(@Valid @RequestBody request: SignupRequest): ApiResponse<UserResponse> {
-        return ApiResponse.success(userService.signup(request))
-    }
-    
+
+    @PostMapping
+    fun signup(@Valid @RequestBody request: SignupRequest) =
+        ApiResponse.success(userService.signup(request))
+
     @PostMapping("/login")
-    fun login(@Valid @RequestBody request: LoginRequest): ApiResponse<TokenResponse> {
-        return ApiResponse.success(userService.login(request))
-    }
-    
+    fun login(@Valid @RequestBody request: LoginRequest) =
+        ApiResponse.success(userService.login(request))
+
     @GetMapping("/{userId}")
-    fun getUser(@PathVariable userId: Long): ApiResponse<UserResponse> {
-        return ApiResponse.success(userService.getUserById(userId))
-    }
+    fun getUser(@PathVariable userId: Long) =
+        ApiResponse.success(userService.getUserById(userId))
 }

@@ -8,9 +8,9 @@ import com.blog.api.domain.post.repository.PostRepository
 import com.blog.api.domain.post.repository.PostTagRepository
 import com.blog.api.global.exception.CustomException
 import com.blog.api.global.exception.ErrorCode
+import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.redis.core.RedisTemplate
-import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.concurrent.TimeUnit
@@ -25,31 +25,23 @@ class PostService(
 
     @Transactional
     fun createPost(userId: Long, request: CreatePostRequest): PostResponse {
-        val post = postRepository.save(
-            Post(
-                userId = userId,
-                categoryId = request.categoryId,
-                title = request.title,
-                content = request.content,
-                thumbnailUrl = request.thumbnailUrl,
-                status = if (request.isDraft) PostStatus.DRAFT else PostStatus.PUBLISHED
-            )
+        val post = Post(
+            userId = userId,
+            categoryId = request.categoryId,
+            title = request.title,
+            content = request.content,
+            thumbnailUrl = request.thumbnailUrl,
+            status = if (request.isDraft) PostStatus.DRAFT else PostStatus.PUBLISHED
         )
+        val savedPost = postRepository.save(post)
+        savePostTags(savedPost.id!!, request.tagIds)
 
-        if (request.tagIds.isNotEmpty()) {
-            val tags = request.tagIds.map { PostTag(postId = post.id!!, tagId = it) }
-            postTagRepository.saveAll(tags)
-        }
-
-        return PostResponse.from(post, request.tagIds)
+        return PostResponse.from(savedPost, request.tagIds)
     }
 
     @Transactional
     fun updatePost(postId: Long, userId: Long, request: UpdatePostRequest): PostResponse {
-        val post = postRepository.findByIdOrNull(postId)
-            ?: throw CustomException(ErrorCode.POST_NOT_FOUND)
-
-        if (post.userId != userId) throw CustomException(ErrorCode.FORBIDDEN)
+        val post = findPostByIdAndValidateOwner(postId, userId)
 
         post.apply {
             categoryId = request.categoryId
@@ -59,22 +51,15 @@ class PostService(
             status = if (request.isDraft) PostStatus.DRAFT else PostStatus.PUBLISHED
         }
 
-        if (request.tagIds.isNotEmpty()) {
-            postTagRepository.deleteByPostId(postId)
-
-            val newTags = request.tagIds.map { PostTag(postId = postId, tagId = it) }
-            postTagRepository.saveAll(newTags)
-        }
+        postTagRepository.deleteByPostId(postId)
+        savePostTags(postId, request.tagIds)
 
         return PostResponse.from(post, request.tagIds)
     }
 
     @Transactional
     fun deletePost(postId: Long, userId: Long) {
-        val post = postRepository.findByIdOrNull(postId)
-            ?: throw CustomException(ErrorCode.POST_NOT_FOUND)
-
-        if (post.userId != userId) throw CustomException(ErrorCode.FORBIDDEN)
+        val post = findPostByIdAndValidateOwner(postId, userId)
 
         postTagRepository.deleteByPostId(postId)
         postRepository.delete(post)
@@ -82,17 +67,11 @@ class PostService(
 
     @Transactional
     fun getPost(postId: Long, clientIp: String): PostResponse {
-        val post = postRepository.findByIdOrNull(postId)
-            ?: throw CustomException(ErrorCode.POST_NOT_FOUND)
+        val post = postRepository.findById(postId)
+            .orElseThrow { CustomException(ErrorCode.POST_NOT_FOUND) }
 
         if (post.status == PostStatus.PUBLISHED) {
-            val viewKey = "post:view:$postId:$clientIp"
-            val isFirstView = redisTemplate.opsForValue()
-                .setIfAbsent(viewKey, "1", 1, TimeUnit.HOURS) == true
-
-            if (isFirstView) {
-                postRepository.incrementViewCount(postId)
-            }
+            increaseViewCount(postId, clientIp)
         }
 
         val tags = postTagRepository.findByPostId(postId).map { it.tagId }
@@ -102,31 +81,50 @@ class PostService(
 
     fun getAllPosts(pageable: Pageable): PostListResponse {
         val posts = postRepository.findByStatus(PostStatus.PUBLISHED, pageable)
-
-        val postIds = posts.content.mapNotNull { it.id }
-        val tagsMap = postTagRepository.findByPostIdIn(postIds)
-            .groupBy({ it.postId }, { it.tagId })
-
-        return PostListResponse.from(posts, tagsMap)
+        return createPostListResponse(posts)
     }
 
     fun getPostsByCategory(categoryId: Long, pageable: Pageable): PostListResponse {
         val posts = postRepository.findByCategoryIdAndStatus(categoryId, PostStatus.PUBLISHED, pageable)
+        return createPostListResponse(posts)
+    }
 
+    fun getMyPosts(userId: Long, pageable: Pageable): PostListResponse {
+        val posts = postRepository.findByUserId(userId, pageable)
+        return createPostListResponse(posts)
+    }
+
+
+    private fun savePostTags(postId: Long, tagIds: List<Long>) {
+        if (tagIds.isEmpty()) return
+        val tags = tagIds.map { PostTag(postId = postId, tagId = it) }
+        postTagRepository.saveAll(tags)
+    }
+
+    private fun findPostByIdAndValidateOwner(postId: Long, userId: Long): Post {
+        val post = postRepository.findById(postId)
+            .orElseThrow { CustomException(ErrorCode.POST_NOT_FOUND) }
+        if (post.userId != userId) throw CustomException(ErrorCode.FORBIDDEN)
+        return post
+    }
+
+    private fun createPostListResponse(posts: Page<Post>): PostListResponse {
         val postIds = posts.content.mapNotNull { it.id }
+
         val tagsMap = postTagRepository.findByPostIdIn(postIds)
             .groupBy({ it.postId }, { it.tagId })
 
         return PostListResponse.from(posts, tagsMap)
     }
 
-    fun getMyPosts(userId: Long, pageable: Pageable): PostListResponse {
-        val posts = postRepository.findByUserId(userId, pageable)
+    private fun increaseViewCount(postId: Long, clientIp: String) {
+        val viewKey = "post:view:$postId:$clientIp"
 
-        val postIds = posts.content.mapNotNull { it.id }
-        val tagsMap = postTagRepository.findByPostIdIn(postIds)
-            .groupBy({ it.postId }, { it.tagId })
+        val isFirstView = redisTemplate.opsForValue()
+            .setIfAbsent(viewKey, "1", 1, TimeUnit.HOURS) == true
 
-        return PostListResponse.from(posts, tagsMap)
+        if (isFirstView) {
+            postRepository.incrementViewCount(postId)
+        }
     }
 }
