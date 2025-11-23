@@ -2,11 +2,10 @@ package com.blog.api.domain.user.controller
 
 import com.blog.api.domain.user.dto.LoginRequest
 import com.blog.api.domain.user.dto.SignupRequest
-import com.blog.api.domain.user.dto.TokenResponse
-import com.blog.api.domain.user.dto.UserResponse
 import com.blog.api.domain.user.service.UserService
 import com.blog.api.global.response.ApiResponse
 import jakarta.validation.Valid
+import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
 
 @RestController
@@ -16,6 +15,7 @@ class UserController(
 ) {
 
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     fun signup(@Valid @RequestBody request: SignupRequest) =
         ApiResponse.success(userService.signup(request))
 

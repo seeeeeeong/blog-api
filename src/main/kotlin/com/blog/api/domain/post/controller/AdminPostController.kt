@@ -3,6 +3,9 @@ package com.blog.api.domain.post.controller
 import com.blog.api.domain.post.service.AdminPostService
 import com.blog.api.global.response.ApiResponse
 import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.Sort
+import org.springframework.data.web.PageableDefault
+import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
 
 @RestController
@@ -12,10 +15,17 @@ class AdminPostController(
 ) {
 
     @GetMapping
-    fun getAllPosts(pageable: Pageable) =
-        ApiResponse.success(adminPostService.getAllPosts(pageable))
+    fun getAllPosts(
+        @PageableDefault(size = 20, sort = ["createdAt"], direction = Sort.Direction.DESC)
+        pageable: Pageable
+    ) = ApiResponse.success(
+        adminPostService.getAllPosts(pageable)
+    )
 
     @DeleteMapping("/{postId}")
-    fun deletePost(@PathVariable postId: Long) =
-        adminPostService.deletePost(postId).let { ApiResponse.success(Unit) }
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun deletePost(@PathVariable postId: Long): ApiResponse<Unit> {
+        adminPostService.deletePost(postId)
+        return ApiResponse.success(Unit)
+    }
 }
