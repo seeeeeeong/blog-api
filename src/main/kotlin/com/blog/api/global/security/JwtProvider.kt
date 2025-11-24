@@ -1,6 +1,8 @@
 package com.blog.api.global.security
 
 import com.blog.api.global.config.JwtProperties
+import com.blog.api.global.exception.CustomException
+import com.blog.api.global.exception.ErrorCode
 import io.jsonwebtoken.Claims
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys
@@ -72,6 +74,7 @@ class JwtProvider(
 
     fun getGitHubUsernameFromToken(token: String): String {
         return getClaims(token).get(GITHUB_USERNAME_CLAIM, String::class.java)
+            ?: throw CustomException(ErrorCode.INVALID_TOKEN)
     }
 
     fun getGitHubAvatarUrlFromToken(token: String): String? {

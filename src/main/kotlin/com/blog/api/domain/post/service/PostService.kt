@@ -6,6 +6,7 @@ import com.blog.api.domain.post.entity.PostStatus
 import com.blog.api.domain.post.repository.PostRepository
 import com.blog.api.global.exception.CustomException
 import com.blog.api.global.exception.ErrorCode
+import com.blog.api.global.util.MarkdownUtil
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.redis.core.RedisTemplate
@@ -17,7 +18,8 @@ import java.util.concurrent.TimeUnit
 @Transactional(readOnly = true)
 class PostService(
     private val postRepository: PostRepository,
-    private val redisTemplate: RedisTemplate<String, String>
+    private val redisTemplate: RedisTemplate<String, String>,
+    private val markdownUtil: MarkdownUtil
 ) {
 
     @Transactional
@@ -32,7 +34,7 @@ class PostService(
         )
         val savedPost = postRepository.save(post)
 
-        return PostResponse.from(savedPost)
+        return PostResponse.from(savedPost, markdownUtil.convertToHtml(savedPost.content))
     }
 
     @Transactional
@@ -47,7 +49,7 @@ class PostService(
             status = if (request.isDraft) PostStatus.DRAFT else PostStatus.PUBLISHED
         }
 
-        return PostResponse.from(post)
+        return PostResponse.from(post, markdownUtil.convertToHtml(post.content))
     }
 
     @Transactional
@@ -66,22 +68,22 @@ class PostService(
             increaseViewCount(postId, clientIp)
         }
 
-        return PostResponse.from(post)
+        return PostResponse.from(post, markdownUtil.convertToHtml(post.content))
     }
 
     fun getAllPosts(pageable: Pageable): PostListResponse {
         val posts = postRepository.findByStatus(PostStatus.PUBLISHED, pageable)
-        return PostListResponse.from(posts)
+        return PostListResponse.from(posts, markdownUtil::convertToHtml)
     }
 
     fun getPostsByCategory(categoryId: Long, pageable: Pageable): PostListResponse {
         val posts = postRepository.findByCategoryIdAndStatus(categoryId, PostStatus.PUBLISHED, pageable)
-        return PostListResponse.from(posts)
+        return PostListResponse.from(posts, markdownUtil::convertToHtml)
     }
 
     fun getMyPosts(userId: Long, pageable: Pageable): PostListResponse {
         val posts = postRepository.findByUserId(userId, pageable)
-        return PostListResponse.from(posts)
+        return PostListResponse.from(posts, markdownUtil::convertToHtml)
     }
 
     fun validatePostExists(postId: Long) {

@@ -52,6 +52,10 @@ spring:
             token-uri: https://github.com/login/oauth/access_token
             user-info-uri: https://api.github.com/user
 
+oauth:
+  github:
+    redirect-url: ${OAUTH_REDIRECT_URL:http://localhost:5173/auth/callback}
+
 jwt:
   secret: ${JWT_SECRET}
   access-expiration: ${JWT_ACCESS_EXPIRATION:3600000}

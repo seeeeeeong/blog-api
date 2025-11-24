@@ -45,6 +45,13 @@ dependencies {
 	// S3
 	implementation("software.amazon.awssdk:s3:2.20.26")
 
+	// Markdown
+	implementation("org.commonmark:commonmark:0.22.0")
+	implementation("org.commonmark:commonmark-ext-gfm-tables:0.22.0")
+
+	// HTML Sanitization
+	implementation("org.jsoup:jsoup:1.17.2")
+
 	runtimeOnly("com.mysql:mysql-connector-j")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")

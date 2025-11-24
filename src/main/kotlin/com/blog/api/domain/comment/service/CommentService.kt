@@ -9,6 +9,7 @@ import com.blog.api.domain.post.service.PostService
 import com.blog.api.global.web.dto.GitHubUser
 import com.blog.api.global.exception.CustomException
 import com.blog.api.global.exception.ErrorCode
+import com.blog.api.global.util.MarkdownUtil
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -16,7 +17,8 @@ import org.springframework.transaction.annotation.Transactional
 @Transactional(readOnly = true)
 class CommentService(
     private val commentRepository: CommentRepository,
-    private val postService: PostService
+    private val postService: PostService,
+    private val markdownUtil: MarkdownUtil
 ) {
 
     @Transactional
@@ -38,7 +40,8 @@ class CommentService(
             content = request.content
         )
 
-        return CommentResponse.from(commentRepository.save(comment))
+        val savedComment = commentRepository.save(comment)
+        return CommentResponse.from(savedComment, markdownUtil.convertToHtml(savedComment.content))
     }
 
     fun getCommentsByPost(postId: Long): List<CommentResponse> {
@@ -47,7 +50,7 @@ class CommentService(
 
         return parentComments.map { parent ->
             val replies = commentRepository.findByParentIdOrderByCreatedAtAsc(parent.id!!)
-            CommentResponse.fromWithReplies(parent, replies)
+            CommentResponse.fromWithReplies(parent, replies, markdownUtil::convertToHtml)
         }
     }
 
@@ -61,7 +64,7 @@ class CommentService(
         validateCommentOwner(comment, githubUser.githubId)
 
         comment.content = request.content
-        return CommentResponse.from(comment)
+        return CommentResponse.from(comment, markdownUtil.convertToHtml(comment.content))
     }
 
     @Transactional

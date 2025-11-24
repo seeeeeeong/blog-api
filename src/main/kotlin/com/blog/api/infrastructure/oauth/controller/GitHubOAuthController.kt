@@ -3,6 +3,7 @@ package com.blog.api.infrastructure.oauth.controller
 import com.blog.api.global.response.ApiResponse
 import com.blog.api.global.security.JwtProvider
 import com.blog.api.infrastructure.oauth.service.GitHubOAuthService
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.servlet.view.RedirectView
 
@@ -10,7 +11,9 @@ import org.springframework.web.servlet.view.RedirectView
 @RequestMapping("/api/auth/github")
 class GitHubOAuthController(
     private val gitHubOAuthService: GitHubOAuthService,
-    private val jwtProvider: JwtProvider
+    private val jwtProvider: JwtProvider,
+    @Value("\${oauth.github.redirect-url}")
+    private val redirectUrl: String
 ) {
 
     @GetMapping("/callback")
@@ -20,13 +23,13 @@ class GitHubOAuthController(
 
         val commentAuth = gitHubOAuthService.generateCommentToken(githubUser)
 
-        val redirectUrl = "http://localhost:5173/auth/callback" +
+        val fullRedirectUrl = "$redirectUrl" +
                 "?token=${commentAuth.commentToken}" +
                 "&githubId=${commentAuth.githubId}" +
                 "&githubUsername=${commentAuth.githubUsername}" +
                 "&githubAvatarUrl=${commentAuth.githubAvatarUrl ?: ""}"
 
-        return RedirectView(redirectUrl)
+        return RedirectView(fullRedirectUrl)
     }
 
     @GetMapping("/verify")

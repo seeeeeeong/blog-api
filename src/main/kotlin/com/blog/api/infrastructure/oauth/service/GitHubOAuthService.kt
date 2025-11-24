@@ -18,7 +18,9 @@ class GitHubOAuthService(
     @Value("\${spring.security.oauth2.client.registration.github.client-id}")
     private val clientId: String,
     @Value("\${spring.security.oauth2.client.registration.github.client-secret}")
-    private val clientSecret: String
+    private val clientSecret: String,
+    @Value("\${oauth.github.redirect-url}")
+    private val redirectUrl: String
 ) {
 
     fun getAccessToken(code: String): String {

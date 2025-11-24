@@ -22,16 +22,16 @@ class SecurityConfig {
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http
             .csrf { it.disable() }
-            .cors { it.disable() }
+            .cors { }
             .httpBasic { it.disable() }
             .formLogin { it.disable() }
-            .sessionManagement { 
-                it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) 
+            .sessionManagement {
+                it.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             }
-            .authorizeHttpRequests { 
+            .authorizeHttpRequests {
                 it.anyRequest().permitAll()
             }
-        
+
         return http.build()
     }
 }
