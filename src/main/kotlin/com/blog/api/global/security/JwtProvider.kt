@@ -15,12 +15,35 @@ class JwtProvider(
 
     private val secretKey: SecretKey = Keys.hmacShaKeyFor(jwtProperties.secret.toByteArray())
 
+    companion object {
+        private const val GITHUB_USERNAME_CLAIM = "githubUsername"
+        private const val GITHUB_AVATAR_URL_CLAIM = "githubAvatarUrl"
+    }
+
     fun generateAccessToken(userId: Long): String {
         val now = Date()
         val expiration = Date(now.time + jwtProperties.accessExpiration)
 
         return Jwts.builder()
             .subject(userId.toString())
+            .issuedAt(now)
+            .expiration(expiration)
+            .signWith(secretKey)
+            .compact()
+    }
+
+    fun generateGitHubAccessToken(
+        githubId: Long,
+        githubUsername: String,
+        githubAvatarUrl: String?
+    ): String {
+        val now = Date()
+        val expiration = Date(now.time + jwtProperties.accessExpiration)
+
+        return Jwts.builder()
+            .subject(githubId.toString())
+            .claim(GITHUB_USERNAME_CLAIM, githubUsername)
+            .claim(GITHUB_AVATAR_URL_CLAIM, githubAvatarUrl)
             .issuedAt(now)
             .expiration(expiration)
             .signWith(secretKey)
@@ -45,6 +68,14 @@ class JwtProvider(
 
     fun getGitHubIdFromToken(token: String): String {
         return getClaims(token).subject
+    }
+
+    fun getGitHubUsernameFromToken(token: String): String {
+        return getClaims(token).get(GITHUB_USERNAME_CLAIM, String::class.java)
+    }
+
+    fun getGitHubAvatarUrlFromToken(token: String): String? {
+        return getClaims(token).get(GITHUB_AVATAR_URL_CLAIM, String::class.java)
     }
 
     fun validateToken(token: String): Boolean {

@@ -3,8 +3,8 @@ package com.blog.api.domain.post.controller
 import com.blog.api.domain.post.dto.CreatePostRequest
 import com.blog.api.domain.post.dto.UpdatePostRequest
 import com.blog.api.domain.post.service.PostService
-import com.blog.api.global.auth.AuthUser
-import com.blog.api.global.auth.ClientIp
+import com.blog.api.global.web.annotation.AuthUser
+import com.blog.api.global.web.annotation.ClientIp
 import com.blog.api.global.response.ApiResponse
 import jakarta.validation.Valid
 import org.springframework.data.domain.Pageable

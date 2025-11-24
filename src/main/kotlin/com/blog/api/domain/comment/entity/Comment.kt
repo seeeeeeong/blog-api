@@ -29,8 +29,4 @@ class Comment(
     @Column(nullable = false, columnDefinition = "TEXT")
     var content: String
 
-) : BaseTimeEntity() {
-    fun isReply(): Boolean = parentId != null
-
-    fun isAuthor(githubId: String): Boolean = this.githubId == githubId
-}
+) : BaseTimeEntity()

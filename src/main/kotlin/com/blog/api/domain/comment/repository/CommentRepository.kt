@@ -9,5 +9,4 @@ interface CommentRepository : JpaRepository<Comment, Long> {
     
     fun findByParentIdOrderByCreatedAtAsc(parentId: Long): List<Comment>
     
-    fun countByPostId(postId: Long): Long
 }

@@ -1,5 +1,5 @@
-package com.blog.api.global.auth
+package com.blog.api.global.web.annotation
 
 @Target(AnnotationTarget.VALUE_PARAMETER)
 @Retention(AnnotationRetention.RUNTIME)
-annotation class ClientIp
+annotation class GitHubAuth

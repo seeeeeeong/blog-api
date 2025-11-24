@@ -64,8 +64,12 @@ class GitHubOAuthService(
     }
 
     fun generateCommentToken(githubUser: GitHubUserResponse): CommentAuthResponse {
-        val commentToken = jwtProvider.generateAccessToken(githubUser.id)
-        
+        val commentToken = jwtProvider.generateGitHubAccessToken(
+            githubId = githubUser.id,
+            githubUsername = githubUser.login,
+            githubAvatarUrl = githubUser.avatarUrl
+        )
+
         return CommentAuthResponse(
             commentToken = commentToken,
             githubId = githubUser.id.toString(),

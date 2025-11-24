@@ -1,6 +1,7 @@
-package com.blog.api.global.auth
+package com.blog.api.global.web.resolver
 
 import com.blog.api.global.util.IpUtils
+import com.blog.api.global.web.annotation.ClientIp
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.core.MethodParameter
 import org.springframework.stereotype.Component
@@ -24,7 +25,7 @@ class ClientIpArgumentResolver : HandlerMethodArgumentResolver {
     ): String {
         val request = webRequest.getNativeRequest(HttpServletRequest::class.java)
             ?: throw IllegalStateException("HttpServletRequest not found")
-        
+
         return IpUtils.getClientIp(request)
     }
 }

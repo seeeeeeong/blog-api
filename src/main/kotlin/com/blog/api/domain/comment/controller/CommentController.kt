@@ -3,6 +3,8 @@ package com.blog.api.domain.comment.controller
 import com.blog.api.domain.comment.dto.CreateCommentRequest
 import com.blog.api.domain.comment.dto.UpdateCommentRequest
 import com.blog.api.domain.comment.service.CommentService
+import com.blog.api.global.web.annotation.GitHubAuth
+import com.blog.api.global.web.dto.GitHubUser
 import com.blog.api.global.response.ApiResponse
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -18,18 +20,10 @@ class CommentController(
     @ResponseStatus(HttpStatus.CREATED)
     fun createComment(
         @PathVariable postId: Long,
-        @RequestHeader("Authorization") authorization: String,
-        @RequestHeader("GitHub-Username") githubUsername: String,
-        @RequestHeader("GitHub-Avatar-Url", required = false) githubAvatarUrl: String?,
+        @GitHubAuth githubUser: GitHubUser,
         @Valid @RequestBody request: CreateCommentRequest
     ) = ApiResponse.success(
-        commentService.createComment(
-            postId,
-            extractToken(authorization),
-            githubUsername,
-            githubAvatarUrl,
-            request
-        )
+        commentService.createComment(postId, githubUser, request)
     )
 
     @GetMapping
@@ -41,12 +35,12 @@ class CommentController(
 
     @PutMapping("/{commentId}")
     fun updateComment(
-        @PathVariable postId: Long, // URL 경로상 필요하지만 사용하지 않는다면 생략하거나 포함
+        @PathVariable postId: Long,
         @PathVariable commentId: Long,
-        @RequestHeader("Authorization") authorization: String,
+        @GitHubAuth githubUser: GitHubUser,
         @Valid @RequestBody request: UpdateCommentRequest
     ) = ApiResponse.success(
-        commentService.updateComment(commentId, extractToken(authorization), request)
+        commentService.updateComment(commentId, githubUser, request)
     )
 
     @DeleteMapping("/{commentId}")
@@ -54,13 +48,9 @@ class CommentController(
     fun deleteComment(
         @PathVariable postId: Long,
         @PathVariable commentId: Long,
-        @RequestHeader("Authorization") authorization: String
+        @GitHubAuth githubUser: GitHubUser
     ): ApiResponse<Unit> {
-        commentService.deleteComment(commentId, extractToken(authorization))
+        commentService.deleteComment(commentId, githubUser)
         return ApiResponse.success(Unit)
-    }
-
-    private fun extractToken(authorization: String): String {
-        return authorization.removePrefix("Bearer ")
     }
 }

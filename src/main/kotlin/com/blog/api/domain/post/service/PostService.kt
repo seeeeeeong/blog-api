@@ -94,6 +94,11 @@ class PostService(
         return createPostListResponse(posts)
     }
 
+    fun validatePostExists(postId: Long) {
+        val exists = postRepository.existsById(postId)
+        if (exists) return
+        throw CustomException(ErrorCode.POST_NOT_FOUND)
+    }
 
     private fun savePostTags(postId: Long, tagIds: List<Long>) {
         if (tagIds.isEmpty()) return
