@@ -14,12 +14,11 @@ data class PostResponse(
     val thumbnailUrl: String?,
     val viewCount: Int,
     val status: PostStatus,
-    val tagIds: List<Long> = emptyList(),
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime
 ) {
     companion object {
-        fun from(post: Post, tagIds: List<Long> = emptyList()): PostResponse {
+        fun from(post: Post): PostResponse {
             return PostResponse(
                 id = post.id!!,
                 userId = post.userId,
@@ -29,7 +28,6 @@ data class PostResponse(
                 thumbnailUrl = post.thumbnailUrl,
                 viewCount = post.viewCount,
                 status = post.status,
-                tagIds = tagIds,
                 createdAt = post.createdAt,
                 updatedAt = post.updatedAt
             )
@@ -48,18 +46,6 @@ data class PostListResponse(
         fun from(page: Page<Post>): PostListResponse {
             return PostListResponse(
                 posts = page.content.map { PostResponse.from(it) },
-                totalPages = page.totalPages,
-                totalElements = page.totalElements,
-                currentPage = page.number,
-                pageSize = page.size
-            )
-        }
-
-        fun from(page: Page<Post>, postTagsMap: Map<Long, List<Long>>): PostListResponse {
-            return PostListResponse(
-                posts = page.content.map { post ->
-                    PostResponse.from(post, postTagsMap[post.id] ?: emptyList())
-                },
                 totalPages = page.totalPages,
                 totalElements = page.totalElements,
                 currentPage = page.number,

@@ -3,9 +3,7 @@ package com.blog.api.domain.post.service
 import com.blog.api.domain.post.dto.*
 import com.blog.api.domain.post.entity.Post
 import com.blog.api.domain.post.entity.PostStatus
-import com.blog.api.domain.post.entity.PostTag
 import com.blog.api.domain.post.repository.PostRepository
-import com.blog.api.domain.post.repository.PostTagRepository
 import com.blog.api.global.exception.CustomException
 import com.blog.api.global.exception.ErrorCode
 import org.springframework.data.domain.Page
@@ -19,7 +17,6 @@ import java.util.concurrent.TimeUnit
 @Transactional(readOnly = true)
 class PostService(
     private val postRepository: PostRepository,
-    private val postTagRepository: PostTagRepository,
     private val redisTemplate: RedisTemplate<String, String>
 ) {
 
@@ -34,9 +31,8 @@ class PostService(
             status = if (request.isDraft) PostStatus.DRAFT else PostStatus.PUBLISHED
         )
         val savedPost = postRepository.save(post)
-        savePostTags(savedPost.id!!, request.tagIds)
 
-        return PostResponse.from(savedPost, request.tagIds)
+        return PostResponse.from(savedPost)
     }
 
     @Transactional
@@ -51,17 +47,13 @@ class PostService(
             status = if (request.isDraft) PostStatus.DRAFT else PostStatus.PUBLISHED
         }
 
-        postTagRepository.deleteByPostId(postId)
-        savePostTags(postId, request.tagIds)
-
-        return PostResponse.from(post, request.tagIds)
+        return PostResponse.from(post)
     }
 
     @Transactional
     fun deletePost(postId: Long, userId: Long) {
         val post = findPostByIdAndValidateOwner(postId, userId)
 
-        postTagRepository.deleteByPostId(postId)
         postRepository.delete(post)
     }
 
@@ -74,24 +66,22 @@ class PostService(
             increaseViewCount(postId, clientIp)
         }
 
-        val tags = postTagRepository.findByPostId(postId).map { it.tagId }
-
-        return PostResponse.from(post, tags)
+        return PostResponse.from(post)
     }
 
     fun getAllPosts(pageable: Pageable): PostListResponse {
         val posts = postRepository.findByStatus(PostStatus.PUBLISHED, pageable)
-        return createPostListResponse(posts)
+        return PostListResponse.from(posts)
     }
 
     fun getPostsByCategory(categoryId: Long, pageable: Pageable): PostListResponse {
         val posts = postRepository.findByCategoryIdAndStatus(categoryId, PostStatus.PUBLISHED, pageable)
-        return createPostListResponse(posts)
+        return PostListResponse.from(posts)
     }
 
     fun getMyPosts(userId: Long, pageable: Pageable): PostListResponse {
         val posts = postRepository.findByUserId(userId, pageable)
-        return createPostListResponse(posts)
+        return PostListResponse.from(posts)
     }
 
     fun validatePostExists(postId: Long) {
@@ -100,26 +90,11 @@ class PostService(
         throw CustomException(ErrorCode.POST_NOT_FOUND)
     }
 
-    private fun savePostTags(postId: Long, tagIds: List<Long>) {
-        if (tagIds.isEmpty()) return
-        val tags = tagIds.map { PostTag(postId = postId, tagId = it) }
-        postTagRepository.saveAll(tags)
-    }
-
     private fun findPostByIdAndValidateOwner(postId: Long, userId: Long): Post {
         val post = postRepository.findById(postId)
             .orElseThrow { CustomException(ErrorCode.POST_NOT_FOUND) }
         if (post.userId != userId) throw CustomException(ErrorCode.FORBIDDEN)
         return post
-    }
-
-    private fun createPostListResponse(posts: Page<Post>): PostListResponse {
-        val postIds = posts.content.mapNotNull { it.id }
-
-        val tagsMap = postTagRepository.findByPostIdIn(postIds)
-            .groupBy({ it.postId }, { it.tagId })
-
-        return PostListResponse.from(posts, tagsMap)
     }
 
     private fun increaseViewCount(postId: Long, clientIp: String) {

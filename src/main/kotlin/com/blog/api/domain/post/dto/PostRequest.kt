@@ -18,9 +18,7 @@ data class CreatePostRequest(
 
     val thumbnailUrl: String? = null,
 
-    val isDraft: Boolean = false,
-
-    val tagIds: List<Long> = emptyList()
+    val isDraft: Boolean = false
 )
 
 data class UpdatePostRequest(
@@ -37,7 +35,5 @@ data class UpdatePostRequest(
 
     val thumbnailUrl: String? = null,
 
-    val isDraft: Boolean = false,
-
-    val tagIds: List<Long> = emptyList()
+    val isDraft: Boolean = false
 )
