@@ -3,7 +3,7 @@ package com.blog.api.global.util
 import jakarta.servlet.http.HttpServletRequest
 
 object IpUtils {
-    
+
     fun getClientIp(request: HttpServletRequest): String {
         val headers = listOf(
             "X-Forwarded-For",
@@ -18,14 +18,14 @@ object IpUtils {
             "HTTP_VIA",
             "REMOTE_ADDR"
         )
-        
+
         for (header in headers) {
             val ip = request.getHeader(header)
-            if (!ip.isNullOrBlank() && ip != "unknown") {
+            if (ip.isNotBlank() && ip != "unknown") {
                 return ip.split(",")[0].trim()
             }
         }
-        
+
         return request.remoteAddr
     }
 }

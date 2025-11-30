@@ -52,6 +52,9 @@ spring:
             token-uri: https://github.com/login/oauth/access_token
             user-info-uri: https://api.github.com/user
 
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
 oauth:
   github:
     redirect-url: ${OAUTH_REDIRECT_URL:http://localhost:5173/auth/callback}
@@ -96,6 +99,29 @@ spring:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT:6379}
+
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            client-id: ${GITHUB_CLIENT_ID}
+            client-secret: ${GITHUB_CLIENT_SECRET}
+            scope:
+              - read:user
+              - user:email
+        provider:
+          github:
+            authorization-uri: https://github.com/login/oauth/authorize
+            token-uri: https://github.com/login/oauth/access_token
+            user-info-uri: https://api.github.com/user
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
+oauth:
+  github:
+    redirect-url: ${OAUTH_REDIRECT_URL}
 
 jwt:
   secret: ${JWT_SECRET}

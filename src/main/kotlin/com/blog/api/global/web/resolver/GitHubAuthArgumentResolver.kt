@@ -30,24 +30,22 @@ class GitHubAuthArgumentResolver(
         val authorization = webRequest.getHeader("Authorization")
             ?: throw CustomException(ErrorCode.UNAUTHORIZED)
 
-        if (!authorization.startsWith("Bearer ")) {
-            throw CustomException(ErrorCode.INVALID_TOKEN)
+        if (authorization.startsWith("Bearer ")) {
+            val token = authorization.substring(7)
+
+            if (jwtProvider.validateToken(token)) {
+                val githubId = jwtProvider.getGitHubIdFromToken(token)
+                val githubUsername = jwtProvider.getGitHubUsernameFromToken(token)
+                val githubAvatarUrl = jwtProvider.getGitHubAvatarUrlFromToken(token)
+
+                return GitHubUser(
+                    githubId = githubId,
+                    githubUsername = githubUsername,
+                    githubAvatarUrl = githubAvatarUrl
+                )
+            }
         }
 
-        val token = authorization.substring(7)
-
-        if (!jwtProvider.validateToken(token)) {
-            throw CustomException(ErrorCode.INVALID_TOKEN)
-        }
-
-        val githubId = jwtProvider.getGitHubIdFromToken(token)
-        val githubUsername = jwtProvider.getGitHubUsernameFromToken(token)
-        val githubAvatarUrl = jwtProvider.getGitHubAvatarUrlFromToken(token)
-
-        return GitHubUser(
-            githubId = githubId,
-            githubUsername = githubUsername,
-            githubAvatarUrl = githubAvatarUrl
-        )
+        throw CustomException(ErrorCode.INVALID_TOKEN)
     }
 }
