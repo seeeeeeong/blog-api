@@ -2,6 +2,7 @@ package com.blog.api.infrastructure.s3.service
 
 import com.blog.api.global.config.AwsProperties
 import com.blog.api.infrastructure.s3.dto.PresignedUrlResponse
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
@@ -10,6 +11,7 @@ import java.time.Duration
 import java.util.*
 
 @Service
+@ConditionalOnProperty(name = ["aws.access-key"], matchIfMissing = false)
 class S3Service(
     private val s3Presigner: S3Presigner,
     private val awsProperties: AwsProperties
