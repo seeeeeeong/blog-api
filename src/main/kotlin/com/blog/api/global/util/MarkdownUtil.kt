@@ -10,18 +10,15 @@ import org.springframework.stereotype.Component
 @Component
 class MarkdownUtil {
 
-    private val parser: Parser
-    private val renderer: HtmlRenderer
+    private val extensions = listOf(TablesExtension.create())
 
-    init {
-        val extensions = listOf(TablesExtension.create())
-        this.parser = Parser.builder()
-            .extensions(extensions)
-            .build()
-        this.renderer = HtmlRenderer.builder()
-            .extensions(extensions)
-            .build()
-    }
+    private val parser: Parser = Parser.builder()
+        .extensions(extensions)
+        .build()
+
+    private val renderer: HtmlRenderer = HtmlRenderer.builder()
+        .extensions(extensions)
+        .build()
 
     fun convertToHtml(markdown: String): String {
         val document = parser.parse(markdown)

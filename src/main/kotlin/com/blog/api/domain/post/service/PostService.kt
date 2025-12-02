@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit
 @Transactional(readOnly = true)
 class PostService(
     private val postRepository: PostRepository,
+    private val postQueryRepository: com.blog.api.domain.post.repository.PostQueryRepository,
     private val redisTemplate: RedisTemplate<String, String>,
     private val markdownUtil: MarkdownUtil
 ) {
@@ -72,17 +73,17 @@ class PostService(
     }
 
     fun getAllPosts(pageable: Pageable): PostListResponse {
-        val posts = postRepository.findByStatus(PostStatus.PUBLISHED, pageable)
+        val posts = postQueryRepository.findByStatus(PostStatus.PUBLISHED, pageable)
         return PostListResponse.from(posts, markdownUtil::convertToHtml)
     }
 
     fun getPostsByCategory(categoryId: Long, pageable: Pageable): PostListResponse {
-        val posts = postRepository.findByCategoryIdAndStatus(categoryId, PostStatus.PUBLISHED, pageable)
+        val posts = postQueryRepository.findByCategoryIdAndStatus(categoryId, PostStatus.PUBLISHED, pageable)
         return PostListResponse.from(posts, markdownUtil::convertToHtml)
     }
 
     fun getMyPosts(userId: Long, pageable: Pageable): PostListResponse {
-        val posts = postRepository.findByUserId(userId, pageable)
+        val posts = postQueryRepository.findByUserId(userId, pageable)
         return PostListResponse.from(posts, markdownUtil::convertToHtml)
     }
 

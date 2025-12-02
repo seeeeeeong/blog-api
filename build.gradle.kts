@@ -5,6 +5,7 @@ plugins {
 	id("io.spring.dependency-management") version "1.1.7"
 	id("co.uzzu.dotenv.gradle") version "2.0.0"
 	kotlin("plugin.jpa") version "1.9.25"
+	kotlin("kapt") version "1.9.25"
 }
 
 group = "com.blog"
@@ -52,6 +53,10 @@ dependencies {
 	// HTML Sanitization
 	implementation("org.jsoup:jsoup:1.17.2")
 
+	// QueryDSL
+	implementation("com.querydsl:querydsl-jpa:5.0.0:jakarta")
+	kapt("com.querydsl:querydsl-apt:5.0.0:jakarta")
+
 	runtimeOnly("com.mysql:mysql-connector-j")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
@@ -69,6 +74,21 @@ allOpen {
 	annotation("jakarta.persistence.Entity")
 	annotation("jakarta.persistence.MappedSuperclass")
 	annotation("jakarta.persistence.Embeddable")
+}
+
+// QueryDSL Q클래스 생성 디렉토리 설정
+val querydslDir = "build/generated/source/kapt/main"
+
+sourceSets {
+	main {
+		java.srcDirs(querydslDir)
+	}
+}
+
+kapt {
+	arguments {
+		arg("querydsl.entityAccessors", "true")
+	}
 }
 
 tasks.withType<Test> {
