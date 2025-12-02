@@ -35,6 +35,9 @@ class SecurityConfig(
             }
             .authorizeHttpRequests { authorize ->
                 authorize
+                    // Health check
+                    .requestMatchers("/api/health").permitAll()
+
                     // Public Read APIs
                     .requestMatchers(HttpMethod.GET, "/api/posts", "/api/posts/categories/**", "/api/posts/{postId:[0-9]+}").permitAll()
 
