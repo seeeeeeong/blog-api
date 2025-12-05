@@ -3,12 +3,12 @@ package com.blog.api.infrastructure.s3.controller
 import com.blog.api.global.response.ApiResponse
 import com.blog.api.infrastructure.s3.dto.PresignedUrlResponse
 import com.blog.api.infrastructure.s3.service.S3Service
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression
 import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/api/images")
-@ConditionalOnProperty(name = ["aws.access-key"], matchIfMissing = false)
+@ConditionalOnExpression("\${aws.s3.enabled:false}")
 class ImageController(
     private val s3Service: S3Service
 ) {
