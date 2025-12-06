@@ -73,8 +73,13 @@ aws:
 
 logging:
   level:
+    root: info
+    com.blog.api: debug
+    org.springframework.web: info
     org.hibernate.SQL: debug
     org.hibernate.type.descriptor.sql.BasicBinder: trace
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
 
 ---
 spring:
@@ -139,3 +144,8 @@ aws:
 logging:
   level:
     root: info
+    com.blog.api: info
+    org.springframework.web: warn
+    org.hibernate.SQL: warn
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

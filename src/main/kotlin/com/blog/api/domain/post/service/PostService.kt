@@ -7,6 +7,7 @@ import com.blog.api.domain.post.repository.PostRepository
 import com.blog.api.global.exception.CustomException
 import com.blog.api.global.exception.ErrorCode
 import com.blog.api.global.util.MarkdownUtil
+import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.redis.core.RedisTemplate
@@ -22,6 +23,7 @@ class PostService(
     private val redisTemplate: RedisTemplate<String, String>,
     private val markdownUtil: MarkdownUtil
 ) {
+    private val logger = LoggerFactory.getLogger(PostService::class.java)
 
     @Transactional
     fun createPost(userId: Long, request: CreatePostRequest): PostResponse {
@@ -109,11 +111,11 @@ class PostService(
 
             if (isFirstView) {
                 postRepository.incrementViewCount(postId)
+                logger.debug("incrementViewCount Success : postId={}, clientIp={}", postId, clientIp)
             }
         } catch (e: Exception) {
-            // Redis 연결 실패 시 조회수 증가 건너뛰기
-            // 로그만 남기고 요청은 정상 처리
-            println("Failed to increase view count: ${e.message}")
+            logger.warn("incrementViewCount Fail : postId={}, clientIp={}, error={}",
+                postId, clientIp, e.message, e)
         }
     }
 }

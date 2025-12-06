@@ -1,5 +1,6 @@
 package com.blog.api.global.exception
 
+import org.slf4j.LoggerFactory
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.FieldError
 import org.springframework.web.bind.MethodArgumentNotValidException
@@ -8,9 +9,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
-    
+
+    private val logger = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
+
     @ExceptionHandler(CustomException::class)
     fun handleCustomException(e: CustomException): ResponseEntity<ErrorResponse> {
+        logger.warn("CustomException: errorCode={}, message={}", e.errorCode, e.errorCode.message)
+
         val errorResponse = ErrorResponse(
             status = e.errorCode.status,
             message = e.errorCode.message
@@ -26,7 +31,9 @@ class GlobalExceptionHandler {
                 val errorMessage = error.defaultMessage ?: "유효하지 않은 값입니다"
                 "$fieldName: $errorMessage"
             }
-        
+
+        logger.info("Validation failed: errors={}", errors)
+
         val errorResponse = ErrorResponse(
             status = 400,
             message = "입력값 검증 실패",
@@ -37,6 +44,8 @@ class GlobalExceptionHandler {
     
     @ExceptionHandler(Exception::class)
     fun handleException(e: Exception): ResponseEntity<ErrorResponse> {
+        logger.error("Unexpected error occurred: message={}", e.message, e)
+
         val errorResponse = ErrorResponse(
             status = 500,
             message = "서버 오류가 발생했습니다"

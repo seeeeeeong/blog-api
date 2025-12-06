@@ -9,6 +9,7 @@ import com.blog.api.domain.user.repository.UserRepository
 import com.blog.api.global.exception.CustomException
 import com.blog.api.global.exception.ErrorCode
 import com.blog.api.global.security.JwtProvider
+import org.slf4j.LoggerFactory
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -20,6 +21,7 @@ class UserService(
     private val passwordEncoder: PasswordEncoder,
     private val jwtProvider: JwtProvider
 ) {
+    private val logger = LoggerFactory.getLogger(UserService::class.java)
 
     @Transactional
     fun signup(request: SignupRequest): UserResponse {
