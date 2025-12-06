@@ -101,13 +101,19 @@ class PostService(
     }
 
     private fun increaseViewCount(postId: Long, clientIp: String) {
-        val viewKey = "post:view:$postId:$clientIp"
+        try {
+            val viewKey = "post:view:$postId:$clientIp"
 
-        val isFirstView = redisTemplate.opsForValue()
-            .setIfAbsent(viewKey, "1", 1, TimeUnit.HOURS) == true
+            val isFirstView = redisTemplate.opsForValue()
+                .setIfAbsent(viewKey, "1", 1, TimeUnit.HOURS) == true
 
-        if (isFirstView) {
-            postRepository.incrementViewCount(postId)
+            if (isFirstView) {
+                postRepository.incrementViewCount(postId)
+            }
+        } catch (e: Exception) {
+            // Redis 연결 실패 시 조회수 증가 건너뛰기
+            // 로그만 남기고 요청은 정상 처리
+            println("Failed to increase view count: ${e.message}")
         }
     }
 }
