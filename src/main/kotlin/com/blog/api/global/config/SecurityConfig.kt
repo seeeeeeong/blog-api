@@ -38,11 +38,14 @@ class SecurityConfig(
                     // Health check
                     .requestMatchers("/api/health").permitAll()
 
-                    // Public Read APIs
-                    .requestMatchers(HttpMethod.GET, "/api/posts", "/api/posts/categories/**", "/api/posts/{postId:[0-9]+}").permitAll()
-
                     // Auth APIs
                     .requestMatchers("/api/auth/github/callback").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/users", "/api/users/login").permitAll()
+
+                    // Public Read APIs
+                    .requestMatchers(HttpMethod.GET, "/api/posts", "/api/posts/categories/**", "/api/posts/{postId:[0-9]+}").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/categories").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/posts/{postId:[0-9]+}/comments").permitAll()
 
                     // All other requests need authentication
                     .anyRequest().authenticated()
