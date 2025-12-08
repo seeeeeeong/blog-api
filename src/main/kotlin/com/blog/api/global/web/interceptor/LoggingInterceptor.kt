@@ -3,14 +3,18 @@ package com.blog.api.global.web.interceptor
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import org.springframework.web.servlet.HandlerInterceptor
 import org.springframework.web.servlet.ModelAndView
 
 @Component
-class LoggingInterceptor : HandlerInterceptor {
+class LoggingInterceptor(
+    @Value("\${spring.profiles.active:local}") private val profile: String
+) : HandlerInterceptor {
 
     private val logger = LoggerFactory.getLogger(LoggingInterceptor::class.java)
+    private val isProd = profile == "prod"
 
     override fun preHandle(
         request: HttpServletRequest,
@@ -20,12 +24,14 @@ class LoggingInterceptor : HandlerInterceptor {
         val startTime = System.currentTimeMillis()
         request.setAttribute("startTime", startTime)
 
-        logger.info(
-            "HTTP Request: method={}, uri={}, remoteAddr={}",
-            request.method,
-            request.requestURI,
-            request.remoteAddr
-        )
+        if (!isProd) {
+            logger.info(
+                "HTTP Request: method={}, uri={}, remoteAddr={}",
+                request.method,
+                request.requestURI,
+                request.remoteAddr
+            )
+        }
 
         return true
     }
@@ -39,13 +45,23 @@ class LoggingInterceptor : HandlerInterceptor {
         val startTime = request.getAttribute("startTime") as? Long ?: return
         val duration = System.currentTimeMillis() - startTime
 
-        logger.info(
-            "HTTP Response: method={}, uri={}, status={}, duration={}ms",
-            request.method,
-            request.requestURI,
-            response.status,
-            duration
-        )
+        if (!isProd) {
+            logger.info(
+                "HTTP Response: method={}, uri={}, status={}, duration={}ms",
+                request.method,
+                request.requestURI,
+                response.status,
+                duration
+            )
+        } else if (duration > 3000) {
+            logger.warn(
+                "Slow request: method={}, uri={}, status={}, duration={}ms",
+                request.method,
+                request.requestURI,
+                response.status,
+                duration
+            )
+        }
     }
 
     override fun afterCompletion(

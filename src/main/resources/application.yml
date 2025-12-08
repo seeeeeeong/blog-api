@@ -93,7 +93,8 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     hikari:
-      maximum-pool-size: 20
+      maximum-pool-size: 5
+      minimum-idle: 2
 
   jpa:
     hibernate:
