@@ -21,7 +21,8 @@ object IpUtils {
 
         for (header in headers) {
             val ip = request.getHeader(header)
-            if (!ip.isNullOrBlank() && ip != "unknown") {
+
+            if (ip != null && ip.isNotBlank() && ip.equals("unknown", ignoreCase = true).not()) {
                 return ip.split(",")[0].trim()
             }
         }

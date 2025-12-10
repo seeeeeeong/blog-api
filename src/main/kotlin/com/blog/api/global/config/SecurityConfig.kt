@@ -38,6 +38,9 @@ class SecurityConfig(
                     // Health check
                     .requestMatchers("/api/health").permitAll()
 
+                    // Swagger UI
+                    .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+
                     // Auth APIs
                     .requestMatchers("/api/auth/github/callback").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/users", "/api/users/login").permitAll()

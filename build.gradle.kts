@@ -20,6 +20,7 @@ java {
 
 repositories {
 	mavenCentral()
+	maven { url = uri("https://repo.spring.io/milestone") }
 }
 
 dependencies {
@@ -56,6 +57,13 @@ dependencies {
 	// QueryDSL
 	implementation("com.querydsl:querydsl-jpa:5.0.0:jakarta")
 	kapt("com.querydsl:querydsl-apt:5.0.0:jakarta")
+
+	// Springdoc OpenAPI (Swagger)
+	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0")
+
+	// Spring-AI for MCP
+	implementation("org.springframework.ai:spring-ai-core:1.0.0-M5")
+	implementation("org.springframework.ai:spring-ai-openai:1.0.0-M5")
 
 	runtimeOnly("com.mysql:mysql-connector-j")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
