@@ -23,45 +23,69 @@ class GitHubOAuthService(
     private val redirectUrl: String
 ) {
 
+    companion object {
+        private const val GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token"
+        private const val GITHUB_USER_API_URL = "https://api.github.com/user"
+        private const val PARAM_CLIENT_ID = "client_id"
+        private const val PARAM_CLIENT_SECRET = "client_secret"
+        private const val PARAM_CODE = "code"
+        private const val RESPONSE_ACCESS_TOKEN = "access_token"
+        private const val BODY_KEY_ID = "id"
+        private const val BODY_KEY_LOGIN = "login"
+        private const val BODY_KEY_AVATAR_URL = "avatar_url"
+        private const val BODY_KEY_NAME = "name"
+        private const val BODY_KEY_EMAIL = "email"
+    }
+
     fun getAccessToken(code: String): String {
-        val url = "https://github.com/login/oauth/access_token"
-        
-        val params = LinkedMultiValueMap<String, String>()
-        params.add("client_id", clientId)
-        params.add("client_secret", clientSecret)
-        params.add("code", code)
-
-        val headers = HttpHeaders()
-        headers.accept = listOf(MediaType.APPLICATION_JSON)
-
+        val params = createTokenRequestParams(code)
+        val headers = createJsonHeaders()
         val request = HttpEntity(params, headers)
-        
-        val response = restTemplate.postForEntity(url, request, Map::class.java)
-        
-        val accessToken = response.body?.get("access_token") as? String
+
+        val response = restTemplate.postForEntity(GITHUB_TOKEN_URL, request, Map::class.java)
+
+        return response.body?.get(RESPONSE_ACCESS_TOKEN) as? String
             ?: throw CustomException(ErrorCode.INVALID_TOKEN)
-        
-        return accessToken
     }
 
     fun getGitHubUser(accessToken: String): GitHubUserResponse {
-        val url = "https://api.github.com/user"
-        
+        val headers = createAuthHeaders(accessToken)
+        val request = HttpEntity<Void>(headers)
+
+        val response = restTemplate.exchange(GITHUB_USER_API_URL, HttpMethod.GET, request, Map::class.java)
+        val body = response.body ?: throw CustomException(ErrorCode.USER_NOT_FOUND)
+
+        return parseGitHubUserResponse(body)
+    }
+
+    private fun createTokenRequestParams(code: String): LinkedMultiValueMap<String, String> {
+        val params = LinkedMultiValueMap<String, String>()
+        params.add(PARAM_CLIENT_ID, clientId)
+        params.add(PARAM_CLIENT_SECRET, clientSecret)
+        params.add(PARAM_CODE, code)
+        return params
+    }
+
+    private fun createJsonHeaders(): HttpHeaders {
+        val headers = HttpHeaders()
+        headers.accept = listOf(MediaType.APPLICATION_JSON)
+        return headers
+    }
+
+    private fun createAuthHeaders(accessToken: String): HttpHeaders {
         val headers = HttpHeaders()
         headers.setBearerAuth(accessToken)
         headers.accept = listOf(MediaType.APPLICATION_JSON)
+        return headers
+    }
 
-        val request = HttpEntity<Void>(headers)
-        
-        val response = restTemplate.exchange(url, HttpMethod.GET, request, Map::class.java)
-        val body = response.body ?: throw CustomException(ErrorCode.USER_NOT_FOUND)
-
+    private fun parseGitHubUserResponse(body: Map<*, *>): GitHubUserResponse {
         return GitHubUserResponse(
-            id = (body["id"] as Number).toLong(),
-            login = body["login"] as String,
-            avatarUrl = body["avatar_url"] as? String,
-            name = body["name"] as? String,
-            email = body["email"] as? String
+            id = (body[BODY_KEY_ID] as Number).toLong(),
+            login = body[BODY_KEY_LOGIN] as String,
+            avatarUrl = body[BODY_KEY_AVATAR_URL] as? String,
+            name = body[BODY_KEY_NAME] as? String,
+            email = body[BODY_KEY_EMAIL] as? String
         )
     }
 
@@ -78,5 +102,9 @@ class GitHubOAuthService(
             githubUsername = githubUserResponse.login,
             githubAvatarUrl = githubUserResponse.avatarUrl
         )
+    }
+
+    fun verifyToken(token: String): Boolean {
+        return jwtProvider.validateToken(token)
     }
 }
