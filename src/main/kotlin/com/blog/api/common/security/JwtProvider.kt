@@ -15,9 +15,9 @@ import javax.crypto.SecretKey
 class JwtProvider(
     @Value("\${jwt.secret}")
     private val secret: String,
-    @Value("\${jwt.accessExpiration}")
+    @Value("\${jwt.access-expiration}")
     private val accessExpiration: Long,
-    @Value("\${jwt.refreshExpiration}")
+    @Value("\${jwt.refresh-expiration}")
     private val refreshExpiration: Long
 ) {
 
