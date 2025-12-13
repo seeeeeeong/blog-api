@@ -1,7 +1,7 @@
 package com.blog.api.infrastructure.oauth.controller
 
-import com.blog.api.global.response.ApiResponse
-import com.blog.api.global.security.JwtProvider
+import com.blog.api.common.response.ApiResponse
+import com.blog.api.common.security.JwtProvider
 import com.blog.api.infrastructure.oauth.service.GitHubOAuthService
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.bind.annotation.GetMapping

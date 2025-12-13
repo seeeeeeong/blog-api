@@ -6,10 +6,11 @@ import com.blog.api.domain.comment.dto.UpdateCommentRequest
 import com.blog.api.domain.comment.entity.Comment
 import com.blog.api.domain.comment.repository.CommentRepository
 import com.blog.api.domain.post.service.PostService
-import com.blog.api.global.web.dto.GitHubUser
-import com.blog.api.global.exception.CustomException
-import com.blog.api.global.exception.ErrorCode
-import com.blog.api.global.util.MarkdownUtil
+import com.blog.api.common.web.dto.GitHubUser
+import com.blog.api.common.exception.CustomException
+import com.blog.api.common.exception.ErrorCode
+import com.blog.api.common.util.MarkdownUtil
+import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -27,8 +28,7 @@ class CommentService(
         githubUser: GitHubUser,
         request: CreateCommentRequest
     ): CommentResponse {
-
-        validatePost(postId)
+        postService.validatePostExists(postId)
         validateParentComment(request.parentId)
 
         val comment = Comment(
@@ -45,11 +45,10 @@ class CommentService(
     }
 
     fun getCommentsByPost(postId: Long): List<CommentResponse> {
-        val parentComments =
-            commentRepository.findByPostIdAndParentIdIsNullOrderByCreatedAtDesc(postId)
+        val parentComments = commentRepository.findParentComments(postId)
 
         return parentComments.map { parent ->
-            val replies = commentRepository.findByParentIdOrderByCreatedAtAsc(parent.id!!)
+            val replies = commentRepository.findReplies(parent.id!!)
             CommentResponse.fromWithReplies(parent, replies, markdownUtil::convertToHtml)
         }
     }
@@ -60,42 +59,37 @@ class CommentService(
         githubUser: GitHubUser,
         request: UpdateCommentRequest
     ): CommentResponse {
-        val comment = findCommentById(commentId)
+        val comment = commentRepository.findById(commentId)
+            .orElseThrow { CustomException(ErrorCode.COMMENT_NOT_FOUND) }
         validateCommentOwner(comment, githubUser.githubId)
 
-        comment.content = request.content
+        comment.apply {
+            content = request.content
+        }
+
         return CommentResponse.from(comment, markdownUtil.convertToHtml(comment.content))
     }
 
     @Transactional
     fun deleteComment(commentId: Long, githubUser: GitHubUser) {
-        val comment = findCommentById(commentId)
+        val comment = commentRepository.findById(commentId)
+            .orElseThrow { CustomException(ErrorCode.COMMENT_NOT_FOUND) }
         validateCommentOwner(comment, githubUser.githubId)
+
         commentRepository.delete(comment)
     }
 
-    private fun validatePost(postId: Long) {
-        postService.validatePostExists(postId)
-    }
-
     private fun validateParentComment(parentId: Long?) {
-        if (parentId == null) return
-
-        val parentExists = commentRepository.existsById(parentId)
-        if (parentExists) return
-
-        throw CustomException(ErrorCode.COMMENT_NOT_FOUND)
-    }
-
-    private fun findCommentById(commentId: Long): Comment {
-        return commentRepository.findById(commentId)
-            .orElseThrow { CustomException(ErrorCode.COMMENT_NOT_FOUND) }
+        parentId?.let {
+            check(commentRepository.existsById(it)) {
+                CustomException(ErrorCode.COMMENT_NOT_FOUND)
+            }
+        }
     }
 
     private fun validateCommentOwner(comment: Comment, githubId: String) {
-        val isOwner = (comment.githubId == githubId)
-        if (isOwner) return
-
-        throw CustomException(ErrorCode.FORBIDDEN)
+        check(comment.githubId == githubId) {
+            CustomException(ErrorCode.FORBIDDEN)
+        }
     }
 }

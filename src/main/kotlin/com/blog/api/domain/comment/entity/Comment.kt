@@ -1,6 +1,6 @@
 package com.blog.api.domain.comment.entity
 
-import com.blog.api.global.entity.BaseTimeEntity
+import com.blog.api.common.entity.BaseTimeEntity
 import jakarta.persistence.*
 
 @Entity

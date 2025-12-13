@@ -1,8 +1,8 @@
 package com.blog.api.infrastructure.oauth.service
 
-import com.blog.api.global.exception.CustomException
-import com.blog.api.global.exception.ErrorCode
-import com.blog.api.global.security.JwtProvider
+import com.blog.api.common.exception.CustomException
+import com.blog.api.common.exception.ErrorCode
+import com.blog.api.common.security.JwtProvider
 import com.blog.api.infrastructure.oauth.dto.CommentAuthResponse
 import com.blog.api.infrastructure.oauth.dto.GitHubUserResponse
 import org.springframework.beans.factory.annotation.Value
@@ -65,18 +65,15 @@ class GitHubOAuthService(
         )
     }
 
-    fun generateCommentToken(githubUser: GitHubUserResponse): CommentAuthResponse {
+    fun generateCommentToken(githubUserResponse: GitHubUserResponse): CommentAuthResponse {
+        val githubUser = githubUserResponse.toGitHubUser()
+
         val commentToken = jwtProvider.generateGitHubAccessToken(
-            githubId = githubUser.id,
-            githubUsername = githubUser.login,
-            githubAvatarUrl = githubUser.avatarUrl
+            githubId = githubUserResponse.id,
+            githubUsername = githubUserResponse.login,
+            githubAvatarUrl = githubUserResponse.avatarUrl
         )
 
-        return CommentAuthResponse(
-            commentToken = commentToken,
-            githubId = githubUser.id.toString(),
-            githubUsername = githubUser.login,
-            githubAvatarUrl = githubUser.avatarUrl
-        )
+        return CommentAuthResponse.from(commentToken, githubUser)
     }
 }

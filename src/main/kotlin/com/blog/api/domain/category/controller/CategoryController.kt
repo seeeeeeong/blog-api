@@ -1,7 +1,7 @@
 package com.blog.api.domain.category.controller
 
 import com.blog.api.domain.category.service.CategoryService
-import com.blog.api.global.response.ApiResponse
+import com.blog.api.common.response.ApiResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.web.bind.annotation.GetMapping

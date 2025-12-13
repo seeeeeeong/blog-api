@@ -5,7 +5,6 @@ plugins {
 	id("io.spring.dependency-management") version "1.1.7"
 	id("co.uzzu.dotenv.gradle") version "2.0.0"
 	kotlin("plugin.jpa") version "1.9.25"
-	kotlin("kapt") version "1.9.25"
 }
 
 group = "com.blog"
@@ -40,12 +39,15 @@ dependencies {
 	// Redis
 	implementation("org.springframework.boot:spring-boot-starter-data-redis")
 
+	// AOP
+	implementation("org.springframework.boot:spring-boot-starter-aop")
+
 	// Kotlin
 	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 
-	// S3
-	implementation("software.amazon.awssdk:s3:2.20.26")
+	// Cloudinary
+	implementation("com.cloudinary:cloudinary-http44:1.36.0")
 
 	// Markdown
 	implementation("org.commonmark:commonmark:0.22.0")
@@ -53,10 +55,6 @@ dependencies {
 
 	// HTML Sanitization
 	implementation("org.jsoup:jsoup:1.17.2")
-
-	// QueryDSL
-	implementation("com.querydsl:querydsl-jpa:5.0.0:jakarta")
-	kapt("com.querydsl:querydsl-apt:5.0.0:jakarta")
 
 	// Springdoc OpenAPI (Swagger)
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0")
@@ -82,21 +80,6 @@ allOpen {
 	annotation("jakarta.persistence.Entity")
 	annotation("jakarta.persistence.MappedSuperclass")
 	annotation("jakarta.persistence.Embeddable")
-}
-
-// QueryDSL Q클래스 생성 디렉토리 설정
-val querydslDir = "build/generated/source/kapt/main"
-
-sourceSets {
-	main {
-		java.srcDirs(querydslDir)
-	}
-}
-
-kapt {
-	arguments {
-		arg("querydsl.entityAccessors", "true")
-	}
 }
 
 tasks.withType<Test> {

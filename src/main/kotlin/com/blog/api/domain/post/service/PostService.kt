@@ -4,26 +4,21 @@ import com.blog.api.domain.post.dto.*
 import com.blog.api.domain.post.entity.Post
 import com.blog.api.domain.post.entity.PostStatus
 import com.blog.api.domain.post.repository.PostRepository
-import com.blog.api.global.exception.CustomException
-import com.blog.api.global.exception.ErrorCode
-import com.blog.api.global.util.MarkdownUtil
-import org.slf4j.LoggerFactory
-import org.springframework.data.domain.Page
+import com.blog.api.common.exception.CustomException
+import com.blog.api.common.exception.ErrorCode
+import com.blog.api.common.util.MarkdownUtil
+import com.blog.api.common.redis.ViewCountRedisService
 import org.springframework.data.domain.Pageable
-import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.util.concurrent.TimeUnit
 
 @Service
 @Transactional(readOnly = true)
 class PostService(
     private val postRepository: PostRepository,
-    private val postQueryRepository: com.blog.api.domain.post.repository.PostQueryRepository,
-    private val redisTemplate: RedisTemplate<String, String>,
+    private val viewCountRedisService: ViewCountRedisService,
     private val markdownUtil: MarkdownUtil
 ) {
-    private val logger = LoggerFactory.getLogger(PostService::class.java)
 
     @Transactional
     fun createPost(userId: Long, request: CreatePostRequest): PostResponse {
@@ -75,24 +70,43 @@ class PostService(
     }
 
     fun getAllPosts(pageable: Pageable): PostListResponse {
-        val posts = postQueryRepository.findByStatus(PostStatus.PUBLISHED, pageable)
+        val posts = postRepository.findByStatus(PostStatus.PUBLISHED, pageable)
         return PostListResponse.from(posts, markdownUtil::convertToHtml)
     }
 
     fun getPostsByCategory(categoryId: Long, pageable: Pageable): PostListResponse {
-        val posts = postQueryRepository.findByCategoryIdAndStatus(categoryId, PostStatus.PUBLISHED, pageable)
+        val posts = postRepository.findByCategoryAndStatus(categoryId, PostStatus.PUBLISHED, pageable)
+        return PostListResponse.from(posts, markdownUtil::convertToHtml)
+    }
+
+    fun searchPosts(keyword: String?, categoryId: Long?, pageable: Pageable): PostListResponse {
+        val posts = postRepository.search(
+            keyword = keyword,
+            categoryId = categoryId,
+            status = PostStatus.PUBLISHED.name,
+            pageable = pageable
+        )
         return PostListResponse.from(posts, markdownUtil::convertToHtml)
     }
 
     fun getMyPosts(userId: Long, pageable: Pageable): PostListResponse {
-        val posts = postQueryRepository.findByUserId(userId, pageable)
+        val posts = postRepository.findAllByUserId(userId, pageable)
         return PostListResponse.from(posts, markdownUtil::convertToHtml)
     }
 
+    fun getDraftPosts(userId: Long, pageable: Pageable): PostListResponse {
+        val posts = postRepository.findByUserIdAndStatus(userId, PostStatus.DRAFT, pageable)
+        return PostListResponse.from(posts, markdownUtil::convertToHtml)
+    }
+
+    fun getPopularPosts(limit: Int = 10): List<PostResponse> {
+        val posts = postRepository.findTopByViewCount(limit)
+        return posts.map { PostResponse.from(it, markdownUtil.convertToHtml(it.content)) }
+    }
+
     fun validatePostExists(postId: Long) {
-        val exists = postRepository.existsById(postId)
-        if (exists) return
-        throw CustomException(ErrorCode.POST_NOT_FOUND)
+        postRepository.findById(postId)
+            .orElseThrow { CustomException(ErrorCode.POST_NOT_FOUND) }
     }
 
     private fun findPostByIdAndValidateOwner(postId: Long, userId: Long): Post {
@@ -103,19 +117,8 @@ class PostService(
     }
 
     private fun increaseViewCount(postId: Long, clientIp: String) {
-        try {
-            val viewKey = "post:view:$postId:$clientIp"
-
-            val isFirstView = redisTemplate.opsForValue()
-                .setIfAbsent(viewKey, "1", 1, TimeUnit.HOURS) == true
-
-            if (isFirstView) {
-                postRepository.incrementViewCount(postId)
-                logger.debug("incrementViewCount Success : postId={}, clientIp={}", postId, clientIp)
-            }
-        } catch (e: Exception) {
-            logger.warn("incrementViewCount Fail : postId={}, clientIp={}, error={}",
-                postId, clientIp, e.message, e)
+        if (viewCountRedisService.isFirstView(postId, clientIp)) {
+            postRepository.incrementViewCount(postId)
         }
     }
 }

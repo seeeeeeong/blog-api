@@ -3,9 +3,9 @@ package com.blog.api.domain.comment.controller
 import com.blog.api.domain.comment.dto.CreateCommentRequest
 import com.blog.api.domain.comment.dto.UpdateCommentRequest
 import com.blog.api.domain.comment.service.CommentService
-import com.blog.api.global.web.annotation.GitHubAuth
-import com.blog.api.global.web.dto.GitHubUser
-import com.blog.api.global.response.ApiResponse
+import com.blog.api.common.web.annotation.GitHubAuth
+import com.blog.api.common.web.dto.GitHubUser
+import com.blog.api.common.response.ApiResponse
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
