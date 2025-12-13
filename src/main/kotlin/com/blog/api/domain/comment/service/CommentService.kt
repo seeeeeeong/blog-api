@@ -45,11 +45,7 @@ class CommentService(
 
     fun getCommentsByPost(postId: Long): List<CommentResponse> {
         val parentComments = commentRepository.findParentComments(postId)
-
-        return parentComments.map { parent ->
-            val replies = commentRepository.findReplies(parent.id!!)
-            CommentResponse.fromWithReplies(parent, replies, markdownUtil::convertToHtml)
-        }
+        return parentComments.map { getCommentWithReplies(it) }
     }
 
     @Transactional
@@ -58,8 +54,7 @@ class CommentService(
         githubUser: GitHubUser,
         request: UpdateCommentRequest
     ): CommentResponse {
-        val comment = commentRepository.findById(commentId)
-            .orElseThrow { CustomException(ErrorCode.COMMENT_NOT_FOUND) }
+        val comment = findCommentById(commentId)
         validateCommentOwner(comment, githubUser.githubId)
 
         comment.content = request.content
@@ -69,24 +64,31 @@ class CommentService(
 
     @Transactional
     fun deleteComment(commentId: Long, githubUser: GitHubUser) {
-        val comment = commentRepository.findById(commentId)
-            .orElseThrow { CustomException(ErrorCode.COMMENT_NOT_FOUND) }
+        val comment = findCommentById(commentId)
         validateCommentOwner(comment, githubUser.githubId)
 
         commentRepository.delete(comment)
     }
 
+    private fun findCommentById(commentId: Long): Comment =
+        commentRepository.findById(commentId)
+            .orElseThrow { CustomException(ErrorCode.COMMENT_NOT_FOUND) }
+
     private fun validateParentComment(parentId: Long?) {
-        if (parentId != null) {
-            check(commentRepository.existsById(parentId)) {
-                CustomException(ErrorCode.COMMENT_NOT_FOUND)
-            }
-        }
+        parentId?.takeIf { commentRepository.existsById(it) }
+            ?: parentId?.let { throw CustomException(ErrorCode.COMMENT_NOT_FOUND) }
     }
 
     private fun validateCommentOwner(comment: Comment, githubId: String) {
-        check(comment.githubId == githubId) {
-            CustomException(ErrorCode.FORBIDDEN)
-        }
+        comment.takeIf { isCommentOwner(it, githubId) }
+            ?: throw CustomException(ErrorCode.FORBIDDEN)
+    }
+
+    private fun isCommentOwner(comment: Comment, githubId: String): Boolean =
+        comment.githubId == githubId
+
+    private fun getCommentWithReplies(parent: Comment): CommentResponse {
+        val replies = commentRepository.findReplies(parent.id!!)
+        return CommentResponse.fromWithReplies(parent, replies, markdownUtil::convertToHtml)
     }
 }

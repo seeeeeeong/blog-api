@@ -17,9 +17,8 @@ class GitHubAuthArgumentResolver(
     private val jwtProvider: JwtProvider
 ) : HandlerMethodArgumentResolver {
 
-    override fun supportsParameter(parameter: MethodParameter): Boolean {
-        return parameter.hasParameterAnnotation(GitHubAuth::class.java)
-    }
+    override fun supportsParameter(parameter: MethodParameter): Boolean =
+        parameter.hasParameterAnnotation(GitHubAuth::class.java)
 
     override fun resolveArgument(
         parameter: MethodParameter,
@@ -27,18 +26,10 @@ class GitHubAuthArgumentResolver(
         webRequest: NativeWebRequest,
         binderFactory: WebDataBinderFactory?
     ): GitHubUser {
-        val authorization = webRequest.getHeader("Authorization")
-            ?: throw CustomException(ErrorCode.UNAUTHORIZED)
-
-        if (!authorization.startsWith("Bearer ")) {
-            throw CustomException(ErrorCode.INVALID_TOKEN)
-        }
-
-        val token = authorization.substring(7)
-
-        if (!jwtProvider.validateToken(token)) {
-            throw CustomException(ErrorCode.INVALID_TOKEN)
-        }
+        val token = webRequest.getHeader("Authorization")
+            ?.extractBearerToken()
+            ?.takeIf { jwtProvider.validateToken(it) }
+            ?: throw CustomException(ErrorCode.INVALID_TOKEN)
 
         return GitHubUser(
             githubId = jwtProvider.getGitHubIdFromToken(token),
@@ -46,4 +37,8 @@ class GitHubAuthArgumentResolver(
             githubAvatarUrl = jwtProvider.getGitHubAvatarUrlFromToken(token)
         )
     }
+
+    private fun String.extractBearerToken(): String =
+        takeIf { startsWith("Bearer ") }?.substring(7)
+            ?: throw CustomException(ErrorCode.INVALID_TOKEN)
 }

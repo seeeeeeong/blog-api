@@ -39,14 +39,16 @@ class GitHubOAuthService(
 
     fun getAccessToken(code: String): String {
         val params = createTokenRequestParams(code)
-        val headers = createJsonHeaders()
-        val request = HttpEntity(params, headers)
+        val request = HttpEntity(params, createJsonHeaders())
 
-        val response = restTemplate.postForEntity(GITHUB_TOKEN_URL, request, Map::class.java)
+        val responseBody = restTemplate.postForEntity(GITHUB_TOKEN_URL, request, Map::class.java).body
+            ?: throw CustomException(ErrorCode.INVALID_TOKEN)
 
-        return response.body?.get(RESPONSE_ACCESS_TOKEN) as? String
+        return (responseBody[RESPONSE_ACCESS_TOKEN] as? String)
+            .takeIf { it?.isNotBlank() == true }
             ?: throw CustomException(ErrorCode.INVALID_TOKEN)
     }
+
 
     fun getGitHubUser(accessToken: String): GitHubUserResponse {
         val headers = createAuthHeaders(accessToken)

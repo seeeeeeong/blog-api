@@ -65,9 +65,7 @@ class PostService(
         val post = postRepository.findById(postId)
             .orElseThrow { CustomException(ErrorCode.POST_NOT_FOUND) }
 
-        if (post.status == PostStatus.PUBLISHED) {
-            increaseViewCount(postId, clientIp)
-        }
+        if (post.status == PostStatus.PUBLISHED) increaseViewCount(postId, clientIp)
 
         return PostResponse.from(post, markdownUtil.convertToHtml(post.content))
     }
@@ -112,12 +110,11 @@ class PostService(
             .orElseThrow { CustomException(ErrorCode.POST_NOT_FOUND) }
     }
 
-    private fun findPostByIdAndValidateOwner(postId: Long, userId: Long): Post {
-        val post = postRepository.findById(postId)
+    private fun findPostByIdAndValidateOwner(postId: Long, userId: Long): Post =
+        postRepository.findById(postId)
             .orElseThrow { CustomException(ErrorCode.POST_NOT_FOUND) }
-        if (post.userId != userId) throw CustomException(ErrorCode.FORBIDDEN)
-        return post
-    }
+            .takeIf { it.userId == userId }
+            ?: throw CustomException(ErrorCode.FORBIDDEN)
 
     private fun increaseViewCount(postId: Long, clientIp: String) {
         val key = "$VIEW_KEY_PREFIX$postId:$clientIp"

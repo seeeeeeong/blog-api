@@ -10,11 +10,10 @@ import org.springframework.web.servlet.ModelAndView
 
 @Component
 class LoggingInterceptor(
-    @Value("\${spring.profiles.active:local}") profile: String
+    @Value("\${spring.profiles.active:local}") private val profile: String
 ) : HandlerInterceptor {
 
     private val logger = LoggerFactory.getLogger(LoggingInterceptor::class.java)
-    private val isDev = profile != "prod"
 
     companion object {
         private const val START_TIME = "START_TIME"
@@ -28,7 +27,7 @@ class LoggingInterceptor(
     ): Boolean {
         request.setAttribute(START_TIME, System.currentTimeMillis())
 
-        if (isDev) logRequest(request)
+        if (isLocal()) logInfo("HTTP Request", request.method, request.requestURI, request.remoteAddr)
         return true
     }
 
@@ -39,13 +38,15 @@ class LoggingInterceptor(
         modelAndView: ModelAndView?
     ) {
         val duration = getDuration(request) ?: return
+        val method = request.method
+        val uri = request.requestURI
+        val status = response.status
 
         when {
-            shouldLogAllResponses() ->
-                logResponse(request, response, duration)
-
-            shouldLogSlowRequest(duration) ->
-                logSlowRequest(request, response, duration)
+            isLocal() ->
+                logger.info("HTTP Response: method=$method, uri=$uri, status=$status, duration=${duration}ms")
+            isSlowRequest(duration) ->
+                logger.warn("Slow request: method=$method, uri=$uri, status=$status, duration=${duration}ms")
         }
     }
 
@@ -66,52 +67,14 @@ class LoggingInterceptor(
         }
     }
 
+    private fun getDuration(request: HttpServletRequest): Long? =
+        (request.getAttribute(START_TIME) as? Long)?.let { System.currentTimeMillis() - it }
 
-    private fun logRequest(request: HttpServletRequest) {
-        logger.info(
-            "HTTP Request: method={}, uri={}, remoteAddr={}",
-            request.method,
-            request.requestURI,
-            request.remoteAddr
-        )
+    private fun isLocal() = profile != "prod"
+
+    private fun isSlowRequest(duration: Long) = duration > SLOW_REQUEST_THRESHOLD
+
+    private fun logInfo(prefix: String, method: String, uri: String, remoteAddr: String?) {
+        logger.info("$prefix: method=$method, uri=$uri, remoteAddr=$remoteAddr")
     }
-
-    private fun logResponse(
-        request: HttpServletRequest,
-        response: HttpServletResponse,
-        duration: Long
-    ) {
-        logger.info(
-            "HTTP Response: method={}, uri={}, status={}, duration={}ms",
-            request.method,
-            request.requestURI,
-            response.status,
-            duration
-        )
-    }
-
-    private fun logSlowRequest(
-        request: HttpServletRequest,
-        response: HttpServletResponse,
-        duration: Long
-    ) {
-        logger.warn(
-            "Slow request: method={}, uri={}, status={}, duration={}ms",
-            request.method,
-            request.requestURI,
-            response.status,
-            duration
-        )
-    }
-
-    private fun getDuration(request: HttpServletRequest): Long? {
-        val startTime = request.getAttribute(START_TIME) as? Long ?: return null
-        return System.currentTimeMillis() - startTime
-    }
-
-    private fun shouldLogAllResponses() = isDev
-
-    private fun shouldLogSlowRequest(duration: Long) =
-        duration > SLOW_REQUEST_THRESHOLD
-
 }

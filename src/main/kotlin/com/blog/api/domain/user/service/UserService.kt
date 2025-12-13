@@ -32,14 +32,11 @@ class UserService(
 
     @Transactional
     fun login(request: LoginRequest): TokenResponse {
-        val user = userRepository.findByEmail(request.email)
-            ?: throw CustomException(ErrorCode.USER_NOT_FOUND)
-
+        val user = findUserByEmail(request.email)
         validatePassword(request.password, user.password)
 
         val accessToken = jwtProvider.generateAccessToken(user.id!!, user.role.name)
         val refreshToken = jwtProvider.generateRefreshToken(user.id!!, user.role.name)
-
         refreshTokenService.saveRefreshToken(user.id!!, refreshToken)
 
         return TokenResponse(
@@ -56,12 +53,10 @@ class UserService(
 
         refreshTokenService.validateRefreshToken(userId, refreshToken)
 
-        val user = userRepository.findById(userId)
-            .orElseThrow { CustomException(ErrorCode.USER_NOT_FOUND) }
+        val user = findUserById(userId)
 
         val newAccessToken = jwtProvider.generateAccessToken(userId, role)
         val newRefreshToken = jwtProvider.generateRefreshToken(userId, role)
-
         refreshTokenService.saveRefreshToken(userId, newRefreshToken)
 
         return TokenResponse(
@@ -71,37 +66,34 @@ class UserService(
         )
     }
 
-    fun getUserById(userId: Long): UserResponse {
-        val user = userRepository.findById(userId)
-            .orElseThrow { CustomException(ErrorCode.USER_NOT_FOUND) }
-        return UserResponse.from(user)
-    }
+    fun getUserById(userId: Long): UserResponse =
+        UserResponse.from(findUserById(userId))
 
     @Transactional
     fun updateProfile(userId: Long, request: UpdateProfileRequest): UserResponse {
-        val user = userRepository.findById(userId)
-            .orElseThrow { CustomException(ErrorCode.USER_NOT_FOUND) }
-
+        val user = findUserById(userId)
         user.nickname = request.nickname
         user.profileImageUrl = request.profileImageUrl
-
         return UserResponse.from(user)
     }
 
     @Transactional
     fun changePassword(userId: Long, request: ChangePasswordRequest) {
-        val user = userRepository.findById(userId)
-            .orElseThrow { CustomException(ErrorCode.USER_NOT_FOUND) }
-
+        val user = findUserById(userId)
         validatePassword(request.currentPassword, user.password)
-
         user.password = passwordEncoder.encode(request.newPassword)
     }
 
     private fun validatePassword(rawPassword: String, encodedPassword: String) {
-        check(passwordEncoder.matches(rawPassword, encodedPassword)) {
-            CustomException(ErrorCode.INVALID_PASSWORD)
-        }
+         passwordEncoder.matches(rawPassword, encodedPassword)
+             .takeIf { it } ?: throw CustomException(ErrorCode.INVALID_PASSWORD)
     }
 
+    private fun findUserById(userId: Long): User =
+        userRepository.findById(userId)
+            .orElseThrow { CustomException(ErrorCode.USER_NOT_FOUND) }
+
+    private fun findUserByEmail(email: String): User =
+        userRepository.findByEmail(email)
+            ?: throw CustomException(ErrorCode.USER_NOT_FOUND)
 }

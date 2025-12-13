@@ -24,9 +24,9 @@ class RefreshTokenService(
         redisBaseService.get("$PREFIX$userId") ?: throw CustomException(ErrorCode.REFRESH_TOKEN_NOT_FOUND)
 
     fun validateRefreshToken(userId: Long, refreshToken: String) {
-        check(getRefreshToken(userId) == refreshToken) {
-            CustomException(ErrorCode.REFRESH_TOKEN_NOT_FOUND)
-        }
+        getRefreshToken(userId)
+            .takeIf { it == refreshToken }
+            ?: throw CustomException(ErrorCode.REFRESH_TOKEN_NOT_FOUND)
     }
 
     fun deleteRefreshToken(userId: Long) {

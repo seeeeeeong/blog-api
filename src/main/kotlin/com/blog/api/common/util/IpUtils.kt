@@ -22,21 +22,14 @@ object IpUtils {
     private const val IP_SEPARATOR = ","
 
     fun getClientIp(request: HttpServletRequest): String {
-        for (header in IP_HEADERS) {
-            val ip = request.getHeader(header)
-            val validIp = extractValidIp(ip)
-            if (validIp != null) {
-                return validIp
-            }
-        }
-        return request.remoteAddr
+        return IP_HEADERS.asSequence()
+            .mapNotNull { header -> request.getHeader(header)?.let { extractValidIp(it) } }
+            .firstOrNull()
+            ?: request.remoteAddr
     }
 
-    private fun extractValidIp(ip: String?): String? {
-        if (ip.isNullOrBlank() || ip.equals(UNKNOWN, ignoreCase = true)) {
-            return null
-        }
-        val firstIp = ip.split(IP_SEPARATOR)[0].trim()
-        return firstIp.ifEmpty { null }
+    private fun extractValidIp(ip: String): String? {
+        val candidate = ip.split(IP_SEPARATOR).firstOrNull()?.trim()
+        return candidate?.takeIf { it.isNotEmpty() && !it.equals(UNKNOWN, ignoreCase = true) }
     }
 }
