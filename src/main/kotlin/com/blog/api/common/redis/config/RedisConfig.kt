@@ -1,4 +1,4 @@
-package com.blog.api.common.config
+package com.blog.api.common.redis.config
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration

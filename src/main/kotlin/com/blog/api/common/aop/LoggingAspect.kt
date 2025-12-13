@@ -28,9 +28,7 @@ class LoggingAspect {
 
             logger.debug("{}.{}() completed in {}ms", className, methodName, duration)
 
-            if (duration > 1000) {
-                logger.warn("Slow service method: {}.{}() took {}ms", className, methodName, duration)
-            }
+            if (duration > 1000) logger.warn("Slow service method: {}.{}() took {}ms", className, methodName, duration)
 
             result
         }.onFailure { e ->

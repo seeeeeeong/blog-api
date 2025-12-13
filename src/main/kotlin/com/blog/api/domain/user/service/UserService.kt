@@ -72,9 +72,9 @@ class UserService(
     }
 
     fun getUserById(userId: Long): UserResponse {
-        return userRepository.findById(userId)
+        val user = userRepository.findById(userId)
             .orElseThrow { CustomException(ErrorCode.USER_NOT_FOUND) }
-            .let { UserResponse.from(it) }
+        return UserResponse.from(user)
     }
 
     @Transactional
@@ -82,10 +82,8 @@ class UserService(
         val user = userRepository.findById(userId)
             .orElseThrow { CustomException(ErrorCode.USER_NOT_FOUND) }
 
-        user.apply {
-            nickname = request.nickname
-            profileImageUrl = request.profileImageUrl
-        }
+        user.nickname = request.nickname
+        user.profileImageUrl = request.profileImageUrl
 
         return UserResponse.from(user)
     }
@@ -97,9 +95,7 @@ class UserService(
 
         validatePassword(request.currentPassword, user.password)
 
-        user.apply {
-            password = passwordEncoder.encode(request.newPassword)
-        }
+        user.password = passwordEncoder.encode(request.newPassword)
     }
 
     private fun validatePassword(rawPassword: String, encodedPassword: String) {

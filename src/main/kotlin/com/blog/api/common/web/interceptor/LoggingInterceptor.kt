@@ -10,28 +10,25 @@ import org.springframework.web.servlet.ModelAndView
 
 @Component
 class LoggingInterceptor(
-    @Value("\${spring.profiles.active:local}") private val profile: String
+    @Value("\${spring.profiles.active:local}") profile: String
 ) : HandlerInterceptor {
 
     private val logger = LoggerFactory.getLogger(LoggingInterceptor::class.java)
     private val isDev = profile != "prod"
+
+    companion object {
+        private const val START_TIME = "START_TIME"
+        private const val SLOW_REQUEST_THRESHOLD = 3000L
+    }
 
     override fun preHandle(
         request: HttpServletRequest,
         response: HttpServletResponse,
         handler: Any
     ): Boolean {
-        request.setAttribute("startTime", System.currentTimeMillis())
+        request.setAttribute(START_TIME, System.currentTimeMillis())
 
-        if (isDev) {
-            logger.info(
-                "HTTP Request: method={}, uri={}, remoteAddr={}",
-                request.method,
-                request.requestURI,
-                request.remoteAddr
-            )
-        }
-
+        if (isDev) logRequest(request)
         return true
     }
 
@@ -41,24 +38,14 @@ class LoggingInterceptor(
         handler: Any,
         modelAndView: ModelAndView?
     ) {
-        val startTime = request.getAttribute("startTime") as? Long ?: return
-        val duration = System.currentTimeMillis() - startTime
+        val duration = getDuration(request) ?: return
 
         when {
-            isDev -> logger.info(
-                "HTTP Response: method={}, uri={}, status={}, duration={}ms",
-                request.method,
-                request.requestURI,
-                response.status,
-                duration
-            )
-            duration > 3000 -> logger.warn(
-                "Slow request: method={}, uri={}, status={}, duration={}ms",
-                request.method,
-                request.requestURI,
-                response.status,
-                duration
-            )
+            shouldLogAllResponses() ->
+                logResponse(request, response, duration)
+
+            shouldLogSlowRequest(duration) ->
+                logSlowRequest(request, response, duration)
         }
     }
 
@@ -78,4 +65,53 @@ class LoggingInterceptor(
             )
         }
     }
+
+
+    private fun logRequest(request: HttpServletRequest) {
+        logger.info(
+            "HTTP Request: method={}, uri={}, remoteAddr={}",
+            request.method,
+            request.requestURI,
+            request.remoteAddr
+        )
+    }
+
+    private fun logResponse(
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+        duration: Long
+    ) {
+        logger.info(
+            "HTTP Response: method={}, uri={}, status={}, duration={}ms",
+            request.method,
+            request.requestURI,
+            response.status,
+            duration
+        )
+    }
+
+    private fun logSlowRequest(
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+        duration: Long
+    ) {
+        logger.warn(
+            "Slow request: method={}, uri={}, status={}, duration={}ms",
+            request.method,
+            request.requestURI,
+            response.status,
+            duration
+        )
+    }
+
+    private fun getDuration(request: HttpServletRequest): Long? {
+        val startTime = request.getAttribute(START_TIME) as? Long ?: return null
+        return System.currentTimeMillis() - startTime
+    }
+
+    private fun shouldLogAllResponses() = isDev
+
+    private fun shouldLogSlowRequest(duration: Long) =
+        duration > SLOW_REQUEST_THRESHOLD
+
 }

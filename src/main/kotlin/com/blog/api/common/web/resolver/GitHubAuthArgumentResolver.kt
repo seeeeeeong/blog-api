@@ -4,7 +4,7 @@ import com.blog.api.common.exception.CustomException
 import com.blog.api.common.exception.ErrorCode
 import com.blog.api.common.security.JwtProvider
 import com.blog.api.common.web.annotation.GitHubAuth
-import com.blog.api.common.web.dto.GitHubUser
+import com.blog.api.infrastructure.oauth.dto.GitHubUser
 import org.springframework.core.MethodParameter
 import org.springframework.stereotype.Component
 import org.springframework.web.bind.support.WebDataBinderFactory
@@ -30,12 +30,13 @@ class GitHubAuthArgumentResolver(
         val authorization = webRequest.getHeader("Authorization")
             ?: throw CustomException(ErrorCode.UNAUTHORIZED)
 
-        val token = authorization.takeIf { it.startsWith("Bearer ") }
-            ?.substring(7)
-            ?: throw CustomException(ErrorCode.INVALID_TOKEN)
+        if (!authorization.startsWith("Bearer ")) {
+            throw CustomException(ErrorCode.INVALID_TOKEN)
+        }
 
-        val isValidToken = jwtProvider.validateToken(token)
-        if (isValidToken == false) {
+        val token = authorization.substring(7)
+
+        if (!jwtProvider.validateToken(token)) {
             throw CustomException(ErrorCode.INVALID_TOKEN)
         }
 

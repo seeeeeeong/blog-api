@@ -1,13 +1,11 @@
 package com.blog.api.common.security
 
-import com.blog.api.common.config.JwtProperties
 import com.blog.api.common.exception.CustomException
 import com.blog.api.common.exception.ErrorCode
 import io.jsonwebtoken.Claims
 import io.jsonwebtoken.Jwts
-import io.jsonwebtoken.JwtException
 import io.jsonwebtoken.security.Keys
-import io.jsonwebtoken.security.SignatureAlgorithm
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.time.Instant
 import java.util.*
@@ -15,10 +13,15 @@ import javax.crypto.SecretKey
 
 @Component
 class JwtProvider(
-    private val jwtProperties: JwtProperties
+    @Value("\${jwt.secret}")
+    private val secret: String,
+    @Value("\${jwt.accessExpiration}")
+    private val accessExpiration: Long,
+    @Value("\${jwt.refreshExpiration}")
+    private val refreshExpiration: Long
 ) {
 
-    private val secretKey: SecretKey = Keys.hmacShaKeyFor(jwtProperties.secret.toByteArray())
+    private val secretKey: SecretKey = Keys.hmacShaKeyFor(secret.toByteArray(Charsets.UTF_8))
 
     companion object {
         private const val ROLE_CLAIM = "role"
@@ -27,19 +30,19 @@ class JwtProvider(
     }
 
     fun generateAccessToken(userId: Long, role: String): String {
-        return generateToken(userId.toString(), jwtProperties.accessExpiration) {
+        return generateToken(userId.toString(), accessExpiration) {
             it.claim(ROLE_CLAIM, role)
         }
     }
 
     fun generateRefreshToken(userId: Long, role: String): String {
-        return generateToken(userId.toString(), jwtProperties.refreshExpiration) {
+        return generateToken(userId.toString(), refreshExpiration) {
             it.claim(ROLE_CLAIM, role)
         }
     }
 
     fun generateGitHubAccessToken(githubId: Long, githubUsername: String, githubAvatarUrl: String?): String {
-        return generateToken(githubId.toString(), jwtProperties.accessExpiration) {
+        return generateToken(githubId.toString(), accessExpiration) {
             it.claim(GITHUB_USERNAME_CLAIM, githubUsername)
             it.claim(GITHUB_AVATAR_URL_CLAIM, githubAvatarUrl)
         }

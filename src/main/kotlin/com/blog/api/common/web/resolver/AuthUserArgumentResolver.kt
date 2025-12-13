@@ -27,10 +27,10 @@ class AuthUserArgumentResolver : HandlerMethodArgumentResolver {
         val authentication = SecurityContextHolder.getContext().authentication
             ?: throw CustomException(ErrorCode.UNAUTHORIZED)
 
-        if (authentication.principal is Long) {
-            return authentication.principal as Long
+        check(authentication.principal is Long) {
+            throw CustomException(ErrorCode.UNAUTHORIZED)
         }
 
-        throw CustomException(ErrorCode.UNAUTHORIZED)
+        return authentication.principal as Long
     }
 }

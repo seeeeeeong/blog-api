@@ -1,4 +1,4 @@
-package com.blog.api.common.config
+package com.blog.api.infrastructure.cloudinary.config
 
 import com.cloudinary.Cloudinary
 import org.springframework.beans.factory.annotation.Value

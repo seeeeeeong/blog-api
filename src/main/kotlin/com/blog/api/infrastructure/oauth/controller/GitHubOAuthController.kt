@@ -21,29 +21,30 @@ class GitHubOAuthController(
 ) {
 
     @GetMapping("/callback")
-    fun callback(@RequestParam code: String) = ApiResponse.success(
-        run {
-            val accessToken = gitHubOAuthService.getAccessToken(code)
-            val githubUser = gitHubOAuthService.getGitHubUser(accessToken)
-            val commentAuth = gitHubOAuthService.generateCommentToken(githubUser)
+    fun callback(@RequestParam code: String): ApiResponse<RedirectView> {
+        val accessToken = gitHubOAuthService.getAccessToken(code)
+        val githubUser = gitHubOAuthService.getGitHubUser(accessToken)
+        val commentAuth = gitHubOAuthService.generateCommentToken(githubUser)
 
-            val fullRedirectUrl = "$redirectUrl" +
-                    "?token=${commentAuth.commentToken}" +
-                    "&githubId=${commentAuth.githubId}" +
-                    "&githubUsername=${commentAuth.githubUsername}" +
-                    "&githubAvatarUrl=${commentAuth.githubAvatarUrl ?: ""}"
-
-            RedirectView(fullRedirectUrl)
+        val avatarUrlParam = if (commentAuth.githubAvatarUrl != null) {
+            commentAuth.githubAvatarUrl
+        } else {
+            ""
         }
-    )
+
+        val fullRedirectUrl = "$redirectUrl" +
+                "?token=${commentAuth.commentToken}" +
+                "&githubId=${commentAuth.githubId}" +
+                "&githubUsername=${commentAuth.githubUsername}" +
+                "&githubAvatarUrl=$avatarUrlParam"
+
+        return ApiResponse.success(RedirectView(fullRedirectUrl))
+    }
 
     @GetMapping("/verify")
-    fun verifyToken(@RequestHeader("Authorization") token: String) =
-        ApiResponse.success(
-            run {
-                val jwtToken = token.removePrefix("Bearer ")
-                val isValid = jwtProvider.validateToken(jwtToken)
-                mapOf("valid" to isValid)
-            }
-        )
+    fun verifyToken(@RequestHeader("Authorization") token: String): ApiResponse<Map<String, Boolean>> {
+        val jwtToken = token.removePrefix("Bearer ")
+        val isValid = jwtProvider.validateToken(jwtToken)
+        return ApiResponse.success(mapOf("valid" to isValid))
+    }
 }

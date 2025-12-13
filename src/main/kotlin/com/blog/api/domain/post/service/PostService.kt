@@ -6,19 +6,26 @@ import com.blog.api.domain.post.entity.PostStatus
 import com.blog.api.domain.post.repository.PostRepository
 import com.blog.api.common.exception.CustomException
 import com.blog.api.common.exception.ErrorCode
+import com.blog.api.common.redis.service.RedisBaseService
 import com.blog.api.common.util.MarkdownUtil
-import com.blog.api.common.redis.ViewCountRedisService
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.util.concurrent.TimeUnit
 
 @Service
 @Transactional(readOnly = true)
 class PostService(
     private val postRepository: PostRepository,
-    private val viewCountRedisService: ViewCountRedisService,
+    private val redisBaseService: RedisBaseService,
     private val markdownUtil: MarkdownUtil
 ) {
+
+    companion object {
+        private const val VIEW_KEY_PREFIX = "post:view:"
+        private const val VIEW_EXPIRATION_HOURS = 1L
+        private const val VIEW_COUNT_VALUE = "1"
+    }
 
     @Transactional
     fun createPost(userId: Long, request: CreatePostRequest): PostResponse {
@@ -31,7 +38,6 @@ class PostService(
             status = if (request.isDraft) PostStatus.DRAFT else PostStatus.PUBLISHED
         )
         val savedPost = postRepository.save(post)
-
         return PostResponse.from(savedPost, markdownUtil.convertToHtml(savedPost.content))
     }
 
@@ -39,13 +45,11 @@ class PostService(
     fun updatePost(postId: Long, userId: Long, request: UpdatePostRequest): PostResponse {
         val post = findPostByIdAndValidateOwner(postId, userId)
 
-        post.apply {
-            categoryId = request.categoryId
-            title = request.title
-            content = request.content
-            thumbnailUrl = request.thumbnailUrl
-            status = if (request.isDraft) PostStatus.DRAFT else PostStatus.PUBLISHED
-        }
+        post.categoryId = request.categoryId
+        post.title = request.title
+        post.content = request.content
+        post.thumbnailUrl = request.thumbnailUrl
+        post.status = if (request.isDraft) PostStatus.DRAFT else PostStatus.PUBLISHED
 
         return PostResponse.from(post, markdownUtil.convertToHtml(post.content))
     }
@@ -53,7 +57,6 @@ class PostService(
     @Transactional
     fun deletePost(postId: Long, userId: Long) {
         val post = findPostByIdAndValidateOwner(postId, userId)
-
         postRepository.delete(post)
     }
 
@@ -117,7 +120,8 @@ class PostService(
     }
 
     private fun increaseViewCount(postId: Long, clientIp: String) {
-        if (viewCountRedisService.isFirstView(postId, clientIp)) {
+        val key = "$VIEW_KEY_PREFIX$postId:$clientIp"
+        if (redisBaseService.setIfAbsent(key, VIEW_COUNT_VALUE, VIEW_EXPIRATION_HOURS, TimeUnit.HOURS)) {
             postRepository.incrementViewCount(postId)
         }
     }

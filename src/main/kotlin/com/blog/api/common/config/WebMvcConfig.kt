@@ -4,7 +4,6 @@ import com.blog.api.common.web.interceptor.LoggingInterceptor
 import com.blog.api.common.web.resolver.AuthUserArgumentResolver
 import com.blog.api.common.web.resolver.ClientIpArgumentResolver
 import com.blog.api.common.web.resolver.GitHubAuthArgumentResolver
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.method.support.HandlerMethodArgumentResolver
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry

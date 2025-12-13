@@ -6,11 +6,10 @@ import com.blog.api.domain.comment.dto.UpdateCommentRequest
 import com.blog.api.domain.comment.entity.Comment
 import com.blog.api.domain.comment.repository.CommentRepository
 import com.blog.api.domain.post.service.PostService
-import com.blog.api.common.web.dto.GitHubUser
+import com.blog.api.infrastructure.oauth.dto.GitHubUser
 import com.blog.api.common.exception.CustomException
 import com.blog.api.common.exception.ErrorCode
 import com.blog.api.common.util.MarkdownUtil
-import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -63,9 +62,7 @@ class CommentService(
             .orElseThrow { CustomException(ErrorCode.COMMENT_NOT_FOUND) }
         validateCommentOwner(comment, githubUser.githubId)
 
-        comment.apply {
-            content = request.content
-        }
+        comment.content = request.content
 
         return CommentResponse.from(comment, markdownUtil.convertToHtml(comment.content))
     }
@@ -80,8 +77,8 @@ class CommentService(
     }
 
     private fun validateParentComment(parentId: Long?) {
-        parentId?.let {
-            check(commentRepository.existsById(it)) {
+        if (parentId != null) {
+            check(commentRepository.existsById(parentId)) {
                 CustomException(ErrorCode.COMMENT_NOT_FOUND)
             }
         }
