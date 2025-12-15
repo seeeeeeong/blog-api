@@ -50,7 +50,10 @@ class SecurityConfig(
                     // Public Read APIs
                     .requestMatchers(HttpMethod.GET, "/api/posts", "/api/posts/search", "/api/posts/popular", "/api/posts/categories/**", "/api/posts/{postId:[0-9]+}").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/categories").permitAll()
-                    .requestMatchers(HttpMethod.GET, "/api/posts/{postId:[0-9]+}/comments", "/api/comments/recent").permitAll()
+
+                    // Comment APIs (GitHub OAuth token used instead of admin JWT)
+                    .requestMatchers("/api/posts/{postId:[0-9]+}/comments/**").permitAll()
+                    .requestMatchers("/api/comments/recent").permitAll()
 
                     // All other requests need authentication
                     .anyRequest().authenticated()
