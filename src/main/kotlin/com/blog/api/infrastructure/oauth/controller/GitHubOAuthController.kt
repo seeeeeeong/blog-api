@@ -30,14 +30,14 @@ class GitHubOAuthController(
     }
 
     @GetMapping("/callback")
-    fun callback(@RequestParam code: String): ApiResponse<RedirectView> {
+    fun callback(@RequestParam code: String): RedirectView {
         val accessToken = gitHubOAuthService.getAccessToken(code)
         val githubUser = gitHubOAuthService.getGitHubUser(accessToken)
         val commentAuth = gitHubOAuthService.generateCommentToken(githubUser)
 
         val fullRedirectUrl = buildRedirectUrl(commentAuth)
 
-        return ApiResponse.success(RedirectView(fullRedirectUrl))
+        return RedirectView(fullRedirectUrl)
     }
 
     @GetMapping("/verify")
