@@ -14,6 +14,11 @@ class JwtAuthenticationFilter(
     private val jwtProvider: JwtProvider
 ) : OncePerRequestFilter() {
 
+    override fun shouldNotFilter(request: HttpServletRequest): Boolean {
+        val path = request.requestURI
+        return path.contains("/comments") || path.contains("/auth/github")
+    }
+
     override fun doFilterInternal(
         request: HttpServletRequest,
         response: HttpServletResponse,

@@ -44,7 +44,7 @@ class SecurityConfig(
                     .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
 
                     // Auth APIs
-                    .requestMatchers("/api/auth/github/callback").permitAll()
+                    .requestMatchers("/api/auth/github/**").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/users/login", "/api/users/refresh").permitAll()
 
                     // Public Read APIs
@@ -52,8 +52,8 @@ class SecurityConfig(
                     .requestMatchers(HttpMethod.GET, "/api/categories").permitAll()
 
                     // Comment APIs (GitHub OAuth token used instead of admin JWT)
-                    .requestMatchers("/api/posts/{postId:[0-9]+}/comments/**").permitAll()
-                    .requestMatchers("/api/comments/recent").permitAll()
+                    .requestMatchers("/api/posts/*/comments/**").permitAll()
+                    .requestMatchers("/api/comments/**").permitAll()
 
                     // All other requests need authentication
                     .anyRequest().authenticated()
