@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 
-interface PostRepository : JpaRepository<Post, Long> {
+interface PostRepository : JpaRepository<Post, Long>, PostRepositoryCustom {
 
     @Modifying(clearAutomatically = true)
     @Query("UPDATE Post p SET p.viewCount = p.viewCount + 1 WHERE p.id = :postId")
@@ -120,4 +120,27 @@ interface PostRepository : JpaRepository<Post, Long> {
         @Param("status") status: String? = null,
         pageable: Pageable
     ): Page<Post>
+
+    /**
+     * 특정 게시글과 유사한 게시글 추천
+     * pgvector의 코사인 거리 연산자(<=>)를 사용하여 유사도 계산
+     */
+    @Query(
+        value = """
+            SELECT p.*
+            FROM posts p
+            WHERE p.id != :postId
+            AND p.content_vector IS NOT NULL
+            AND p.status = 'PUBLISHED'
+            ORDER BY p.content_vector <=> (
+                SELECT content_vector FROM posts WHERE id = :postId
+            )
+            LIMIT :limit
+        """,
+        nativeQuery = true
+    )
+    fun findSimilarPosts(
+        @Param("postId") postId: Long,
+        @Param("limit") limit: Int
+    ): List<Post>
 }

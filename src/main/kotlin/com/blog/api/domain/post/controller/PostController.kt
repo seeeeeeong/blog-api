@@ -134,6 +134,33 @@ class PostController(
     )
 
     @Operation(
+        summary = "유사도 기반 게시글 검색 (AI)",
+        description = "검색어와 의미적으로 유사한 내용의 게시글을 AI 벡터 검색으로 찾습니다. OpenAI Embedding을 사용하여 검색 품질을 향상시킵니다."
+    )
+    @GetMapping("/search/similarity")
+    fun searchPostsBySimilarity(
+        @Parameter(description = "검색 쿼리", required = true) @RequestParam query: String,
+        @Parameter(description = "카테고리 ID") @RequestParam(required = false) categoryId: Long?,
+        @Parameter(description = "페이징 정보 (page, size)")
+        @PageableDefault(size = 10)
+        pageable: Pageable
+    ) = ApiResponse.success(
+        postService.searchPostsBySimilarity(query, categoryId, pageable)
+    )
+
+    @Operation(
+        summary = "관련 게시글 추천",
+        description = "특정 게시글과 내용이 유사한 다른 게시글을 AI로 추천합니다."
+    )
+    @GetMapping("/{postId}/similar")
+    fun getSimilarPosts(
+        @Parameter(description = "게시글 ID") @PathVariable postId: Long,
+        @Parameter(description = "추천할 게시글 수 (기본: 5)") @RequestParam(defaultValue = "5") limit: Int
+    ) = ApiResponse.success(
+        postService.getSimilarPosts(postId, limit)
+    )
+
+    @Operation(
         summary = "게시글 수정",
         description = "게시글 ID로 게시글을 수정합니다.",
         security = [SecurityRequirement(name = "bearerAuth")]

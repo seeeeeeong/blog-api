@@ -1,10 +1,20 @@
 package com.blog.api.domain.post.entity
 
 import com.blog.api.common.entity.BaseTimeEntity
+import com.blog.api.common.jpa.VectorType
 import jakarta.persistence.*
+import org.hibernate.annotations.Type
 
 @Entity
-@Table(name = "posts")
+@Table(
+    name = "posts",
+    indexes = [
+        Index(name = "idx_post_user_id", columnList = "user_id"),
+        Index(name = "idx_post_category_id", columnList = "category_id"),
+        Index(name = "idx_post_status", columnList = "status"),
+        Index(name = "idx_post_created_at", columnList = "created_at")
+    ]
+)
 class Post(
 
     @Id
@@ -31,7 +41,23 @@ class Post(
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    var status: PostStatus = PostStatus.PUBLISHED
+    var status: PostStatus = PostStatus.PUBLISHED,
 
-) : BaseTimeEntity()
+    // 벡터 임베딩 (1536차원 - text-embedding-3-small)
+    @Type(VectorType::class)
+    @Column(name = "content_vector", columnDefinition = "vector(1536)")
+    var contentVector: FloatArray? = null
+
+) : BaseTimeEntity() {
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is Post) return false
+        return id != null && id == other.id
+    }
+
+    override fun hashCode(): Int {
+        return id?.hashCode() ?: 0
+    }
+}
 

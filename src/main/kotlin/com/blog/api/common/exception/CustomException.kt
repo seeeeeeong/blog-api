@@ -37,6 +37,10 @@ enum class ErrorCode(
     // ==================== Category ====================
     CATEGORY_NOT_FOUND(404, "error.category.not.found"),
 
+    // ==================== Embedding ====================
+    EMBEDDING_GENERATION_FAILED(500, "error.embedding.generation.failed"),
+    EMBEDDING_API_QUOTA_EXCEEDED(429, "error.embedding.api.quota.exceeded"),
+
     // ==================== Common ====================
     INVALID_INPUT(400, "error.invalid.input"),
     INTERNAL_SERVER_ERROR(500, "error.internal.server.error")

@@ -1,22 +1,26 @@
 version: '3.8'
 
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: blog-mysql-local
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: blog-postgres-local
     environment:
-      MYSQL_ROOT_PASSWORD: root1234
-      MYSQL_DATABASE: blog_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: blog_db
       TZ: Asia/Seoul
     ports:
-      - "3306:3306"
+      - "5432:5432"
     volumes:
-      - mysql-data:/var/lib/mysql
-    command:
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
     networks:
       - blog-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
@@ -29,7 +33,7 @@ services:
       - blog-network
 
 volumes:
-  mysql-data:
+  postgres-data:
   redis-data:
 
 networks:

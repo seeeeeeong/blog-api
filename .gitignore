@@ -24,6 +24,7 @@ logs/
 
 # Docker volumes
 mysql-data/
+postgres-data/
 redis-data/
 
 # 기존 내용...
