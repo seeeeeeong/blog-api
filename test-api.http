@@ -5,7 +5,7 @@
 # @baseUrl = http://localhost:8080/api
 
 ### 1. 회원가입
-POST {{baseUrl}}/users
+POST {{baseUrl}}/v1/users
 Content-Type: application/json
 
 {
@@ -15,7 +15,7 @@ Content-Type: application/json
 }
 
 ### 2. 로그인
-POST {{baseUrl}}/users/login
+POST {{baseUrl}}/v1/users/login
 Content-Type: application/json
 
 {
@@ -25,7 +25,7 @@ Content-Type: application/json
 
 ### 3. 로그인 (응답에서 accessToken 저장)
 # @name login
-POST {{baseUrl}}/users/login
+POST {{baseUrl}}/v1/users/login
 Content-Type: application/json
 
 {
@@ -40,27 +40,27 @@ Content-Type: application/json
 GET {{baseUrl}}/health
 
 ### 5. 카테고리 목록 조회 (인증 불필요)
-GET {{baseUrl}}/categories
+GET {{baseUrl}}/v1/categories
 
 ### 6. 게시글 목록 조회 (인증 불필요)
-GET {{baseUrl}}/posts?page=0&size=10
+GET {{baseUrl}}/v1/posts?page=0&size=10
 
 ### 7. 카테고리별 게시글 조회 (인증 불필요)
-GET {{baseUrl}}/posts/categories/1?page=0&size=10
+GET {{baseUrl}}/v1/posts/categories/1?page=0&size=10
 
 ### 8. 특정 게시글 조회 (인증 불필요)
-GET {{baseUrl}}/posts/1
+GET {{baseUrl}}/v1/posts/1
 
 ### 9. 사용자 정보 조회 (인증 필요)
-GET {{baseUrl}}/users/1
+GET {{baseUrl}}/v1/users/1
 Authorization: Bearer {{accessToken}}
 
 ### 10. 내 게시글 조회 (인증 필요)
-GET {{baseUrl}}/posts/my?page=0&size=10
+GET {{baseUrl}}/v1/posts/my?page=0&size=10
 Authorization: Bearer {{accessToken}}
 
 ### 11. 게시글 작성 (인증 필요)
-POST {{baseUrl}}/posts
+POST {{baseUrl}}/v1/posts
 Content-Type: application/json
 Authorization: Bearer {{accessToken}}
 
@@ -73,7 +73,7 @@ Authorization: Bearer {{accessToken}}
 }
 
 ### 12. 게시글 수정 (인증 필요)
-PUT {{baseUrl}}/posts/1
+PUT {{baseUrl}}/v1/posts/1
 Content-Type: application/json
 Authorization: Bearer {{accessToken}}
 
@@ -86,11 +86,11 @@ Authorization: Bearer {{accessToken}}
 }
 
 ### 13. 게시글 삭제 (인증 필요)
-DELETE {{baseUrl}}/posts/1
+DELETE {{baseUrl}}/v1/posts/1
 Authorization: Bearer {{accessToken}}
 
 ### 14. 카테고리 생성 (Admin 전용)
-POST {{baseUrl}}/admin/categories
+POST {{baseUrl}}/v1/admin/categories
 Content-Type: application/json
 Authorization: Bearer {{accessToken}}
 
@@ -100,7 +100,7 @@ Authorization: Bearer {{accessToken}}
 }
 
 ### 15. 댓글 작성 (인증 필요)
-POST {{baseUrl}}/posts/1/comments
+POST {{baseUrl}}/v1/posts/1/comments
 Content-Type: application/json
 Authorization: Bearer {{accessToken}}
 
@@ -109,7 +109,7 @@ Authorization: Bearer {{accessToken}}
 }
 
 ### 16. 댓글 조회 (인증 불필요)
-GET {{baseUrl}}/posts/1/comments
+GET {{baseUrl}}/v1/posts/1/comments
 
 ### 17. GitHub OAuth 토큰 검증
 GET {{baseUrl}}/auth/github/verify

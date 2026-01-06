@@ -1,0 +1,199 @@
+spring:
+  application:
+    name: blog-api
+  config:
+    import: optional:file:.env[.properties]
+  profiles:
+    active: local
+
+server:
+  port: ${PORT:8080}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/blog_db?currentSchema=public
+    username: postgres
+    password: postgres
+    hikari:
+      maximum-pool-size: 10
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: create
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          lob:
+            non_contextual_creation: true
+
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      embedding:
+        options:
+          model: text-embedding-3-small
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            client-id: ${GITHUB_CLIENT_ID}
+            client-secret: ${GITHUB_CLIENT_SECRET}
+            scope:
+              - read:user
+              - user:email
+        provider:
+          github:
+            authorization-uri: https://github.com/login/oauth/authorize
+            token-uri: https://github.com/login/oauth/access_token
+            user-info-uri: https://api.github.com/user
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
+oauth:
+  github:
+    redirect-url: ${OAUTH_REDIRECT_URL:http://localhost:5173/auth/callback}
+
+github:
+  oauth:
+    client-id: ${GITHUB_CLIENT_ID}
+    client-secret: ${GITHUB_CLIENT_SECRET}
+    token-url: https://github.com/login/oauth/access_token
+    user-api-url: https://api.github.com/user
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-expiration: ${JWT_ACCESS_EXPIRATION:3600000}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:1209600000}
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME}
+  api-key: ${CLOUDINARY_API_KEY}
+  api-secret: ${CLOUDINARY_API_SECRET}
+  default-folder: blog
+
+embedding:
+  max-tokens: 8191
+  chars-per-token: 4
+  vector-dimension: 1536
+
+refresh-token:
+  expiration-seconds: 1209600  # 14 days
+  grace-period-seconds: 30
+  max-families-per-user: 10
+  auto-cleanup-enabled: true
+  cleanup-interval-seconds: 3600  # 1 hour
+
+logging:
+  config: classpath:logback-dev.xml
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=prefer&currentSchema=public
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        jdbc:
+          lob:
+            non_contextual_creation: true
+
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      embedding:
+        options:
+          model: text-embedding-3-small
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            client-id: ${GITHUB_CLIENT_ID}
+            client-secret: ${GITHUB_CLIENT_SECRET}
+            scope:
+              - read:user
+              - user:email
+        provider:
+          github:
+            authorization-uri: https://github.com/login/oauth/authorize
+            token-uri: https://github.com/login/oauth/access_token
+            user-info-uri: https://api.github.com/user
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
+oauth:
+  github:
+    redirect-url: ${OAUTH_REDIRECT_URL}
+
+github:
+  oauth:
+    client-id: ${GITHUB_CLIENT_ID}
+    client-secret: ${GITHUB_CLIENT_SECRET}
+    token-url: https://github.com/login/oauth/access_token
+    user-api-url: https://api.github.com/user
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-expiration: ${JWT_ACCESS_EXPIRATION}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION}
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME}
+  api-key: ${CLOUDINARY_API_KEY}
+  api-secret: ${CLOUDINARY_API_SECRET}
+  default-folder: blog
+
+embedding:
+  max-tokens: 8191
+  chars-per-token: 4
+  vector-dimension: 1536
+
+refresh-token:
+  expiration-seconds: 1209600  # 14 days
+  grace-period-seconds: 30
+  max-families-per-user: 10
+  auto-cleanup-enabled: true
+  cleanup-interval-seconds: 3600  # 1 hour
+
+logging:
+  config: classpath:logback-prod.xml
