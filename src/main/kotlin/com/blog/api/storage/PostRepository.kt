@@ -48,7 +48,7 @@ interface PostRepository : JpaRepository<PostEntity, Long> {
             WHERE p.id != :postId
             AND p.content_vector IS NOT NULL
             AND p.status = 'PUBLISHED'
-            ORDER BY p.content_vector <=> (
+            ORDER BY p.content_vector <-> (
                 SELECT content_vector FROM posts WHERE id = :postId
             )
             LIMIT :limit
@@ -63,7 +63,7 @@ interface PostRepository : JpaRepository<PostEntity, Long> {
             FROM posts p
             WHERE p.content_vector IS NOT NULL
             AND p.status = 'PUBLISHED'
-            ORDER BY p.content_vector <=> CAST(:queryVector AS vector)
+            ORDER BY p.content_vector <-> CAST(:queryVector AS vector)
         """,
         countQuery = """
             SELECT COUNT(*)
@@ -85,7 +85,7 @@ interface PostRepository : JpaRepository<PostEntity, Long> {
             WHERE p.content_vector IS NOT NULL
             AND p.category_id = :categoryId
             AND p.status = 'PUBLISHED'
-            ORDER BY p.content_vector <=> CAST(:queryVector AS vector)
+            ORDER BY p.content_vector <-> CAST(:queryVector AS vector)
         """,
         countQuery = """
             SELECT COUNT(*)
