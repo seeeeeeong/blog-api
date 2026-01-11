@@ -63,6 +63,7 @@ interface PostRepository : JpaRepository<PostEntity, Long> {
             FROM posts p
             WHERE p.content_vector IS NOT NULL
             AND p.status = 'PUBLISHED'
+            AND (p.content_vector <-> CAST(:queryVector AS vector)) < :maxDistance
             ORDER BY p.content_vector <-> CAST(:queryVector AS vector)
         """,
         countQuery = """
@@ -70,11 +71,13 @@ interface PostRepository : JpaRepository<PostEntity, Long> {
             FROM posts p
             WHERE p.content_vector IS NOT NULL
             AND p.status = 'PUBLISHED'
+            AND (p.content_vector <-> CAST(:queryVector AS vector)) < :maxDistance
         """,
         nativeQuery = true
     )
     fun searchBySimilarity(
         @Param("queryVector") queryVector: String,
+        @Param("maxDistance") maxDistance: Double,
         pageable: Pageable
     ): Page<PostEntity>
 
@@ -85,6 +88,7 @@ interface PostRepository : JpaRepository<PostEntity, Long> {
             WHERE p.content_vector IS NOT NULL
             AND p.category_id = :categoryId
             AND p.status = 'PUBLISHED'
+            AND (p.content_vector <-> CAST(:queryVector AS vector)) < :maxDistance
             ORDER BY p.content_vector <-> CAST(:queryVector AS vector)
         """,
         countQuery = """
@@ -93,11 +97,13 @@ interface PostRepository : JpaRepository<PostEntity, Long> {
             WHERE p.content_vector IS NOT NULL
             AND p.category_id = :categoryId
             AND p.status = 'PUBLISHED'
+            AND (p.content_vector <-> CAST(:queryVector AS vector)) < :maxDistance
         """,
         nativeQuery = true
     )
     fun searchBySimilarityWithCategory(
         @Param("queryVector") queryVector: String,
+        @Param("maxDistance") maxDistance: Double,
         @Param("categoryId") categoryId: Long,
         pageable: Pageable
     ): Page<PostEntity>

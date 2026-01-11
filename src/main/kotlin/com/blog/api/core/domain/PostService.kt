@@ -5,11 +5,13 @@ import com.blog.api.core.support.connector.RedisOps
 import com.blog.api.core.support.error.CoreException
 import com.blog.api.core.support.error.ErrorType
 import com.blog.api.core.enum.PostStatus
+import com.blog.api.core.support.properties.EmbeddingProperties
 import com.blog.api.storage.PostEntity
 import com.blog.api.storage.PostRepository
 import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.PageImpl
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.concurrent.TimeUnit
@@ -20,6 +22,7 @@ class PostService(
     private val postRepository: PostRepository,
     private val postMarkdownConverter: PostMarkdownConverter,
     private val embeddingFacade: EmbeddingFacade,
+    private val embeddingProperties: EmbeddingProperties,
     private val redisOps: RedisOps,
 ) {
 
@@ -216,14 +219,19 @@ class PostService(
     }
 
     fun searchPostsBySimilarity(query: String, categoryId: Long?, pageable: Pageable): Page<Post> {
+        if (query.isBlank()) {
+            return PageImpl(emptyList(), pageable, 0)
+        }
+
         val results = try {
             val embedding = embeddingFacade.createEmbedding(query)
             val vectorString = embedding.joinToString(",", "[", "]")
+            val maxDistance = embeddingProperties.searchMaxDistance
 
             if (categoryId == null) {
-                postRepository.searchBySimilarity(vectorString, pageable)
+                postRepository.searchBySimilarity(vectorString, maxDistance, pageable)
             } else {
-                postRepository.searchBySimilarityWithCategory(vectorString, categoryId, pageable)
+                postRepository.searchBySimilarityWithCategory(vectorString, maxDistance, categoryId, pageable)
             }
         } catch (e: Exception) {
             logger.warn("Embedding failed, fallback to keyword search: query={}", query, e)
@@ -234,7 +242,17 @@ class PostService(
             }
         }
 
-        return results.map { entity ->
+        val filteredResults = if (results.hasContent()) {
+            results
+        } else {
+            if (categoryId == null) {
+                postRepository.searchByKeyword(query, pageable)
+            } else {
+                postRepository.searchByKeywordWithCategory(query, categoryId, pageable)
+            }
+        }
+
+        return filteredResults.map { entity ->
             val contentHtml = postMarkdownConverter.convertToHtml(entity.content)
             val thumbnailUrl = entity.thumbnailUrl.orEmpty()
 
