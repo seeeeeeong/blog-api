@@ -45,7 +45,8 @@ class PostService(
 
         try {
             val embedding = embeddingFacade.createEmbedding(postCreate.content)
-            entity.updateVector(embedding)
+            val vectorString = embedding.joinToString(",", "[", "]")
+            entity.updateVector(vectorString)
         } catch (e: Exception) {
             logger.error("Failed to generate embedding for post", e)
         }
@@ -296,7 +297,8 @@ class PostService(
 
             try {
                 val embedding = embeddingFacade.createEmbedding(postUpdate.content)
-                post.updateVector(embedding)
+                val vectorString = embedding.joinToString(",", "[", "]")
+                post.updateVector(vectorString)
             } catch (e: Exception) {
                 logger.error("Failed to update embedding for post $postId", e)
             }
