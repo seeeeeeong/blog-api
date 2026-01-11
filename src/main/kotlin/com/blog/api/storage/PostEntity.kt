@@ -12,6 +12,8 @@ import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Index
 import jakarta.persistence.Table
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
 
 @Entity
 @Table(
@@ -63,6 +65,7 @@ class PostEntity(
     var status: PostStatus = status
         protected set
 
+    @JdbcTypeCode(SqlTypes.OTHER)
     @Convert(converter = PgVectorConverter::class)
     @Column(name = "content_vector", columnDefinition = "vector(1536)")
     var contentVector: FloatArray? = contentVector
