@@ -215,19 +215,22 @@ class PostService(
     }
 
     fun searchPostsBySimilarity(query: String, categoryId: Long?, pageable: Pageable): Page<Post> {
-        val embedding = try {
-            embeddingFacade.createEmbedding(query)
+        val results = try {
+            val embedding = embeddingFacade.createEmbedding(query)
+            val vectorString = embedding.joinToString(",", "[", "]")
+
+            if (categoryId == null) {
+                postRepository.searchBySimilarity(vectorString, pageable)
+            } else {
+                postRepository.searchBySimilarityWithCategory(vectorString, categoryId, pageable)
+            }
         } catch (e: Exception) {
-            logger.error("Failed to generate embedding for query: $query", e)
-            throw CoreException(ErrorType.INTERNAL_SERVER_ERROR)
-        }
-
-        val vectorString = embedding.joinToString(",", "[", "]")
-
-        val results = if (categoryId == null) {
-            postRepository.searchBySimilarity(vectorString, pageable)
-        } else {
-            postRepository.searchBySimilarityWithCategory(vectorString, categoryId, pageable)
+            logger.warn("Embedding failed, fallback to keyword search: query={}", query, e)
+            if (categoryId == null) {
+                postRepository.searchByKeyword(query, pageable)
+            } else {
+                postRepository.searchByKeywordWithCategory(query, categoryId, pageable)
+            }
         }
 
         return results.map { entity ->

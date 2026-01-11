@@ -101,4 +101,61 @@ interface PostRepository : JpaRepository<PostEntity, Long> {
         @Param("categoryId") categoryId: Long,
         pageable: Pageable
     ): Page<PostEntity>
+
+    @Query(
+        value = """
+            SELECT p.*
+            FROM posts p
+            WHERE p.status = 'PUBLISHED'
+            AND (
+                LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%'))
+                OR LOWER(p.content) LIKE LOWER(CONCAT('%', :query, '%'))
+            )
+            ORDER BY p.created_at DESC
+        """,
+        countQuery = """
+            SELECT COUNT(*)
+            FROM posts p
+            WHERE p.status = 'PUBLISHED'
+            AND (
+                LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%'))
+                OR LOWER(p.content) LIKE LOWER(CONCAT('%', :query, '%'))
+            )
+        """,
+        nativeQuery = true
+    )
+    fun searchByKeyword(
+        @Param("query") query: String,
+        pageable: Pageable
+    ): Page<PostEntity>
+
+    @Query(
+        value = """
+            SELECT p.*
+            FROM posts p
+            WHERE p.status = 'PUBLISHED'
+            AND p.category_id = :categoryId
+            AND (
+                LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%'))
+                OR LOWER(p.content) LIKE LOWER(CONCAT('%', :query, '%'))
+            )
+            ORDER BY p.created_at DESC
+        """,
+        countQuery = """
+            SELECT COUNT(*)
+            FROM posts p
+            WHERE p.status = 'PUBLISHED'
+            AND p.category_id = :categoryId
+            AND (
+                LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%'))
+                OR LOWER(p.content) LIKE LOWER(CONCAT('%', :query, '%'))
+            )
+        """,
+        nativeQuery = true
+    )
+    fun searchByKeywordWithCategory(
+        @Param("query") query: String,
+        @Param("categoryId") categoryId: Long,
+        pageable: Pageable
+    ): Page<PostEntity>
 }
