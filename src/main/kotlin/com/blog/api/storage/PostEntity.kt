@@ -1,10 +1,12 @@
 package com.blog.api.storage
 
 import com.blog.api.core.enum.PostStatus
+import com.blog.api.storage.converter.PgVectorConverter
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
+import jakarta.persistence.Convert
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
@@ -61,6 +63,7 @@ class PostEntity(
     var status: PostStatus = status
         protected set
 
+    @Convert(converter = PgVectorConverter::class)
     @Column(name = "content_vector", columnDefinition = "vector(1536)")
     var contentVector: FloatArray? = contentVector
         protected set
