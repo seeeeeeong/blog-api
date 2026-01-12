@@ -15,7 +15,9 @@ class OpenAIConfig {
     fun openAiApi(
         @Value("\${spring.ai.openai.api-key}") apiKey: String
     ): OpenAiApi {
-        return OpenAiApi(apiKey)
+        return OpenAiApi.builder()
+            .apiKey(apiKey)
+            .build()
     }
 
     @Bean

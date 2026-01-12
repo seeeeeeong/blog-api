@@ -64,7 +64,7 @@ dependencies {
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0")
 
     // Spring-AI for MCP
-    implementation("org.springframework.ai:spring-ai-core:1.1.0-M3")
+    implementation("org.springframework.ai:spring-ai-model:1.1.0-M3")
     implementation("org.springframework.ai:spring-ai-openai:1.1.0-M3")
     implementation("org.springframework.ai:spring-ai-starter-mcp-server-webmvc:1.1.0-M3")
 
