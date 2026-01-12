@@ -5,9 +5,20 @@ spring:
     import: optional:file:.env[.properties]
   profiles:
     active: local
+  ai:
+    mcp:
+      server:
+        protocol: STATELESS
+        type: ASYNC
 
 server:
   port: ${PORT:8080}
+
+swagger:
+  mcp:
+    service-name: blog-api
+    api-docs-path: /v3/api-docs
+    base-url: ${SWAGGER_MCP_BASE_URL:}
 
 ---
 spring:
@@ -21,7 +32,12 @@ spring:
     username: postgres
     password: postgres
     hikari:
-      maximum-pool-size: 10
+      maximum-pool-size: 5
+      minimum-idle: 1
+      connection-timeout: 3000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      validation-timeout: 2000
 
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
@@ -117,7 +133,11 @@ spring:
     password: ${DB_PASSWORD}
     hikari:
       maximum-pool-size: 5
-      minimum-idle: 2
+      minimum-idle: 1
+      connection-timeout: 3000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      validation-timeout: 2000
 
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
