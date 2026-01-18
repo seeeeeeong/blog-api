@@ -208,7 +208,7 @@ embedding:
   max-tokens: 8191
   chars-per-token: 4
   vector-dimension: 1536
-  search-max-distance: 1.2
+  search-max-distance: 1000
 
 refresh-token:
   expiration-seconds: 1209600  # 14 days
