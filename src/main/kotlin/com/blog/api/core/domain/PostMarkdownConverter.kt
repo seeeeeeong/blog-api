@@ -30,6 +30,7 @@ class PostMarkdownConverter {
         val safelist = Safelist.relaxed()
             .addTags("h1", "h2", "h3", "h4", "h5", "h6")
             .addTags("pre", "code", "span")
+            .addTags("hr", "strong", "b", "em")
             .addTags("table", "thead", "tbody", "tr", "th", "td")
             .addAttributes("code", "class")
             .addAttributes("span", "class")

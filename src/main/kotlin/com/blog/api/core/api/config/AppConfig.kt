@@ -4,7 +4,6 @@ import com.blog.api.core.support.properties.CloudinaryProperties
 import com.blog.api.core.support.properties.EmbeddingProperties
 import com.blog.api.core.support.properties.OAuthProperties
 import com.blog.api.core.support.properties.RefreshTokenProperties
-import com.blog.api.mcp.swagger.SwaggerMcpProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -15,8 +14,7 @@ import org.springframework.web.client.RestTemplate
     OAuthProperties::class,
     CloudinaryProperties::class,
     EmbeddingProperties::class,
-    RefreshTokenProperties::class,
-    SwaggerMcpProperties::class
+    RefreshTokenProperties::class
 )
 class AppConfig {
 
