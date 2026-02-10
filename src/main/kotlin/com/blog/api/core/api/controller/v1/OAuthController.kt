@@ -1,15 +1,20 @@
 package com.blog.api.core.api.controller.v1
 
 import com.blog.api.core.support.response.ApiResponse
-import com.blog.api.core.domain.OAuthUser
+import com.blog.api.core.api.controller.v1.reqeust.OAuthExchangeRequest
+import com.blog.api.core.api.controller.v1.response.OAuthAuthorizeResponse
+import com.blog.api.core.api.controller.v1.response.OAuthExchangeResponse
 import com.blog.api.core.domain.OAuthService
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.servlet.view.RedirectView
+import org.springframework.web.util.UriComponentsBuilder
 
 @RestController
 @RequestMapping("/api/auth/github")
@@ -21,22 +26,28 @@ class OAuthController(
 
     companion object {
         private const val BEARER_PREFIX = "Bearer "
-        private const val QUERY_PARAM_TOKEN = "token"
-        private const val QUERY_PARAM_OAUTH_ID = "oauthId"
-        private const val QUERY_PARAM_OAUTH_USERNAME = "oauthUsername"
-        private const val QUERY_PARAM_OAUTH_AVATAR_URL = "oauthAvatarUrl"
         private const val RESPONSE_KEY_VALID = "valid"
     }
 
+    @GetMapping("/authorize")
+    fun authorize(): ApiResponse<OAuthAuthorizeResponse> {
+        val authorizeUrl = oauthService.createAuthorizationUrl()
+        return ApiResponse.Companion.success(OAuthAuthorizeResponse(authorizeUrl))
+    }
+
     @GetMapping("/callback")
-    fun callback(@RequestParam code: String): RedirectView {
-        val accessToken = oauthService.getAccessToken(code)
-        val oauthUser = oauthService.getOAuthUser(accessToken)
-        val commentToken = oauthService.generateCommentToken(oauthUser)
+    fun callback(
+        @RequestParam code: String,
+        @RequestParam state: String
+    ): RedirectView {
+        val exchangeCode = oauthService.handleCallback(code, state)
+        return RedirectView(buildRedirectUrl(exchangeCode))
+    }
 
-        val fullRedirectUrl = buildRedirectUrl(commentToken, oauthUser)
-
-        return RedirectView(fullRedirectUrl)
+    @PostMapping("/exchange")
+    fun exchange(@RequestBody request: OAuthExchangeRequest): ApiResponse<OAuthExchangeResponse> {
+        val result = oauthService.exchangeCode(request.toCode())
+        return ApiResponse.Companion.success(OAuthExchangeResponse.of(result))
     }
 
     @GetMapping("/verify")
@@ -46,12 +57,11 @@ class OAuthController(
         return ApiResponse.Companion.success(mapOf(RESPONSE_KEY_VALID to isValid))
     }
 
-    private fun buildRedirectUrl(commentToken: String, oauthUser: OAuthUser): String {
-        return "$redirectUrl?" +
-                "$QUERY_PARAM_TOKEN=$commentToken&" +
-                "$QUERY_PARAM_OAUTH_ID=${oauthUser.id}&" +
-                "$QUERY_PARAM_OAUTH_USERNAME=${oauthUser.login}&" +
-                "$QUERY_PARAM_OAUTH_AVATAR_URL=${oauthUser.avatarUrl}"
+    private fun buildRedirectUrl(exchangeCode: String): String {
+        return UriComponentsBuilder.fromUriString(redirectUrl)
+            .queryParam("code", exchangeCode)
+            .build(true)
+            .toUriString()
     }
 
     private fun extractBearerToken(authorization: String): String {

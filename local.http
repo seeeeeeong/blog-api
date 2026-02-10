@@ -1,0 +1,156 @@
+@baseUrl = http://localhost:8080
+@email = you@example.com
+@password = your-password
+@accessToken =
+@refreshToken =
+@oauthToken =
+@categoryId = 1
+@postId = 1
+@commentId = 1
+@publicId = your-cloudinary-public-id
+
+### Health
+GET {{baseUrl}}/api/health
+
+### Login (sets accessToken/refreshToken)
+POST {{baseUrl}}/api/v1/users/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+> {% client.global.set("accessToken", response.body.data.accessToken); client.global.set("refreshToken", response.body.data.refreshToken); %}
+
+### Refresh token (sets accessToken/refreshToken)
+POST {{baseUrl}}/api/v1/users/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+> {% client.global.set("accessToken", response.body.data.accessToken); client.global.set("refreshToken", response.body.data.refreshToken); %}
+
+### Logout (invalidate refresh token)
+POST {{baseUrl}}/api/v1/users/logout
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### Logout all (requires user access token)
+POST {{baseUrl}}/api/v1/users/logout/all
+Authorization: Bearer {{accessToken}}
+
+### Categories
+GET {{baseUrl}}/api/v1/categories
+
+### Create post (requires user access token, sets postId)
+POST {{baseUrl}}/api/v1/posts
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "categoryId": {{categoryId}},
+  "title": "Markdown check",
+  "content": "# Title\\n\\n---\\n\\nThis is **bold** and *italic*.\\n\\n- item 1\\n- item 2\\n\\n> blockquote\\n",
+  "thumbnailUrl": "",
+  "isDraft": false
+}
+> {% client.global.set("postId", response.body.data.id); %}
+
+### Get post (contentHtml should include hr/strong)
+GET {{baseUrl}}/api/v1/posts/{{postId}}
+
+### List posts
+GET {{baseUrl}}/api/v1/posts?page=0&size=10
+
+### List posts by category
+GET {{baseUrl}}/api/v1/posts/categories/{{categoryId}}?page=0&size=10
+
+### My posts (requires user access token)
+GET {{baseUrl}}/api/v1/posts/my?page=0&size=10
+Authorization: Bearer {{accessToken}}
+
+### Draft posts (requires user access token)
+GET {{baseUrl}}/api/v1/posts/drafts?page=0&size=10
+Authorization: Bearer {{accessToken}}
+
+### Popular posts
+GET {{baseUrl}}/api/v1/posts/popular?limit=5
+
+### Search posts by similarity
+GET {{baseUrl}}/api/v1/posts/search/similarity?query=markdown&categoryId={{categoryId}}&page=0&size=10
+
+### Similar posts
+GET {{baseUrl}}/api/v1/posts/{{postId}}/similar?limit=5
+
+### Update post (requires user access token)
+PUT {{baseUrl}}/api/v1/posts/{{postId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "categoryId": {{categoryId}},
+  "title": "Markdown check (updated)",
+  "content": "Updated content with **bold** and a divider.\\n\\n---\\n",
+  "thumbnailUrl": "",
+  "isDraft": false
+}
+
+### Delete post (requires user access token)
+DELETE {{baseUrl}}/api/v1/posts/{{postId}}
+Authorization: Bearer {{accessToken}}
+
+### OAuth token verify (requires oauth token from /api/auth/github/callback)
+GET {{baseUrl}}/api/auth/github/verify
+Authorization: Bearer {{oauthToken}}
+
+### Create comment (requires oauth token, sets commentId)
+POST {{baseUrl}}/api/v1/posts/{{postId}}/comments
+Authorization: Bearer {{oauthToken}}
+Content-Type: application/json
+
+{
+  "content": "Nice post! **bold** works?\\n\\n---",
+  "parentId": null
+}
+> {% client.global.set("commentId", response.body.data.id); %}
+
+### List comments
+GET {{baseUrl}}/api/v1/posts/{{postId}}/comments
+
+### Update comment (requires oauth token)
+PUT {{baseUrl}}/api/v1/posts/{{postId}}/comments/{{commentId}}
+Authorization: Bearer {{oauthToken}}
+Content-Type: application/json
+
+{
+  "content": "Updated comment."
+}
+
+### Delete comment (requires oauth token)
+DELETE {{baseUrl}}/api/v1/posts/{{postId}}/comments/{{commentId}}
+Authorization: Bearer {{oauthToken}}
+
+### Upload signature (Cloudinary)
+GET {{baseUrl}}/api/images/upload-signature?folder=blog
+
+### Upload image (multipart)
+POST {{baseUrl}}/api/images/upload
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="folder"
+
+blog
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="sample.png"
+Content-Type: image/png
+
+< ./path/to/sample.png
+--WebAppBoundary--
+
+### Delete image (Cloudinary)
+DELETE {{baseUrl}}/api/images/{{publicId}}

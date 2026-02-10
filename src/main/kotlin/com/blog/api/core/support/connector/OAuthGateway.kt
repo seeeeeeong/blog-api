@@ -21,11 +21,23 @@ class OAuthGateway(
     private val oauthProperties: OAuthProperties
 ) {
 
-    fun exchangeCodeForToken(code: String, clientId: String, clientSecret: String): OAuthToken {
+    fun exchangeCodeForToken(
+        code: String,
+        clientId: String,
+        clientSecret: String,
+        codeVerifier: String? = null,
+        redirectUri: String? = null
+    ): OAuthToken {
         val params = LinkedMultiValueMap<String, String>().apply {
             add("client_id", clientId)
             add("client_secret", clientSecret)
             add("code", code)
+            if (!codeVerifier.isNullOrBlank()) {
+                add("code_verifier", codeVerifier)
+            }
+            if (!redirectUri.isNullOrBlank()) {
+                add("redirect_uri", redirectUri)
+            }
         }
 
         val headers = HttpHeaders().apply {

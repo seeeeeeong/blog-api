@@ -23,6 +23,8 @@ enum class ErrorType(
     FORBIDDEN(HttpStatus.FORBIDDEN, "AUTH_004", "Forbidden", LogLevel.WARN),
     REFRESH_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "AUTH_005", "Refresh token not found"),
     REFRESH_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "AUTH_006", "Refresh token expired"),
+    OAUTH_STATE_INVALID(HttpStatus.UNAUTHORIZED, "AUTH_007", "Invalid OAuth state", LogLevel.WARN),
+    OAUTH_CODE_INVALID(HttpStatus.UNAUTHORIZED, "AUTH_008", "Invalid or expired OAuth code", LogLevel.WARN),
 
     // ==================== Email Verification ====================
     EMAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "EMAIL_001", "Email send failed", LogLevel.ERROR),

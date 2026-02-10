@@ -12,6 +12,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+import org.springframework.security.web.servlet.util.matcher.MvcRequestMatcher
+import org.springframework.web.servlet.handler.HandlerMappingIntrospector
 
 @Configuration
 @EnableWebSecurity
@@ -26,7 +28,8 @@ class SecurityConfig(
     }
 
     @Bean
-    fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
+    fun securityFilterChain(http: HttpSecurity, introspector: HandlerMappingIntrospector): SecurityFilterChain {
+        val mvc = MvcRequestMatcher.Builder(introspector)
         http
             .csrf { it.disable() }
             .cors { }
@@ -53,13 +56,18 @@ class SecurityConfig(
                         "/api/v1/posts",
                         "/api/v1/posts/search/similarity",
                         "/api/v1/posts/popular",
-                        "/api/v1/posts/categories/**",
-                        "/api/v1/posts/{postId:[0-9]+}"
+                        "/api/v1/posts/categories/**"
+                    ).permitAll()
+                    .requestMatchers(
+                        mvc.pattern(HttpMethod.GET, "/api/v1/posts/{postId:[0-9]+}")
                     ).permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/v1/categories").permitAll()
 
                     // Comment APIs (GitHub OAuth token used instead of admin JWT)
                     .requestMatchers("/api/v1/posts/*/comments/**").permitAll()
+
+                    // Image APIs (Admin only)
+                    .requestMatchers("/api/images/**").hasRole("ADMIN")
 
                     // All other requests need authentication
                     .anyRequest().authenticated()
