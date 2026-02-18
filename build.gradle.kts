@@ -52,8 +52,10 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.3")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.3")
 
-    // Cloudinary
-    implementation("com.cloudinary:cloudinary-http44:1.36.0")
+    // AWS S3
+    implementation(platform("software.amazon.awssdk:bom:2.25.16"))
+    implementation("software.amazon.awssdk:s3")
+    implementation("software.amazon.awssdk:sts")
 
     // Markdown + Sanitization
     implementation("org.commonmark:commonmark:0.22.0")

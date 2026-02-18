@@ -32,33 +32,6 @@ interface PostRepository : JpaRepository<PostEntity, Long> {
 
     @Query(
         value = """
-            SELECT * FROM posts p
-            WHERE p.status = 'PUBLISHED'
-            ORDER BY p.view_count DESC
-            LIMIT :limit
-        """,
-        nativeQuery = true
-    )
-    fun findTopByViewCount(@Param("limit") limit: Int): List<PostEntity>
-
-    @Query(
-        value = """
-            SELECT p.*
-            FROM posts p
-            WHERE p.id != :postId
-            AND p.content_vector IS NOT NULL
-            AND p.status = 'PUBLISHED'
-            ORDER BY p.content_vector <-> (
-                SELECT content_vector FROM posts WHERE id = :postId
-            )
-            LIMIT :limit
-        """,
-        nativeQuery = true
-    )
-    fun findSimilarPosts(@Param("postId") postId: Long, @Param("limit") limit: Int): List<PostEntity>
-
-    @Query(
-        value = """
             SELECT p.*
             FROM posts p
             WHERE p.content_vector IS NOT NULL

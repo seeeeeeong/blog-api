@@ -1,7 +1,7 @@
 package com.blog.api.core.api.controller.v1
 
 import com.blog.api.core.support.response.ApiResponse
-import com.blog.api.core.api.controller.v1.response.ImageSignatureResponse
+import com.blog.api.core.api.controller.v1.response.ImagePresignedUrlResponse
 import com.blog.api.core.api.controller.v1.response.ImageUploadResponse
 import com.blog.api.core.domain.ImageService
 import io.swagger.v3.oas.annotations.Operation
@@ -22,40 +22,32 @@ class ImageController(
     private val imageService: ImageService
 ) {
 
-    @Operation(
-        summary = "이미지 업로드",
-        description = "이미지를 Cloudinary에 업로드합니다."
-    )
+    @Operation(summary = "이미지 업로드", description = "이미지를 S3에 업로드합니다.")
     @PostMapping("/upload")
     fun uploadImage(
         @RequestParam("file") file: MultipartFile,
         @RequestParam(value = "folder", defaultValue = "blog") folder: String
     ): ApiResponse<ImageUploadResponse> {
-        val upload = imageService.uploadImage(file.bytes, folder)
+        val upload = imageService.uploadImage(file.bytes, file.contentType ?: "image/png", folder)
         return ApiResponse.Companion.success(ImageUploadResponse.Companion.of(upload))
     }
 
-    @Operation(
-        summary = "업로드 서명 생성",
-        description = "클라이언트에서 직접 업로드할 수 있는 서명을 생성합니다."
-    )
-    @GetMapping("/upload-signature")
-    fun getUploadSignature(
+    @Operation(summary = "Presigned URL 생성", description = "클라이언트에서 직접 S3에 업로드할 수 있는 Presigned URL을 생성합니다.")
+    @GetMapping("/presigned-url")
+    fun getPresignedUrl(
+        @RequestParam(value = "contentType", defaultValue = "image/png") contentType: String,
         @RequestParam(value = "folder", defaultValue = "blog") folder: String
-    ): ApiResponse<ImageSignatureResponse> {
-        val signature = imageService.generateUploadSignature(folder)
-        return ApiResponse.Companion.success(ImageSignatureResponse.Companion.of(signature))
+    ): ApiResponse<ImagePresignedUrlResponse> {
+        val presignedUrl = imageService.generatePresignedUrl(contentType, folder)
+        return ApiResponse.Companion.success(ImagePresignedUrlResponse.Companion.of(presignedUrl))
     }
 
-    @Operation(
-        summary = "이미지 삭제",
-        description = "Cloudinary에서 이미지를 삭제합니다."
-    )
-    @DeleteMapping("/{publicId}")
+    @Operation(summary = "이미지 삭제", description = "S3에서 이미지를 삭제합니다.")
+    @DeleteMapping("/{key}")
     fun deleteImage(
-        @PathVariable publicId: String
+        @PathVariable key: String
     ): ApiResponse<Map<String, Boolean>> {
-        val deleted = imageService.deleteImage(publicId)
+        val deleted = imageService.deleteImage(key)
         return ApiResponse.Companion.success(mapOf("deleted" to deleted))
     }
 }

@@ -100,11 +100,12 @@ jwt:
   access-expiration: ${JWT_ACCESS_EXPIRATION:3600000}
   refresh-expiration: ${JWT_REFRESH_EXPIRATION:1209600000}
 
-cloudinary:
-  cloud-name: ${CLOUDINARY_CLOUD_NAME}
-  api-key: ${CLOUDINARY_API_KEY}
-  api-secret: ${CLOUDINARY_API_SECRET}
-  default-folder: blog
+aws:
+  s3:
+    bucket: ${AWS_S3_BUCKET:blog-images-local}
+    region: ${AWS_REGION:ap-northeast-2}
+    cloudfront-domain: ${AWS_CLOUDFRONT_DOMAIN:}
+    default-folder: blog
 
 embedding:
   max-tokens: 8191
@@ -202,11 +203,12 @@ jwt:
   access-expiration: ${JWT_ACCESS_EXPIRATION}
   refresh-expiration: ${JWT_REFRESH_EXPIRATION}
 
-cloudinary:
-  cloud-name: ${CLOUDINARY_CLOUD_NAME}
-  api-key: ${CLOUDINARY_API_KEY}
-  api-secret: ${CLOUDINARY_API_SECRET}
-  default-folder: blog
+aws:
+  s3:
+    bucket: ${AWS_S3_BUCKET}
+    region: ${AWS_REGION:ap-northeast-2}
+    cloudfront-domain: ${AWS_CLOUDFRONT_DOMAIN}
+    default-folder: blog
 
 embedding:
   max-tokens: 8191

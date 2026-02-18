@@ -113,15 +113,6 @@ class PostController(
         )
     }
 
-    @Operation(summary = "인기 게시글 조회")
-    @GetMapping("/popular")
-    fun getPopularPosts(
-        @RequestParam(defaultValue = "10") limit: Int
-    ): ApiResponse<List<PostResponse>> {
-        val posts = postService.getPopularPosts(limit)
-        return ApiResponse.Companion.success(posts.map(PostResponse.Companion::of))
-    }
-
     @Operation(summary = "유사도 기반 게시글 검색 (AI)")
     @GetMapping("/search/similarity")
     fun searchPostsBySimilarity(
@@ -136,16 +127,6 @@ class PostController(
                 posts.hasNext()
             )
         )
-    }
-
-    @Operation(summary = "관련 게시글 추천")
-    @GetMapping("/{postId}/similar")
-    fun getSimilarPosts(
-        @PathVariable postId: Long,
-        @RequestParam(defaultValue = "5") limit: Int
-    ): ApiResponse<List<PostResponse>> {
-        val posts = postService.getSimilarPosts(postId, limit)
-        return ApiResponse.Companion.success(posts.map(PostResponse.Companion::of))
     }
 
     @Operation(summary = "게시글 수정", security = [SecurityRequirement(name = "bearerAuth")])

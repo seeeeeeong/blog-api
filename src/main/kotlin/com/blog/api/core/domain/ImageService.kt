@@ -1,54 +1,87 @@
 package com.blog.api.core.domain
 
-import com.blog.api.core.support.properties.CloudinaryProperties
-import com.cloudinary.Cloudinary
-import com.cloudinary.utils.ObjectUtils
+import com.blog.api.core.support.properties.S3Properties
 import org.springframework.stereotype.Service
+import software.amazon.awssdk.core.sync.RequestBody
+import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest
+import software.amazon.awssdk.services.s3.model.PutObjectRequest
+import software.amazon.awssdk.services.s3.presigner.S3Presigner
+import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest
+import java.time.Duration
+import java.util.UUID
 
 @Service
 class ImageService(
-    private val cloudinary: Cloudinary,
-    private val cloudinaryProperties: CloudinaryProperties,
+    private val s3Client: S3Client,
+    private val s3Presigner: S3Presigner,
+    private val s3Properties: S3Properties,
 ) {
 
-    fun uploadImage(bytes: ByteArray, folder: String? = null): ImageUpload {
-        val targetFolder = folder ?: cloudinaryProperties.defaultFolder
-        val options = ObjectUtils.asMap(
-            "folder", targetFolder,
-            "resource_type", "auto",
-        )
+    fun uploadImage(bytes: ByteArray, contentType: String, folder: String? = null): ImageUpload {
+        val targetFolder = folder ?: s3Properties.defaultFolder
+        val extension = contentType.substringAfter("/")
+        val key = "$targetFolder/${UUID.randomUUID()}.$extension"
 
-        val uploadResult = cloudinary.uploader().upload(bytes, options)
+        val request = PutObjectRequest.builder()
+            .bucket(s3Properties.bucket)
+            .key(key)
+            .contentType(contentType)
+            .build()
+
+        s3Client.putObject(request, RequestBody.fromBytes(bytes))
+
+        val url = if (s3Properties.cloudfrontDomain.isNotBlank()) {
+            "https://${s3Properties.cloudfrontDomain}/$key"
+        } else {
+            "https://${s3Properties.bucket}.s3.${s3Properties.region}.amazonaws.com/$key"
+        }
 
         return ImageUpload(
-            url = uploadResult["secure_url"] as String,
-            publicId = uploadResult["public_id"] as String,
-            format = uploadResult["format"] as String,
-            width = uploadResult["width"] as Int,
-            height = uploadResult["height"] as Int,
+            url = url,
+            key = key,
+            format = extension,
         )
     }
 
-    fun deleteImage(publicId: String): Boolean {
-        val result = cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap())
-        return result["result"] == "ok"
+    fun deleteImage(key: String): Boolean {
+        val request = DeleteObjectRequest.builder()
+            .bucket(s3Properties.bucket)
+            .key(key)
+            .build()
+
+        s3Client.deleteObject(request)
+        return true
     }
 
-    fun generateUploadSignature(folder: String? = null): ImageSignature {
-        val targetFolder = folder ?: cloudinaryProperties.defaultFolder
-        val timestamp = System.currentTimeMillis() / 1000
-        val params = mapOf(
-            "timestamp" to timestamp,
-            "folder" to targetFolder,
-        )
+    fun generatePresignedUrl(contentType: String, folder: String? = null): ImagePresignedUrl {
+        val targetFolder = folder ?: s3Properties.defaultFolder
+        val extension = contentType.substringAfter("/")
+        val key = "$targetFolder/${UUID.randomUUID()}.$extension"
 
-        val signature = cloudinary.apiSignRequest(params, cloudinary.config.apiSecret)
+        val putObjectRequest = PutObjectRequest.builder()
+            .bucket(s3Properties.bucket)
+            .key(key)
+            .contentType(contentType)
+            .build()
 
-        return ImageSignature(
-            signature = signature,
-            timestamp = timestamp,
-            apiKey = cloudinary.config.apiKey,
-            cloudName = cloudinary.config.cloudName,
+        val presignRequest = PutObjectPresignRequest.builder()
+            .signatureDuration(Duration.ofMinutes(10))
+            .putObjectRequest(putObjectRequest)
+            .build()
+
+        val presignedUrl = s3Presigner.presignPutObject(presignRequest)
+
+        val fileUrl = if (s3Properties.cloudfrontDomain.isNotBlank()) {
+            "https://${s3Properties.cloudfrontDomain}/$key"
+        } else {
+            "https://${s3Properties.bucket}.s3.${s3Properties.region}.amazonaws.com/$key"
+        }
+
+        return ImagePresignedUrl(
+            uploadUrl = presignedUrl.url().toString(),
+            fileUrl = fileUrl,
+            key = key,
         )
     }
 }

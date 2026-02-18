@@ -1,0 +1,5 @@
+# 도메인이 없으면 IP로 접근 (HTTP only)
+# 도메인 있으면 아래 :80 을 도메인으로 변경하면 자동 HTTPS
+:80 {
+    reverse_proxy app:8080
+}

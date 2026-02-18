@@ -195,29 +195,6 @@ class PostService(
             }
     }
 
-    fun getPopularPosts(limit: Int): List<Post> {
-        return postRepository
-            .findTopByViewCount(limit)
-            .map { entity ->
-                val contentHtml = postMarkdownConverter.convertToHtml(entity.content)
-                val thumbnailUrl = entity.thumbnailUrl.orEmpty()
-
-                Post(
-                    id = entity.id!!,
-                    userId = entity.userId,
-                    categoryId = entity.categoryId,
-                    title = entity.title,
-                    content = entity.content,
-                    contentHtml = contentHtml,
-                    thumbnailUrl = thumbnailUrl,
-                    viewCount = entity.viewCount,
-                    status = entity.status,
-                    createdAt = entity.createdAt,
-                    updatedAt = entity.updatedAt,
-                )
-            }
-    }
-
     fun searchPostsBySimilarity(query: String, categoryId: Long?, pageable: Pageable): Page<Post> {
         if (query.isBlank()) {
             return PageImpl(emptyList(), pageable, 0)
@@ -270,32 +247,6 @@ class PostService(
                 updatedAt = entity.updatedAt,
             )
         }
-    }
-
-    fun getSimilarPosts(postId: Long, limit: Int): List<Post> {
-        postRepository.findById(postId)
-            .orElseThrow { CoreException(ErrorType.POST_NOT_FOUND) }
-
-        return postRepository
-            .findSimilarPosts(postId, limit)
-            .map { entity ->
-                val contentHtml = postMarkdownConverter.convertToHtml(entity.content)
-                val thumbnailUrl = entity.thumbnailUrl.orEmpty()
-
-                Post(
-                    id = entity.id!!,
-                    userId = entity.userId,
-                    categoryId = entity.categoryId,
-                    title = entity.title,
-                    content = entity.content,
-                    contentHtml = contentHtml,
-                    thumbnailUrl = thumbnailUrl,
-                    viewCount = entity.viewCount,
-                    status = entity.status,
-                    createdAt = entity.createdAt,
-                    updatedAt = entity.updatedAt,
-                )
-            }
     }
 
     @Transactional

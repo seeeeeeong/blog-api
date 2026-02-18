@@ -55,7 +55,6 @@ class SecurityConfig(
                         HttpMethod.GET,
                         "/api/v1/posts",
                         "/api/v1/posts/search/similarity",
-                        "/api/v1/posts/popular",
                         "/api/v1/posts/categories/**"
                     ).permitAll()
                     .requestMatchers(
