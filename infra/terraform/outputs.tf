@@ -28,6 +28,11 @@ output "frontend_distribution_id" {
   value       = aws_cloudfront_distribution.frontend.id
 }
 
+output "api_cdn_domain" {
+  description = "API CloudFront 도메인 (HTTPS)"
+  value       = aws_cloudfront_distribution.api.domain_name
+}
+
 output "ssh_command" {
   description = "SSH 접속 명령어"
   value       = "ssh -i ~/.ssh/${var.ec2_key_name}.pem ec2-user@${aws_eip.main.public_ip}"
