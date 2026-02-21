@@ -105,6 +105,11 @@ resource "aws_instance" "main" {
   EOF
 
   tags = { Name = "${var.project_name}-server" }
+
+  lifecycle {
+    # Avoid unintended instance replacement when latest AMI moves.
+    ignore_changes = [ami]
+  }
 }
 
 # =============================================

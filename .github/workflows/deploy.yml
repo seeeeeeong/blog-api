@@ -17,8 +17,20 @@ jobs:
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd /home/ec2-user/app
-            git pull origin main
+            APP_DIR=/home/ec2-user/app
+            REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+
+            mkdir -p "$APP_DIR"
+            if [ ! -d "$APP_DIR/.git" ]; then
+              rm -rf "$APP_DIR"
+              git clone "$REPO_URL" "$APP_DIR"
+            fi
+
+            cd "$APP_DIR"
+            git remote set-url origin "$REPO_URL"
+            git fetch origin main
+            git checkout main
+            git pull --ff-only origin main
             docker-compose -f docker-compose-prod.yml build app
             docker-compose -f docker-compose-prod.yml up -d
             docker image prune -f
