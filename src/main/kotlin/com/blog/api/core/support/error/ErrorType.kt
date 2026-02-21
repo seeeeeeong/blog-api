@@ -11,10 +11,7 @@ enum class ErrorType(
 ) {
     // ==================== User ====================
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_001", "User not found", LogLevel.WARN),
-    EMAIL_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "USER_002", "Email already exists"),
-    NICKNAME_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "USER_003", "Nickname already exists"),
     INVALID_PASSWORD(HttpStatus.UNAUTHORIZED, "USER_004", "Invalid password"),
-    OLD_PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "USER_005", "Old password mismatch"),
 
     // ==================== Auth & Token ====================
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_001", "Invalid token"),
@@ -25,11 +22,7 @@ enum class ErrorType(
     REFRESH_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "AUTH_006", "Refresh token expired"),
     OAUTH_STATE_INVALID(HttpStatus.UNAUTHORIZED, "AUTH_007", "Invalid OAuth state", LogLevel.WARN),
     OAUTH_CODE_INVALID(HttpStatus.UNAUTHORIZED, "AUTH_008", "Invalid or expired OAuth code", LogLevel.WARN),
-
-    // ==================== Email Verification ====================
-    EMAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "EMAIL_001", "Email send failed", LogLevel.ERROR),
-    INVALID_VERIFICATION_CODE(HttpStatus.BAD_REQUEST, "EMAIL_002", "Invalid verification code"),
-    VERIFICATION_CODE_EXPIRED(HttpStatus.BAD_REQUEST, "EMAIL_003", "Verification code expired"),
+    LOGIN_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "AUTH_009", "Too many login attempts", LogLevel.WARN),
 
     // ==================== Post ====================
     POST_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_001", "Post not found", LogLevel.WARN),
@@ -39,10 +32,6 @@ enum class ErrorType(
 
     // ==================== Category ====================
     CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "CATEGORY_001", "Category not found", LogLevel.WARN),
-
-    // ==================== Embedding ====================
-    EMBEDDING_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "EMBEDDING_001", "Embedding generation failed", LogLevel.ERROR),
-    EMBEDDING_API_QUOTA_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "EMBEDDING_002", "Embedding API quota exceeded", LogLevel.ERROR),
 
     // ==================== Common ====================
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "COMMON_001", "Invalid input"),

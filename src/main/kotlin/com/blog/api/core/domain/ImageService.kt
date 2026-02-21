@@ -1,6 +1,10 @@
 package com.blog.api.core.domain
 
+import com.blog.api.core.support.error.CoreException
+import com.blog.api.core.support.error.ErrorType
+import com.blog.api.core.support.properties.ImagePresignedProperties
 import com.blog.api.core.support.properties.S3Properties
+import com.blog.api.storage.ImageUploadTokenRepository
 import org.springframework.stereotype.Service
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.s3.S3Client
@@ -16,72 +20,156 @@ class ImageService(
     private val s3Client: S3Client,
     private val s3Presigner: S3Presigner,
     private val s3Properties: S3Properties,
+    private val imagePresignedProperties: ImagePresignedProperties,
+    private val imageUploadTokenRepository: ImageUploadTokenRepository,
 ) {
+    companion object {
+        private const val ROOT_FOLDER_PREFIX = "admin"
+    }
 
-    fun uploadImage(bytes: ByteArray, contentType: String, folder: String? = null): ImageUpload {
-        val targetFolder = folder ?: s3Properties.defaultFolder
-        val extension = contentType.substringAfter("/")
-        val key = "$targetFolder/${UUID.randomUUID()}.$extension"
+    fun uploadImage(adminUserId: Long, bytes: ByteArray, contentType: String, folder: String? = null): ImageUpload {
+        val normalizedContentType = normalizeContentType(contentType)
+        validateContentType(normalizedContentType)
+        val targetFolder = resolveFolder(folder)
+        val key = generateKey(adminUserId, targetFolder, normalizedContentType)
 
-        val request = PutObjectRequest.builder()
-            .bucket(s3Properties.bucket)
-            .key(key)
-            .contentType(contentType)
-            .build()
-
-        s3Client.putObject(request, RequestBody.fromBytes(bytes))
-
-        val url = if (s3Properties.cloudfrontDomain.isNotBlank()) {
-            "https://${s3Properties.cloudfrontDomain}/$key"
-        } else {
-            "https://${s3Properties.bucket}.s3.${s3Properties.region}.amazonaws.com/$key"
-        }
+        s3Client.putObject(
+            createPutObjectRequest(key, normalizedContentType),
+            RequestBody.fromBytes(bytes)
+        )
 
         return ImageUpload(
-            url = url,
+            url = buildFileUrl(key),
             key = key,
-            format = extension,
+            format = findExtension(normalizedContentType),
         )
     }
 
-    fun deleteImage(key: String): Boolean {
-        val request = DeleteObjectRequest.builder()
-            .bucket(s3Properties.bucket)
-            .key(key)
-            .build()
+    fun generatePresignedUrl(adminUserId: Long, contentType: String, folder: String? = null): ImagePresignedUrl {
+        val normalizedContentType = normalizeContentType(contentType)
+        validateContentType(normalizedContentType)
+        val targetFolder = resolveFolder(folder)
+        val key = generateKey(adminUserId, targetFolder, normalizedContentType)
+        val uploadToken = UUID.randomUUID().toString()
 
-        s3Client.deleteObject(request)
-        return true
-    }
+        imageUploadTokenRepository.save(
+            uploadToken = uploadToken,
+            userId = adminUserId,
+            key = key,
+            ttlSeconds = imagePresignedProperties.oneTimeTokenTtlSeconds
+        )
 
-    fun generatePresignedUrl(contentType: String, folder: String? = null): ImagePresignedUrl {
-        val targetFolder = folder ?: s3Properties.defaultFolder
-        val extension = contentType.substringAfter("/")
-        val key = "$targetFolder/${UUID.randomUUID()}.$extension"
-
-        val putObjectRequest = PutObjectRequest.builder()
-            .bucket(s3Properties.bucket)
-            .key(key)
-            .contentType(contentType)
-            .build()
-
-        val presignRequest = PutObjectPresignRequest.builder()
-            .signatureDuration(Duration.ofMinutes(10))
-            .putObjectRequest(putObjectRequest)
-            .build()
-
-        val presignedUrl = s3Presigner.presignPutObject(presignRequest)
-
-        val fileUrl = if (s3Properties.cloudfrontDomain.isNotBlank()) {
-            "https://${s3Properties.cloudfrontDomain}/$key"
-        } else {
-            "https://${s3Properties.bucket}.s3.${s3Properties.region}.amazonaws.com/$key"
-        }
+        val presignedUrl = s3Presigner.presignPutObject(
+            createPutObjectPresignRequest(key, normalizedContentType, imagePresignedProperties.ttlSeconds)
+        )
 
         return ImagePresignedUrl(
             uploadUrl = presignedUrl.url().toString(),
-            fileUrl = fileUrl,
+            fileUrl = buildFileUrl(key),
             key = key,
+            uploadToken = uploadToken,
+            expiresInSeconds = imagePresignedProperties.ttlSeconds,
         )
     }
+
+    fun completePresignedUpload(adminUserId: Long, uploadToken: String, key: String): ImageUploadComplete {
+        val normalizedUploadToken = uploadToken.trim()
+        val normalizedKey = key.trim()
+        if (normalizedUploadToken.isEmpty() || normalizedKey.isEmpty()) {
+            throw CoreException(ErrorType.INVALID_INPUT)
+        }
+
+        if (isOwnedKey(adminUserId, normalizedKey)) {
+            val isConsumed = imageUploadTokenRepository.consume(
+                uploadToken = normalizedUploadToken,
+                userId = adminUserId,
+                key = normalizedKey
+            )
+            if (isConsumed) {
+                return ImageUploadComplete(
+                    fileUrl = buildFileUrl(normalizedKey),
+                    key = normalizedKey
+                )
+            }
+        }
+
+        throw CoreException(ErrorType.INVALID_INPUT)
+    }
+
+    fun deleteImage(adminUserId: Long, key: String) {
+        val normalizedKey = key.trim()
+        if (isOwnedKey(adminUserId, normalizedKey)) {
+            s3Client.deleteObject(createDeleteObjectRequest(normalizedKey))
+            return
+        }
+        throw CoreException(ErrorType.FORBIDDEN)
+    }
+
+    private fun generateKey(adminUserId: Long, folder: String, contentType: String): String {
+        val keyPrefix = ownerPrefix(adminUserId)
+        val extension = findExtension(contentType)
+        return "$keyPrefix$folder/${UUID.randomUUID()}.$extension"
+    }
+
+    private fun buildFileUrl(key: String): String {
+        val cloudfrontDomain = s3Properties.cloudfrontDomain
+        return if (cloudfrontDomain.isBlank()) {
+            "https://${s3Properties.bucket}.s3.${s3Properties.region}.amazonaws.com/$key"
+        } else {
+            "https://$cloudfrontDomain/$key"
+        }
+    }
+
+    private fun createPutObjectRequest(key: String, contentType: String): PutObjectRequest {
+        return PutObjectRequest.builder()
+            .bucket(s3Properties.bucket)
+            .key(key)
+            .contentType(contentType)
+            .build()
+    }
+
+    private fun createPutObjectPresignRequest(
+        key: String,
+        contentType: String,
+        ttlSeconds: Long,
+    ): PutObjectPresignRequest {
+        return PutObjectPresignRequest.builder()
+            .signatureDuration(Duration.ofSeconds(ttlSeconds))
+            .putObjectRequest(createPutObjectRequest(key, contentType))
+            .build()
+    }
+
+    private fun createDeleteObjectRequest(key: String): DeleteObjectRequest {
+        return DeleteObjectRequest.builder()
+            .bucket(s3Properties.bucket)
+            .key(key)
+            .build()
+    }
+
+    private fun normalizeContentType(contentType: String): String {
+        return contentType.trim().lowercase()
+    }
+
+    private fun validateContentType(contentType: String) {
+        if (imagePresignedProperties.allowedContentTypes.contains(contentType)) {
+            return
+        }
+        throw CoreException(ErrorType.INVALID_INPUT)
+    }
+
+    private fun resolveFolder(folder: String?): String {
+        val candidate = folder?.trim()?.lowercase().orEmpty().ifBlank { s3Properties.defaultFolder.lowercase() }
+        if (imagePresignedProperties.allowedFolders.contains(candidate)) {
+            return candidate
+        }
+        throw CoreException(ErrorType.INVALID_INPUT)
+    }
+
+    private fun ownerPrefix(adminUserId: Long): String = "$ROOT_FOLDER_PREFIX/$adminUserId/"
+
+    private fun isOwnedKey(adminUserId: Long, key: String): Boolean {
+        return key.startsWith(ownerPrefix(adminUserId))
+    }
+
+    private fun findExtension(contentType: String): String = contentType.substringAfter("/")
 }

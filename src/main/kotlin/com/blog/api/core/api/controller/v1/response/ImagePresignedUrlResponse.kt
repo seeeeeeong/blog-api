@@ -6,6 +6,8 @@ data class ImagePresignedUrlResponse(
     val uploadUrl: String,
     val fileUrl: String,
     val key: String,
+    val uploadToken: String,
+    val expiresInSeconds: Long,
 ) {
     companion object {
         fun of(presignedUrl: ImagePresignedUrl): ImagePresignedUrlResponse {
@@ -13,6 +15,8 @@ data class ImagePresignedUrlResponse(
                 uploadUrl = presignedUrl.uploadUrl,
                 fileUrl = presignedUrl.fileUrl,
                 key = presignedUrl.key,
+                uploadToken = presignedUrl.uploadToken,
+                expiresInSeconds = presignedUrl.expiresInSeconds,
             )
         }
     }

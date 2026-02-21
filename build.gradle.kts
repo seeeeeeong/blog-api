@@ -17,7 +17,6 @@ version = "0.0.1-SNAPSHOT"
 
 repositories {
     mavenCentral()
-    maven { url = uri("https://repo.spring.io/milestone") }
 }
 
 extensions.configure<JavaPluginExtension> {
@@ -39,13 +38,14 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
     implementation("org.springframework.boot:spring-boot-starter-aop")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     developmentOnly("org.springframework.boot:spring-boot-devtools")
 
     runtimeOnly("org.postgresql:postgresql")
-    implementation("com.pgvector:pgvector:0.1.4")
+    runtimeOnly("io.micrometer:micrometer-registry-prometheus")
 
     // JWT
     implementation("io.jsonwebtoken:jjwt-api:0.12.3")
@@ -55,20 +55,11 @@ dependencies {
     // AWS S3
     implementation(platform("software.amazon.awssdk:bom:2.25.16"))
     implementation("software.amazon.awssdk:s3")
-    implementation("software.amazon.awssdk:sts")
 
     // Markdown + Sanitization
     implementation("org.commonmark:commonmark:0.22.0")
     implementation("org.commonmark:commonmark-ext-gfm-tables:0.22.0")
     implementation("org.jsoup:jsoup:1.17.2")
-
-    // Springdoc OpenAPI (Swagger)
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0")
-
-    // Spring-AI for MCP
-    implementation("org.springframework.ai:spring-ai-model:1.1.0-M3")
-    implementation("org.springframework.ai:spring-ai-openai:1.1.0-M3")
-    implementation("org.springframework.ai:spring-ai-starter-mcp-server-webmvc:1.1.0-M3")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")

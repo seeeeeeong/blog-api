@@ -1,11 +1,10 @@
 package com.blog.api.core.api.controller.v1
 
 import com.blog.api.core.support.response.ApiResponse
-import com.blog.api.core.api.controller.v1.reqeust.OAuthExchangeRequest
-import com.blog.api.core.api.controller.v1.response.OAuthAuthorizeResponse
-import com.blog.api.core.api.controller.v1.response.OAuthExchangeResponse
+import com.blog.api.core.api.controller.v1.reqeust.OAuthLoginRequest
+import com.blog.api.core.api.controller.v1.response.OAuthLoginResponse
 import com.blog.api.core.domain.OAuthService
-import org.springframework.beans.factory.annotation.Value
+import com.blog.api.core.support.properties.OAuthUserProperties
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -20,19 +19,12 @@ import org.springframework.web.util.UriComponentsBuilder
 @RequestMapping("/api/auth/github")
 class OAuthController(
     private val oauthService: OAuthService,
-    @param:Value("\${oauth.github.redirect-url}")
-    private val redirectUrl: String
+    private val properties: OAuthUserProperties,
 ) {
 
-    companion object {
-        private const val BEARER_PREFIX = "Bearer "
-        private const val RESPONSE_KEY_VALID = "valid"
-    }
-
     @GetMapping("/authorize")
-    fun authorize(): ApiResponse<OAuthAuthorizeResponse> {
-        val authorizeUrl = oauthService.createAuthorizationUrl()
-        return ApiResponse.Companion.success(OAuthAuthorizeResponse(authorizeUrl))
+    fun authorize(): ApiResponse<String> {
+        return ApiResponse.success(oauthService.createAuthorizationUrl())
     }
 
     @GetMapping("/callback")
@@ -41,30 +33,22 @@ class OAuthController(
         @RequestParam state: String
     ): RedirectView {
         val exchangeCode = oauthService.handleCallback(code, state)
-        return RedirectView(buildRedirectUrl(exchangeCode))
+        return RedirectView(
+            UriComponentsBuilder.fromUriString(properties.redirectUrl)
+                .queryParam("code", exchangeCode)
+                .build(true)
+                .toUriString()
+        )
     }
 
     @PostMapping("/exchange")
-    fun exchange(@RequestBody request: OAuthExchangeRequest): ApiResponse<OAuthExchangeResponse> {
-        val result = oauthService.exchangeCode(request.toCode())
-        return ApiResponse.Companion.success(OAuthExchangeResponse.of(result))
+    fun exchange(@RequestBody request: OAuthLoginRequest): ApiResponse<OAuthLoginResponse> {
+        return ApiResponse.success(OAuthLoginResponse.of(oauthService.exchangeCode(request.code)))
     }
 
     @GetMapping("/verify")
     fun verifyToken(@RequestHeader("Authorization") authorization: String): ApiResponse<Map<String, Boolean>> {
-        val jwtToken = extractBearerToken(authorization)
-        val isValid = oauthService.verifyToken(jwtToken)
-        return ApiResponse.Companion.success(mapOf(RESPONSE_KEY_VALID to isValid))
-    }
-
-    private fun buildRedirectUrl(exchangeCode: String): String {
-        return UriComponentsBuilder.fromUriString(redirectUrl)
-            .queryParam("code", exchangeCode)
-            .build(true)
-            .toUriString()
-    }
-
-    private fun extractBearerToken(authorization: String): String {
-        return authorization.removePrefix(BEARER_PREFIX)
+        val isValid = oauthService.verifyToken(authorization.removePrefix("Bearer "))
+        return ApiResponse.success(mapOf("valid" to isValid))
     }
 }

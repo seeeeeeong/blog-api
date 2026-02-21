@@ -42,6 +42,7 @@ class SecurityConfig(
                 authorize
                     // Health check
                     .requestMatchers("/api/health").permitAll()
+                    .requestMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus").permitAll()
 
                     // Swagger UI
                     .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
@@ -54,7 +55,7 @@ class SecurityConfig(
                     .requestMatchers(
                         HttpMethod.GET,
                         "/api/v1/posts",
-                        "/api/v1/posts/search/similarity",
+                        "/api/v1/posts/search",
                         "/api/v1/posts/categories/**"
                     ).permitAll()
                     .requestMatchers(

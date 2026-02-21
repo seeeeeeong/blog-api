@@ -1,309 +1,129 @@
 package com.blog.api.core.domain
 
-import com.blog.api.core.support.connector.EmbeddingFacade
-import com.blog.api.core.support.connector.RedisOps
+import com.blog.api.core.support.converter.PostMarkdownConverter
 import com.blog.api.core.support.error.CoreException
 import com.blog.api.core.support.error.ErrorType
 import com.blog.api.core.enum.PostStatus
-import com.blog.api.core.support.properties.EmbeddingProperties
 import com.blog.api.storage.PostEntity
 import com.blog.api.storage.PostRepository
-import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
-import org.springframework.data.domain.PageImpl
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.util.concurrent.TimeUnit
 
 @Service
 @Transactional(readOnly = true)
 class PostService(
     private val postRepository: PostRepository,
     private val postMarkdownConverter: PostMarkdownConverter,
-    private val embeddingFacade: EmbeddingFacade,
-    private val embeddingProperties: EmbeddingProperties,
-    private val redisOps: RedisOps,
+    private val postViewService: PostViewService,
 ) {
-
-    private val logger = LoggerFactory.getLogger(javaClass)
-
-    companion object {
-        private const val VIEW_KEY_PREFIX = "post:view:"
-        private const val VIEW_EXPIRATION_HOURS = 24L
-        private const val VIEW_COUNT_VALUE = "1"
-    }
 
     @Transactional
     fun createPost(postCreate: PostCreate): Post {
-        val thumbnailUrl = postCreate.thumbnailUrl.takeIf { it.isNotBlank() }
-        val entity = PostEntity(
-            userId = postCreate.userId,
-            categoryId = postCreate.categoryId,
-            title = postCreate.title,
-            content = postCreate.content,
-            thumbnailUrl = thumbnailUrl,
-            status = postCreate.status,
-        )
-
-        try {
-            val embedding = embeddingFacade.createEmbedding(postCreate.content)
-            val vectorString = embedding.joinToString(",", "[", "]")
-            entity.updateVector(vectorString)
-        } catch (e: Exception) {
-            logger.error("Failed to generate embedding for post", e)
-        }
-
-        val saved = postRepository.save(entity)
-        val contentHtml = postMarkdownConverter.convertToHtml(saved.content)
-        val savedThumbnailUrl = saved.thumbnailUrl.orEmpty()
-
-        return Post(
-            id = saved.id!!,
-            userId = saved.userId,
-            categoryId = saved.categoryId,
-            title = saved.title,
-            content = saved.content,
-            contentHtml = contentHtml,
-            thumbnailUrl = savedThumbnailUrl,
-            viewCount = saved.viewCount,
-            status = saved.status,
-            createdAt = saved.createdAt,
-            updatedAt = saved.updatedAt,
-        )
+        val entity = createEntity(postCreate)
+        return toPost(postRepository.save(entity))
     }
 
     @Transactional
-    fun getPost(postId: Long, clientFingerprint: String): Post {
-        val post = postRepository.findById(postId)
-            .orElseThrow { CoreException(ErrorType.POST_NOT_FOUND) }
-
-        val viewKey = "$VIEW_KEY_PREFIX$postId:$clientFingerprint"
-        val setResult = redisOps.setIfAbsent(viewKey, VIEW_COUNT_VALUE, VIEW_EXPIRATION_HOURS, TimeUnit.HOURS)
-        val shouldIncrement = setResult.isSet || setResult.isError
-        if (shouldIncrement) {
-            postRepository.incrementViewCount(postId)
-        }
-
-        val contentHtml = postMarkdownConverter.convertToHtml(post.content)
-        val postThumbnailUrl = post.thumbnailUrl.orEmpty()
-
-        return Post(
-            id = post.id!!,
-            userId = post.userId,
-            categoryId = post.categoryId,
-            title = post.title,
-            content = post.content,
-            contentHtml = contentHtml,
-            thumbnailUrl = postThumbnailUrl,
-            viewCount = post.viewCount,
-            status = post.status,
-            createdAt = post.createdAt,
-            updatedAt = post.updatedAt,
-        )
+    fun getPost(postId: Long, clientIp: String): Post {
+        val post = findPostById(postId)
+        incrementViewCountIfNeeded(postId, clientIp)
+        return toPost(post)
     }
 
     fun getAllPosts(pageable: Pageable): Page<Post> {
-        return postRepository
-            .findByStatus(PostStatus.PUBLISHED, pageable)
-            .map { entity ->
-                val contentHtml = postMarkdownConverter.convertToHtml(entity.content)
-                val thumbnailUrl = entity.thumbnailUrl.orEmpty()
-
-                Post(
-                    id = entity.id!!,
-                    userId = entity.userId,
-                    categoryId = entity.categoryId,
-                    title = entity.title,
-                    content = entity.content,
-                    contentHtml = contentHtml,
-                    thumbnailUrl = thumbnailUrl,
-                    viewCount = entity.viewCount,
-                    status = entity.status,
-                    createdAt = entity.createdAt,
-                    updatedAt = entity.updatedAt,
-                )
-            }
+        return postRepository.findByStatus(PostStatus.PUBLISHED, pageable).map { toPost(it) }
     }
 
     fun getPostsByCategory(categoryId: Long, pageable: Pageable): Page<Post> {
-        return postRepository
-            .findByCategoryIdAndStatus(categoryId, PostStatus.PUBLISHED, pageable)
-            .map { entity ->
-                val contentHtml = postMarkdownConverter.convertToHtml(entity.content)
-                val thumbnailUrl = entity.thumbnailUrl.orEmpty()
-
-                Post(
-                    id = entity.id!!,
-                    userId = entity.userId,
-                    categoryId = entity.categoryId,
-                    title = entity.title,
-                    content = entity.content,
-                    contentHtml = contentHtml,
-                    thumbnailUrl = thumbnailUrl,
-                    viewCount = entity.viewCount,
-                    status = entity.status,
-                    createdAt = entity.createdAt,
-                    updatedAt = entity.updatedAt,
-                )
-            }
-    }
-
-    fun getMyPosts(userId: Long, pageable: Pageable): Page<Post> {
-        return postRepository
-            .findAllByUserId(userId, pageable)
-            .map { entity ->
-                val contentHtml = postMarkdownConverter.convertToHtml(entity.content)
-                val thumbnailUrl = entity.thumbnailUrl.orEmpty()
-
-                Post(
-                    id = entity.id!!,
-                    userId = entity.userId,
-                    categoryId = entity.categoryId,
-                    title = entity.title,
-                    content = entity.content,
-                    contentHtml = contentHtml,
-                    thumbnailUrl = thumbnailUrl,
-                    viewCount = entity.viewCount,
-                    status = entity.status,
-                    createdAt = entity.createdAt,
-                    updatedAt = entity.updatedAt,
-                )
-            }
+        return postRepository.findByCategoryIdAndStatus(categoryId, PostStatus.PUBLISHED, pageable).map { toPost(it) }
     }
 
     fun getDraftPosts(userId: Long, pageable: Pageable): Page<Post> {
-        return postRepository
-            .findByUserIdAndStatus(userId, PostStatus.DRAFT, pageable)
-            .map { entity ->
-                val contentHtml = postMarkdownConverter.convertToHtml(entity.content)
-                val thumbnailUrl = entity.thumbnailUrl.orEmpty()
-
-                Post(
-                    id = entity.id!!,
-                    userId = entity.userId,
-                    categoryId = entity.categoryId,
-                    title = entity.title,
-                    content = entity.content,
-                    contentHtml = contentHtml,
-                    thumbnailUrl = thumbnailUrl,
-                    viewCount = entity.viewCount,
-                    status = entity.status,
-                    createdAt = entity.createdAt,
-                    updatedAt = entity.updatedAt,
-                )
-            }
+        return postRepository.findByUserIdAndStatus(userId, PostStatus.DRAFT, pageable).map { toPost(it) }
     }
 
-    fun searchPostsBySimilarity(query: String, categoryId: Long?, pageable: Pageable): Page<Post> {
+    fun searchPosts(query: String, categoryId: Long?, pageable: Pageable): Page<Post> {
         if (query.isBlank()) {
-            return PageImpl(emptyList(), pageable, 0)
+            return Page.empty(pageable)
         }
 
-        val results = try {
-            val embedding = embeddingFacade.createEmbedding(query)
-            val vectorString = embedding.joinToString(",", "[", "]")
-            val maxDistance = embeddingProperties.searchMaxDistance
-
-            if (categoryId == null) {
-                postRepository.searchBySimilarity(vectorString, maxDistance, pageable)
-            } else {
-                postRepository.searchBySimilarityWithCategory(vectorString, maxDistance, categoryId, pageable)
-            }
-        } catch (e: Exception) {
-            logger.warn("Embedding failed, fallback to keyword search: query={}", query, e)
-            if (categoryId == null) {
-                postRepository.searchByKeyword(query, pageable)
-            } else {
-                postRepository.searchByKeywordWithCategory(query, categoryId, pageable)
-            }
-        }
-
-        val filteredResults = if (results.hasContent()) {
-            results
-        } else {
-            if (categoryId == null) {
-                postRepository.searchByKeyword(query, pageable)
-            } else {
-                postRepository.searchByKeywordWithCategory(query, categoryId, pageable)
-            }
-        }
-
-        return filteredResults.map { entity ->
-            val contentHtml = postMarkdownConverter.convertToHtml(entity.content)
-            val thumbnailUrl = entity.thumbnailUrl.orEmpty()
-
-            Post(
-                id = entity.id!!,
-                userId = entity.userId,
-                categoryId = entity.categoryId,
-                title = entity.title,
-                content = entity.content,
-                contentHtml = contentHtml,
-                thumbnailUrl = thumbnailUrl,
-                viewCount = entity.viewCount,
-                status = entity.status,
-                createdAt = entity.createdAt,
-                updatedAt = entity.updatedAt,
-            )
-        }
+        val results = searchByQuery(query, categoryId, pageable)
+        return results.map { toPost(it) }
     }
 
     @Transactional
     fun updatePost(postId: Long, userId: Long, postUpdate: PostUpdate): Post {
-        val post = postRepository.findById(postId)
-            .orElseThrow { CoreException(ErrorType.POST_NOT_FOUND) }
+        val post = findPostById(postId)
+        checkOwnership(post, userId)
 
-        if (post.userId == userId) {
-            val thumbnailUrl = postUpdate.thumbnailUrl.takeIf { it.isNotBlank() }
-            post.updateContent(
-                categoryId = postUpdate.categoryId,
-                title = postUpdate.title,
-                content = postUpdate.content,
-                thumbnailUrl = thumbnailUrl,
-                status = postUpdate.status,
-            )
+        post.updateContent(
+            categoryId = postUpdate.categoryId,
+            title = postUpdate.title,
+            content = postUpdate.content,
+            thumbnailUrl = postUpdate.thumbnailUrl.takeIf { it.isNotBlank() },
+            status = postUpdate.status,
+        )
 
-            try {
-                val embedding = embeddingFacade.createEmbedding(postUpdate.content)
-                val vectorString = embedding.joinToString(",", "[", "]")
-                post.updateVector(vectorString)
-            } catch (e: Exception) {
-                logger.error("Failed to update embedding for post $postId", e)
-            }
-
-            val contentHtml = postMarkdownConverter.convertToHtml(post.content)
-            val postThumbnailUrl = post.thumbnailUrl.orEmpty()
-
-            return Post(
-                id = post.id!!,
-                userId = post.userId,
-                categoryId = post.categoryId,
-                title = post.title,
-                content = post.content,
-                contentHtml = contentHtml,
-                thumbnailUrl = postThumbnailUrl,
-                viewCount = post.viewCount,
-                status = post.status,
-                createdAt = post.createdAt,
-                updatedAt = post.updatedAt,
-            )
-        }
-
-        throw CoreException(ErrorType.FORBIDDEN)
+        return toPost(post)
     }
 
     @Transactional
     fun deletePost(postId: Long, userId: Long) {
-        val post = postRepository.findById(postId)
-            .orElseThrow { CoreException(ErrorType.POST_NOT_FOUND) }
+        val post = findPostById(postId)
+        checkOwnership(post, userId)
+        postRepository.delete(post)
+    }
 
+    private fun findPostById(postId: Long): PostEntity =
+        postRepository.findById(postId).orElseThrow { CoreException(ErrorType.POST_NOT_FOUND) }
+
+    private fun createEntity(postCreate: PostCreate): PostEntity {
+        return PostEntity(
+            userId = postCreate.userId,
+            categoryId = postCreate.categoryId,
+            title = postCreate.title,
+            content = postCreate.content,
+            thumbnailUrl = postCreate.thumbnailUrl.takeIf { it.isNotBlank() },
+            status = postCreate.status,
+        )
+    }
+
+    private fun incrementViewCountIfNeeded(postId: Long, clientIp: String) {
+        val shouldIncrement = postViewService.shouldIncrement(postId, clientIp)
+        if (shouldIncrement) {
+            postRepository.incrementViewCount(postId)
+        }
+    }
+
+    private fun searchByQuery(query: String, categoryId: Long?, pageable: Pageable): Page<PostEntity> {
+        if (categoryId == null) {
+            return postRepository.searchByKeyword(query, pageable)
+        }
+        return postRepository.searchByKeywordWithCategory(query, categoryId, pageable)
+    }
+
+    private fun checkOwnership(post: PostEntity, userId: Long) {
         if (post.userId == userId) {
-            postRepository.delete(post)
             return
         }
-
         throw CoreException(ErrorType.FORBIDDEN)
     }
 
+    private fun toPost(entity: PostEntity): Post {
+        return Post(
+            id = entity.id!!,
+            userId = entity.userId,
+            categoryId = entity.categoryId,
+            title = entity.title,
+            content = entity.content,
+            contentHtml = postMarkdownConverter.convertToHtml(entity.content),
+            thumbnailUrl = entity.thumbnailUrl.orEmpty(),
+            viewCount = entity.viewCount,
+            status = entity.status,
+            createdAt = entity.createdAt,
+            updatedAt = entity.updatedAt,
+        )
+    }
 }

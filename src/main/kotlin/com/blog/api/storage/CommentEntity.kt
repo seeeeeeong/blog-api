@@ -1,6 +1,4 @@
 package com.blog.api.storage
-
-import com.blog.api.storage.BaseTimeEntity
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue

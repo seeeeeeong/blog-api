@@ -33,7 +33,55 @@ output "api_cdn_domain" {
   value       = aws_cloudfront_distribution.api.domain_name
 }
 
+output "api_base_url" {
+  description = "blog-web VITE_API_BASE_URL 값"
+  value       = "https://${aws_cloudfront_distribution.api.domain_name}/api"
+}
+
+output "frontend_base_url" {
+  description = "프론트엔드 기본 URL"
+  value       = "https://${aws_cloudfront_distribution.frontend.domain_name}"
+}
+
+output "api_env_cors_allowed_origins" {
+  description = "blog-api CORS_ALLOWED_ORIGINS 권장값"
+  value       = "https://${aws_cloudfront_distribution.frontend.domain_name}"
+}
+
+output "api_env_oauth_redirect_url" {
+  description = "blog-api OAUTH_REDIRECT_URL 권장값"
+  value       = "https://${aws_cloudfront_distribution.frontend.domain_name}/auth/callback"
+}
+
+output "api_env_oauth_callback_url" {
+  description = "blog-api OAUTH_CALLBACK_URL 권장값"
+  value       = "https://${aws_cloudfront_distribution.api.domain_name}/api/auth/github/callback"
+}
+
+output "api_env_aws_s3_bucket" {
+  description = "blog-api AWS_S3_BUCKET 값"
+  value       = aws_s3_bucket.images.bucket
+}
+
+output "api_env_aws_cloudfront_domain" {
+  description = "blog-api AWS_CLOUDFRONT_DOMAIN 값"
+  value       = aws_cloudfront_distribution.images.domain_name
+}
+
 output "ssh_command" {
   description = "SSH 접속 명령어"
   value       = "ssh -i ~/.ssh/${var.ec2_key_name}.pem ec2-user@${aws_eip.main.public_ip}"
+}
+
+output "cloudwatch_alarm_names" {
+  description = "생성된 CloudWatch 알람 이름"
+  value = [
+    aws_cloudwatch_metric_alarm.ec2_cpu_high.alarm_name,
+    aws_cloudwatch_metric_alarm.ec2_status_check_failed.alarm_name
+  ]
+}
+
+output "monitoring_sns_topic_arn" {
+  description = "CloudWatch 알림 SNS 토픽 ARN (이메일 미사용 시 null)"
+  value       = try(aws_sns_topic.monitoring_alerts[0].arn, null)
 }

@@ -28,3 +28,16 @@ variable "domain_name" {
   type        = string
   default     = ""
 }
+
+# --- Monitoring ---
+variable "monitoring_alert_email" {
+  description = "CloudWatch 알람 수신 이메일 (비워두면 이메일 알림 미사용)"
+  type        = string
+  default     = ""
+}
+
+variable "cpu_alarm_threshold" {
+  description = "EC2 CPUUtilization 경고 임계치(%)"
+  type        = number
+  default     = 80
+}

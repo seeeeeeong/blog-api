@@ -3,3 +3,5 @@ aws_region        = "ap-northeast-2"
 ec2_instance_type = "t4g.micro"
 ec2_key_name      = "blog-key"   # AWS 콘솔에서 키페어 생성 후 이름 입력
 domain_name       = ""           # 도메인 있으면 입력 (예: example.com)
+monitoring_alert_email = ""      # 이메일 알림이 필요하면 입력
+cpu_alarm_threshold    = 80      # CPU 임계치 (%)

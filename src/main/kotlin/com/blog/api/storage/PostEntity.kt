@@ -10,7 +10,6 @@ import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Index
 import jakarta.persistence.Table
-import org.hibernate.annotations.ColumnTransformer
 
 @Entity
 @Table(
@@ -38,7 +37,6 @@ class PostEntity(
     val viewCount: Int = 0,
 
     status: PostStatus = PostStatus.PUBLISHED,
-    contentVector: String? = null
 ) : BaseTimeEntity() {
 
     @Column(nullable = false)
@@ -62,11 +60,6 @@ class PostEntity(
     var status: PostStatus = status
         protected set
 
-    @ColumnTransformer(write = "?::vector", read = "content_vector::text")
-    @Column(name = "content_vector", columnDefinition = "vector(1536)")
-    var contentVector: String? = contentVector
-        protected set
-
     fun updateContent(
         categoryId: Long,
         title: String,
@@ -79,9 +72,5 @@ class PostEntity(
         this.content = content
         this.thumbnailUrl = thumbnailUrl
         this.status = status
-    }
-
-    fun updateVector(vectorString: String) {
-        this.contentVector = vectorString
     }
 }

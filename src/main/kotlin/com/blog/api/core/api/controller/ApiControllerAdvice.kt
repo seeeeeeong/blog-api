@@ -21,12 +21,12 @@ class ApiControllerAdvice {
             LogLevel.WARN -> log.warn("CoreException : {}", e.message, e)
             else -> log.info("CoreException : {}", e.message, e)
         }
-        return ResponseEntity(ApiResponse.Companion.error(e.errorType, e.data), e.errorType.status)
+        return ResponseEntity(ApiResponse.error(e.errorType, e.data), e.errorType.status)
     }
 
     @ExceptionHandler(Exception::class)
     fun handleException(e: Exception): ResponseEntity<ApiResponse<Any>> {
         log.error("Exception : {}", e.message, e)
-        return ResponseEntity(ApiResponse.Companion.error(ErrorType.DEFAULT_ERROR), ErrorType.DEFAULT_ERROR.status)
+        return ResponseEntity(ApiResponse.error(ErrorType.DEFAULT_ERROR), ErrorType.DEFAULT_ERROR.status)
     }
 }

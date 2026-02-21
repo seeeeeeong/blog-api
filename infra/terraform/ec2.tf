@@ -30,7 +30,7 @@ resource "aws_iam_role_policy" "ec2_s3" {
           "s3:GetObject",
           "s3:DeleteObject"
         ]
-        Resource = "${aws_s3_bucket.images.arn}/*"
+        Resource = "${aws_s3_bucket.images.arn}/admin/*"
       }
     ]
   })

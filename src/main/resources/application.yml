@@ -5,20 +5,47 @@ spring:
     import: optional:file:.env[.properties]
   profiles:
     active: local
-  ai:
-    mcp:
-      server:
-        protocol: STATELESS
-        type: ASYNC
-
 server:
   port: ${PORT:8080}
 
-swagger:
-  mcp:
-    service-name: blog-api
-    api-docs-path: /v3/api-docs
-    base-url: ${SWAGGER_MCP_BASE_URL:}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: never
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+view-count:
+  ttl-seconds: 3600
+  circuit-breaker:
+    failure-threshold: 3
+    open-duration-ms: 30000
+  local-cache:
+    max-entries: 10000
+
+image-upload:
+  presigned:
+    ttl-seconds: 180
+    one-time-token-ttl-seconds: 300
+    allowed-content-types:
+      - image/jpeg
+      - image/png
+      - image/webp
+      - image/gif
+    allowed-folders:
+      - blog
+      - profile
+
+login-rate-limit:
+  window-seconds: 600
+  max-failures-per-ip: 30
+  max-failures-per-email: 10
+  max-failures-per-ip-email: 5
 
 ---
 spring:
@@ -51,49 +78,21 @@ spring:
           lob:
             non_contextual_creation: true
 
-  ai:
-    openai:
-      api-key: ${OPENAI_API_KEY}
-      embedding:
-        options:
-          model: text-embedding-3-small
-
   data:
     redis:
       host: localhost
       port: 6379
-
-  security:
-    oauth2:
-      client:
-        registration:
-          github:
-            client-id: ${GITHUB_CLIENT_ID}
-            client-secret: ${GITHUB_CLIENT_SECRET}
-            scope:
-              - read:user
-              - user:email
-        provider:
-          github:
-            authorization-uri: https://github.com/login/oauth/authorize
-            token-uri: https://github.com/login/oauth/access_token
-            user-info-uri: https://api.github.com/user
+      timeout: 100ms
 
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
 
 oauth:
   github:
-    redirect-url: ${OAUTH_REDIRECT_URL:http://localhost:5173/auth/callback}
-    callback-url: ${OAUTH_CALLBACK_URL:http://localhost:8080/api/auth/github/callback}
-    scope: ${OAUTH_SCOPE:read:user user:email}
-
-github:
-  oauth:
     client-id: ${GITHUB_CLIENT_ID}
     client-secret: ${GITHUB_CLIENT_SECRET}
-    token-url: https://github.com/login/oauth/access_token
-    user-api-url: https://api.github.com/user
+    redirect-url: ${OAUTH_REDIRECT_URL:http://localhost:5173/auth/callback}
+    callback-url: ${OAUTH_CALLBACK_URL:http://localhost:8080/api/auth/github/callback}
 
 jwt:
   secret: ${JWT_SECRET}
@@ -107,18 +106,8 @@ aws:
     cloudfront-domain: ${AWS_CLOUDFRONT_DOMAIN:}
     default-folder: blog
 
-embedding:
-  max-tokens: 8191
-  chars-per-token: 4
-  vector-dimension: 1536
-  search-max-distance: 1.22
-
 refresh-token:
   expiration-seconds: 1209600  # 14 days
-  grace-period-seconds: 30
-  max-families-per-user: 10
-  auto-cleanup-enabled: true
-  cleanup-interval-seconds: 3600  # 1 hour
 
 logging:
   config: classpath:logback-dev.xml
@@ -153,50 +142,22 @@ spring:
           lob:
             non_contextual_creation: true
 
-  ai:
-    openai:
-      api-key: ${OPENAI_API_KEY}
-      embedding:
-        options:
-          model: text-embedding-3-small
-
   data:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
-
-  security:
-    oauth2:
-      client:
-        registration:
-          github:
-            client-id: ${GITHUB_CLIENT_ID}
-            client-secret: ${GITHUB_CLIENT_SECRET}
-            scope:
-              - read:user
-              - user:email
-        provider:
-          github:
-            authorization-uri: https://github.com/login/oauth/authorize
-            token-uri: https://github.com/login/oauth/access_token
-            user-info-uri: https://api.github.com/user
+      timeout: 100ms
 
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS}
 
 oauth:
   github:
-    redirect-url: ${OAUTH_REDIRECT_URL}
-    callback-url: ${OAUTH_CALLBACK_URL}
-    scope: ${OAUTH_SCOPE:read:user user:email}
-
-github:
-  oauth:
     client-id: ${GITHUB_CLIENT_ID}
     client-secret: ${GITHUB_CLIENT_SECRET}
-    token-url: https://github.com/login/oauth/access_token
-    user-api-url: https://api.github.com/user
+    redirect-url: ${OAUTH_REDIRECT_URL}
+    callback-url: ${OAUTH_CALLBACK_URL}
 
 jwt:
   secret: ${JWT_SECRET}
@@ -210,18 +171,8 @@ aws:
     cloudfront-domain: ${AWS_CLOUDFRONT_DOMAIN}
     default-folder: blog
 
-embedding:
-  max-tokens: 8191
-  chars-per-token: 4
-  vector-dimension: 1536
-  search-max-distance: 1.22
-
 refresh-token:
   expiration-seconds: 1209600  # 14 days
-  grace-period-seconds: 30
-  max-families-per-user: 10
-  auto-cleanup-enabled: true
-  cleanup-interval-seconds: 3600  # 1 hour
 
 logging:
   config: classpath:logback-prod.xml
