@@ -1,6 +1,12 @@
 # =============================================
 # CloudFront OAC
 # =============================================
+locals {
+  use_custom_cloudfront_domain = var.domain_name != "" && var.cloudfront_acm_certificate_arn != ""
+  frontend_aliases             = local.use_custom_cloudfront_domain ? [var.domain_name, "www.${var.domain_name}"] : []
+  api_aliases                  = local.use_custom_cloudfront_domain ? ["api.${var.domain_name}"] : []
+}
+
 resource "aws_cloudfront_origin_access_control" "images" {
   name                              = "${var.project_name}-images-oac"
   origin_access_control_origin_type = "s3"
@@ -61,6 +67,8 @@ resource "aws_cloudfront_distribution" "images" {
 # CloudFront - 프론트엔드 SPA
 # =============================================
 resource "aws_cloudfront_distribution" "frontend" {
+  aliases = local.frontend_aliases
+
   origin {
     domain_name              = aws_s3_bucket.frontend.bucket_regional_domain_name
     origin_id                = "s3-frontend"
@@ -111,7 +119,10 @@ resource "aws_cloudfront_distribution" "frontend" {
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = true
+    cloudfront_default_certificate = !local.use_custom_cloudfront_domain
+    acm_certificate_arn            = local.use_custom_cloudfront_domain ? var.cloudfront_acm_certificate_arn : null
+    ssl_support_method             = local.use_custom_cloudfront_domain ? "sni-only" : null
+    minimum_protocol_version       = local.use_custom_cloudfront_domain ? "TLSv1.2_2021" : "TLSv1"
   }
 
   tags = { Name = "${var.project_name}-frontend-cdn" }
@@ -121,6 +132,8 @@ resource "aws_cloudfront_distribution" "frontend" {
 # CloudFront - API Proxy (HTTPS)
 # =============================================
 resource "aws_cloudfront_distribution" "api" {
+  aliases = local.api_aliases
+
   origin {
     domain_name = aws_instance.main.public_dns
     origin_id   = "ec2-api"
@@ -160,7 +173,10 @@ resource "aws_cloudfront_distribution" "api" {
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = true
+    cloudfront_default_certificate = !local.use_custom_cloudfront_domain
+    acm_certificate_arn            = local.use_custom_cloudfront_domain ? var.cloudfront_acm_certificate_arn : null
+    ssl_support_method             = local.use_custom_cloudfront_domain ? "sni-only" : null
+    minimum_protocol_version       = local.use_custom_cloudfront_domain ? "TLSv1.2_2021" : "TLSv1"
   }
 
   tags = { Name = "${var.project_name}-api-cdn" }

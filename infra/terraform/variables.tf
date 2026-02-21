@@ -29,6 +29,12 @@ variable "domain_name" {
   default     = ""
 }
 
+variable "cloudfront_acm_certificate_arn" {
+  description = "CloudFront용 ACM 인증서 ARN(us-east-1). 비우면 기본 인증서 사용"
+  type        = string
+  default     = ""
+}
+
 # --- Monitoring ---
 variable "monitoring_alert_email" {
   description = "CloudWatch 알람 수신 이메일 (비워두면 이메일 알림 미사용)"
