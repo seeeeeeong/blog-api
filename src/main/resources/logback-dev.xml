@@ -20,9 +20,17 @@
         </rollingPolicy>
     </appender>
 
+    <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="FILE"/>
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <includeCallerData>false</includeCallerData>
+        <neverBlock>false</neverBlock>
+    </appender>
+
     <logger name="com.blog.api" level="DEBUG" additivity="false">
         <appender-ref ref="CONSOLE"/>
-        <appender-ref ref="FILE"/>
+        <appender-ref ref="ASYNC_FILE"/>
     </logger>
 
     <logger name="org.springframework.web" level="INFO"/>
@@ -31,6 +39,6 @@
 
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>
-        <appender-ref ref="FILE"/>
+        <appender-ref ref="ASYNC_FILE"/>
     </root>
 </configuration>

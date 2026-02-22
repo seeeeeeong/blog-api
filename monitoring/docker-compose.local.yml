@@ -20,6 +20,7 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
       - grafana-data:/var/lib/grafana
+      - ./provisioning:/etc/grafana/provisioning
     ports:
       - "13000:3000"
     depends_on:
