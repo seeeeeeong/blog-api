@@ -1,0 +1,295 @@
+{
+  "uid": "logging-bottleneck",
+  "title": "Logging Bottleneck Analysis",
+  "description": "동기 로깅 병목 분석: BLOCKED 스레드 수 vs HTTP 응답시간 상관관계",
+  "tags": ["jvm", "logging", "performance"],
+  "timezone": "browser",
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "HTTP p95 응답시간 (ms)",
+      "description": "95번째 백분위 응답시간 - 동기 로깅 시 급등",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "ms",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 500 },
+              { "color": "red", "value": 1000 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"blog-api-remote-via-ssh-tunnel\"}[1m])) by (le, uri)) * 1000",
+          "legendFormat": "p95 - {{uri}}",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=\"blog-api-remote-via-ssh-tunnel\"}[1m])) by (le)) * 1000",
+          "legendFormat": "p99 전체",
+          "refId": "B"
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+    {
+      "id": 2,
+      "title": "JVM 스레드 상태 (BLOCKED / WAITING / RUNNABLE)",
+      "description": "BLOCKED 급증 = FileAppender I/O 경합. 동기 로깅의 핵심 병목 지표",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "BLOCKED" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } },
+              { "id": "custom.lineWidth", "value": 3 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "RUNNABLE" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "WAITING" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "expr": "jvm_threads_states_threads{job=\"blog-api-remote-via-ssh-tunnel\", state=\"blocked\"}",
+          "legendFormat": "BLOCKED",
+          "refId": "A"
+        },
+        {
+          "expr": "jvm_threads_states_threads{job=\"blog-api-remote-via-ssh-tunnel\", state=\"runnable\"}",
+          "legendFormat": "RUNNABLE",
+          "refId": "B"
+        },
+        {
+          "expr": "jvm_threads_states_threads{job=\"blog-api-remote-via-ssh-tunnel\", state=\"waiting\"}",
+          "legendFormat": "WAITING",
+          "refId": "C"
+        },
+        {
+          "expr": "jvm_threads_states_threads{job=\"blog-api-remote-via-ssh-tunnel\", state=\"timed-waiting\"}",
+          "legendFormat": "TIMED_WAITING",
+          "refId": "D"
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+    {
+      "id": 3,
+      "title": "Logback 초당 로그 이벤트 (by level)",
+      "description": "ERROR/WARN/INFO 로그 발생 빈도 - 부하 시 INFO 급증으로 FileAppender 포화",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "reqps",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "ERROR" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "WARN" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "INFO" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "expr": "rate(logback_events_total{job=\"blog-api-remote-via-ssh-tunnel\", level=\"error\"}[1m])",
+          "legendFormat": "ERROR",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(logback_events_total{job=\"blog-api-remote-via-ssh-tunnel\", level=\"warn\"}[1m])",
+          "legendFormat": "WARN",
+          "refId": "B"
+        },
+        {
+          "expr": "rate(logback_events_total{job=\"blog-api-remote-via-ssh-tunnel\", level=\"info\"}[1m])",
+          "legendFormat": "INFO",
+          "refId": "C"
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+    {
+      "id": 4,
+      "title": "HTTP 처리량 vs BLOCKED 스레드 (상관관계)",
+      "description": "처리량이 줄고 BLOCKED가 늘면 → 로깅 I/O 병목. 두 지표의 역상관이 핵심 증거",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "req/s" },
+            "properties": [
+              { "id": "unit", "value": "reqps" },
+              { "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } },
+              { "id": "custom.axisPlacement", "value": "left" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "BLOCKED 스레드" },
+            "properties": [
+              { "id": "unit", "value": "short" },
+              { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } },
+              { "id": "custom.axisPlacement", "value": "right" }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"blog-api-remote-via-ssh-tunnel\"}[1m]))",
+          "legendFormat": "req/s",
+          "refId": "A"
+        },
+        {
+          "expr": "jvm_threads_states_threads{job=\"blog-api-remote-via-ssh-tunnel\", state=\"blocked\"}",
+          "legendFormat": "BLOCKED 스레드",
+          "refId": "B"
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+    {
+      "id": 5,
+      "title": "JVM 힙 메모리 사용량",
+      "description": "동기 로깅 시 스레드 경합으로 객체 누적 → GC 빈도 증가 연계 확인",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 7 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "bytes",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "expr": "jvm_memory_used_bytes{job=\"blog-api-remote-via-ssh-tunnel\", area=\"heap\"}",
+          "legendFormat": "힙 사용 - {{id}}",
+          "refId": "A"
+        },
+        {
+          "expr": "jvm_memory_max_bytes{job=\"blog-api-remote-via-ssh-tunnel\", area=\"heap\"}",
+          "legendFormat": "힙 최대 - {{id}}",
+          "refId": "B"
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+    {
+      "id": 6,
+      "title": "GC 일시정지 시간",
+      "description": "동기 로깅으로 인한 객체 생성 증가 → GC 압력 상관관계",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 16, "w": 12, "h": 7 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "s",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "expr": "rate(jvm_gc_pause_seconds_sum{job=\"blog-api-remote-via-ssh-tunnel\"}[1m])",
+          "legendFormat": "GC 일시정지 - {{action}} {{cause}}",
+          "refId": "A"
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    }
+  ]
+}
