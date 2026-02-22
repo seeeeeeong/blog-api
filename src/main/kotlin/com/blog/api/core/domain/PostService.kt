@@ -1,6 +1,5 @@
 package com.blog.api.core.domain
 
-import com.blog.api.core.support.converter.PostMarkdownConverter
 import com.blog.api.core.support.error.CoreException
 import com.blog.api.core.support.error.ErrorType
 import com.blog.api.core.enum.PostStatus
@@ -15,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional
 @Transactional(readOnly = true)
 class PostService(
     private val postRepository: PostRepository,
-    private val postMarkdownConverter: PostMarkdownConverter,
+    private val postHtmlCacheService: PostHtmlCacheService,
     private val postViewService: PostViewService,
 ) {
 
@@ -66,6 +65,7 @@ class PostService(
             status = postUpdate.status,
         )
 
+        postHtmlCacheService.evict(postId)
         return toPost(post)
     }
 
@@ -74,6 +74,7 @@ class PostService(
         val post = findPostById(postId)
         checkOwnership(post, userId)
         postRepository.delete(post)
+        postHtmlCacheService.evict(postId)
     }
 
     private fun findPostById(postId: Long): PostEntity =
@@ -118,7 +119,7 @@ class PostService(
             categoryId = entity.categoryId,
             title = entity.title,
             content = entity.content,
-            contentHtml = postMarkdownConverter.convertToHtml(entity.content),
+            contentHtml = postHtmlCacheService.getHtml(entity.id!!, entity.content),
             thumbnailUrl = entity.thumbnailUrl.orEmpty(),
             viewCount = entity.viewCount,
             status = entity.status,
