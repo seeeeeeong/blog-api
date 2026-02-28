@@ -1,6 +1,5 @@
 package com.blog.api.core.domain
 
-import com.blog.api.core.support.converter.PostMarkdownConverter
 import com.blog.api.core.support.error.CoreException
 import com.blog.api.core.support.error.ErrorType
 import com.blog.api.core.enum.PostStatus
@@ -15,14 +14,14 @@ import org.springframework.transaction.annotation.Transactional
 @Transactional(readOnly = true)
 class PostService(
     private val postRepository: PostRepository,
-    private val postMarkdownConverter: PostMarkdownConverter,
+    private val postHtmlCacheService: PostHtmlCacheService,
     private val postViewService: PostViewService,
 ) {
 
     @Transactional
     fun createPost(postCreate: PostCreate): Post {
         val entity = createEntity(postCreate)
-        return toPost(postRepository.save(entity))
+        return toPostWithHtml(postRepository.save(entity))
     }
 
     @Transactional
@@ -32,7 +31,7 @@ class PostService(
             throw CoreException(ErrorType.POST_NOT_FOUND)
         }
         incrementViewCountIfNeeded(postId, clientIp)
-        return toPost(post)
+        return toPostWithHtml(post)
     }
 
     fun getAllPosts(pageable: Pageable): Page<Post> {
@@ -67,7 +66,8 @@ class PostService(
             status = postUpdate.status,
         )
 
-        return toPost(post)
+        postHtmlCacheService.evict(postId)
+        return toPostWithHtml(post)
     }
 
     @Transactional
@@ -75,6 +75,7 @@ class PostService(
         val post = findPostById(postId)
         checkOwnership(post, userId)
         post.softDelete()
+        postHtmlCacheService.evict(postId)
     }
 
     private fun findPostById(postId: Long): PostEntity =
@@ -119,7 +120,23 @@ class PostService(
             categoryId = entity.categoryId,
             title = entity.title,
             content = entity.content,
-            contentHtml = postMarkdownConverter.convertToHtml(entity.content),
+            contentHtml = "",
+            thumbnailUrl = entity.thumbnailUrl.orEmpty(),
+            viewCount = entity.viewCount,
+            status = entity.status,
+            createdAt = entity.createdAt,
+            updatedAt = entity.updatedAt,
+        )
+    }
+
+    private fun toPostWithHtml(entity: PostEntity): Post {
+        return Post(
+            id = entity.id!!,
+            userId = entity.userId,
+            categoryId = entity.categoryId,
+            title = entity.title,
+            content = entity.content,
+            contentHtml = postHtmlCacheService.getHtml(entity.id!!, entity.content),
             thumbnailUrl = entity.thumbnailUrl.orEmpty(),
             viewCount = entity.viewCount,
             status = entity.status,
