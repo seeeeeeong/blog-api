@@ -63,8 +63,12 @@ class SecurityConfig(
                     ).permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/v1/categories").permitAll()
 
-                    // Comment APIs (GitHub OAuth token used instead of admin JWT)
-                    .requestMatchers("/api/v1/posts/*/comments/**").permitAll()
+                    // Comment read APIs (public)
+                    .requestMatchers(HttpMethod.GET, "/api/v1/posts/*/comments/**").permitAll()
+                    // Comment write APIs (auth delegated to @OAuthUser ArgumentResolver)
+                    .requestMatchers(HttpMethod.POST, "/api/v1/posts/*/comments/**").permitAll()
+                    .requestMatchers(HttpMethod.PUT, "/api/v1/posts/*/comments/**").permitAll()
+                    .requestMatchers(HttpMethod.DELETE, "/api/v1/posts/*/comments/**").permitAll()
 
                     // Image APIs (Admin only)
                     .requestMatchers("/api/images/**").hasRole("ADMIN")

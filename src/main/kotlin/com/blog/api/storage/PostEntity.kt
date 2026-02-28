@@ -73,4 +73,8 @@ class PostEntity(
         this.thumbnailUrl = thumbnailUrl
         this.status = status
     }
+
+    fun softDelete() {
+        this.status = PostStatus.DELETED
+    }
 }

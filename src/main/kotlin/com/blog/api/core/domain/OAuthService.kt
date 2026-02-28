@@ -9,13 +9,11 @@ import com.blog.api.core.support.security.JwtProvider
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.springframework.data.redis.core.RedisTemplate
-import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
-import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.util.LinkedMultiValueMap
-import org.springframework.web.client.RestTemplate
+import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
 import java.security.SecureRandom
 import java.util.Base64
@@ -24,7 +22,7 @@ import java.util.concurrent.TimeUnit
 @Service
 class OAuthService(
     private val jwtProvider: JwtProvider,
-    private val restTemplate: RestTemplate,
+    private val restClient: RestClient,
     private val redisTemplate: RedisTemplate<String, String>,
     private val objectMapper: ObjectMapper,
     private val properties: OAuthUserProperties,
@@ -134,26 +132,23 @@ class OAuthService(
             add("code", code)
             if (properties.callbackUrl.isNotBlank()) add("redirect_uri", properties.callbackUrl)
         }
-        val headers = HttpHeaders().apply {
-            accept = listOf(MediaType.APPLICATION_JSON)
-        }
-        val response = restTemplate.postForEntity(
-            properties.tokenUrl,
-            HttpEntity(params, headers),
-            OAuthTokenResponse::class.java
-        )
-        return response.body?.accessToken ?: throw CoreException(ErrorType.INVALID_TOKEN)
+        val response = restClient.post()
+            .uri(properties.tokenUrl)
+            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+            .accept(MediaType.APPLICATION_JSON)
+            .body(params)
+            .retrieve()
+            .body(OAuthTokenResponse::class.java)
+        return response?.accessToken ?: throw CoreException(ErrorType.INVALID_TOKEN)
     }
 
     private fun getUserInfo(accessToken: String): OAuthUser {
-        val headers = HttpHeaders().apply {
-            setBearerAuth(accessToken)
-            accept = listOf(MediaType.APPLICATION_JSON)
-        }
-        val response = restTemplate.exchange(
-            properties.userApiUrl, HttpMethod.GET, HttpEntity<Void>(headers), OAuthUserResponse::class.java,
-        )
-        val body = response.body ?: throw CoreException(ErrorType.USER_NOT_FOUND)
+        val body = restClient.get()
+            .uri(properties.userApiUrl)
+            .header(HttpHeaders.AUTHORIZATION, "Bearer $accessToken")
+            .accept(MediaType.APPLICATION_JSON)
+            .retrieve()
+            .body(OAuthUserResponse::class.java) ?: throw CoreException(ErrorType.USER_NOT_FOUND)
         return OAuthUser(
             id = body.id,
             login = body.login,

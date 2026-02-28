@@ -1,111 +1,64 @@
 package com.blog.api.core.domain
 
 import com.blog.api.core.support.connector.RedisOps
+import com.github.benmanes.caffeine.cache.Cache
+import com.github.benmanes.caffeine.cache.Caffeine
+import io.github.resilience4j.circuitbreaker.CircuitBreaker
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.security.MessageDigest
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicLong
 
 @Service
 class PostViewService(
     private val redisOps: RedisOps,
     @param:Value("\${view-count.ttl-seconds:3600}") private val ttlSeconds: Long,
-    @param:Value("\${view-count.circuit-breaker.failure-threshold:3}") private val failureThreshold: Int,
-    @param:Value("\${view-count.circuit-breaker.open-duration-ms:30000}") private val openDurationMs: Long,
-    @param:Value("\${view-count.local-cache.max-entries:10000}") private val localCacheMaxEntries: Int,
+    @param:Value("\${view-count.local-cache.max-entries:10000}") private val localCacheMaxEntries: Long,
+    circuitBreakerRegistry: CircuitBreakerRegistry,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
+    private val circuitBreaker = circuitBreakerRegistry.circuitBreaker("view-count-redis")
 
-    private val consecutiveFailures = AtomicInteger(0)
-    private val circuitOpenUntil = AtomicLong(0)
-    private val localCache = ConcurrentHashMap<String, Long>()
-    private val localCacheTouchCount = AtomicLong(0)
+    private val localCache: Cache<String, Long> = Caffeine.newBuilder()
+        .maximumSize(localCacheMaxEntries)
+        .expireAfterWrite(ttlSeconds, TimeUnit.SECONDS)
+        .build()
 
     companion object {
-        private const val LOCAL_CACHE_CLEANUP_INTERVAL = 256L
+        private val SHA256 = ThreadLocal.withInitial { MessageDigest.getInstance("SHA-256") }
     }
 
     fun shouldIncrement(postId: Long, clientIp: String): Boolean {
         val key = buildKey(postId, clientIp)
-
-        if (isCircuitOpen()) {
-            return shouldIncrementFromLocalCache(key)
-        }
-
-        val redisResult = redisOps.setIfAbsent(key, "1", ttlSeconds, TimeUnit.SECONDS)
-        if (redisResult.isError) {
-            return handleRedisFailure(key)
-        }
-
-        consecutiveFailures.set(0)
-        return redisResult.isSet
-    }
-
-    private fun isCircuitOpen() = System.currentTimeMillis() < circuitOpenUntil.get()
-
-    private fun handleRedisFailure(key: String): Boolean {
-        if (consecutiveFailures.incrementAndGet() >= failureThreshold) {
-            openCircuit()
-        }
-        return shouldIncrementFromLocalCache(key)
-    }
-
-    private fun openCircuit() {
-        circuitOpenUntil.set(System.currentTimeMillis() + openDurationMs)
-        consecutiveFailures.set(0)
-        logger.warn("view-count.circuit: open")
-    }
-
-    private fun shouldIncrementFromLocalCache(key: String): Boolean {
-        val now = System.currentTimeMillis()
-        val expiresAt = now + TimeUnit.SECONDS.toMillis(ttlSeconds)
-
-        while (true) {
-            val currentExpiresAt = localCache[key]
-            if (currentExpiresAt == null) {
-                if (localCache.putIfAbsent(key, expiresAt) == null) {
-                    cleanupLocalCacheIfNeeded(now)
-                    return true
-                }
-                continue
-            }
-
-            val isActive = currentExpiresAt > now
-            if (isActive) {
-                return false
-            }
-
-            if (localCache.replace(key, currentExpiresAt, expiresAt)) {
-                cleanupLocalCacheIfNeeded(now)
-                return true
-            }
+        return try {
+            CircuitBreaker.decorateSupplier(circuitBreaker) { shouldIncrementViaRedis(key) }.get()
+        } catch (e: Exception) {
+            logger.warn("view-count: Redis unavailable ({}), falling back to local cache", e.message)
+            shouldIncrementViaLocalCache(key)
         }
     }
 
-    private fun cleanupLocalCacheIfNeeded(now: Long) {
-        val periodicCleanupDue = localCacheTouchCount.incrementAndGet() % LOCAL_CACHE_CLEANUP_INTERVAL == 0L
-        val overMaxEntries = localCache.size > localCacheMaxEntries
-        val shouldCleanup = periodicCleanupDue || overMaxEntries
-        if (shouldCleanup) {
-            localCache.entries.removeIf { (_, expiresAt) -> expiresAt <= now }
-            if (localCache.size > localCacheMaxEntries) {
-                val keyIterator = localCache.keys.iterator()
-                while (localCache.size > localCacheMaxEntries && keyIterator.hasNext()) {
-                    localCache.remove(keyIterator.next())
-                }
-            }
-        }
+    private fun shouldIncrementViaRedis(key: String): Boolean {
+        val result = redisOps.setIfAbsent(key, "1", ttlSeconds, TimeUnit.SECONDS)
+        if (result.isError) throw RedisOperationException("setIfAbsent failed: key=$key")
+        return result.isSet
+    }
+
+    private fun shouldIncrementViaLocalCache(key: String): Boolean {
+        if (localCache.getIfPresent(key) != null) return false
+        localCache.put(key, System.currentTimeMillis())
+        return true
     }
 
     private fun buildKey(postId: Long, clientIp: String): String {
-        val hash = MessageDigest.getInstance("SHA-256")
+        val hash = SHA256.get()
             .digest(clientIp.toByteArray())
             .joinToString("") { "%02x".format(it) }
             .take(16)
         return "post:view:$postId:$hash"
     }
+
+    private class RedisOperationException(message: String) : RuntimeException(message)
 }

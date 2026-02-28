@@ -5,9 +5,9 @@ import com.blog.api.core.support.error.ErrorType
 import com.blog.api.core.support.properties.LoginRateLimitProperties
 import org.slf4j.LoggerFactory
 import org.springframework.data.redis.core.RedisTemplate
+import org.springframework.data.redis.core.script.DefaultRedisScript
 import org.springframework.stereotype.Service
 import java.security.MessageDigest
-import java.util.concurrent.TimeUnit
 
 @Service
 class LoginRateLimitService(
@@ -19,6 +19,23 @@ class LoginRateLimitService(
         private const val IP_KEY_PREFIX = "login:fail:ip:"
         private const val EMAIL_KEY_PREFIX = "login:fail:email:"
         private const val PAIR_KEY_PREFIX = "login:fail:pair:"
+
+        private val SHA256 = ThreadLocal.withInitial { MessageDigest.getInstance("SHA-256") }
+
+        private val RECORD_FAILURE_SCRIPT = DefaultRedisScript<Long>().apply {
+            setScriptText(
+                """
+                for i = 1, #KEYS do
+                    local current = redis.call('INCR', KEYS[i])
+                    if current == 1 then
+                        redis.call('EXPIRE', KEYS[i], ARGV[1])
+                    end
+                end
+                return 1
+                """.trimIndent()
+            )
+            setResultType(Long::class.java)
+        }
     }
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -37,43 +54,37 @@ class LoginRateLimitService(
 
     fun recordFailure(clientIp: String, email: String) {
         val keySet = buildKeySet(clientIp, email)
-        withFailClosed("recordFailure") {
-            incrementWithTtl(keySet.ip)
-            incrementWithTtl(keySet.email)
-            incrementWithTtl(keySet.pair)
+        try {
+            redisTemplate.execute(
+                RECORD_FAILURE_SCRIPT,
+                listOf(keySet.ip, keySet.email, keySet.pair),
+                properties.windowSeconds.toString(),
+            )
+        } catch (e: Exception) {
+            // fail-open: Redis 장애 시 기록 실패를 허용. checkOrThrow의 fail-closed가 보안 경계를 지킴.
+            logger.error("login-rate-limit.recordFailure failed: {}", e.message)
         }
     }
 
     fun clearFailures(clientIp: String, email: String) {
         val keySet = buildKeySet(clientIp, email)
-        withFailClosed("clearFailures") {
-            redisTemplate.delete(listOf(keySet.ip, keySet.email, keySet.pair))
+        try {
+            // IP 카운터는 초기화하지 않음: 다른 계정의 실패 이력까지 함께 리셋되는 것을 방지
+            redisTemplate.delete(listOf(keySet.email, keySet.pair))
+        } catch (e: Exception) {
+            logger.warn("login-rate-limit.clearFailures failed: {}", e.message)
         }
     }
 
     private fun readCounters(keySet: KeySet): Counters {
         return withFailClosed("readCounters") {
+            val values = redisTemplate.opsForValue().multiGet(listOf(keySet.ip, keySet.email, keySet.pair))
             Counters(
-                ip = readCounter(keySet.ip),
-                email = readCounter(keySet.email),
-                pair = readCounter(keySet.pair),
+                ip = values?.get(0)?.toLongOrNull() ?: 0L,
+                email = values?.get(1)?.toLongOrNull() ?: 0L,
+                pair = values?.get(2)?.toLongOrNull() ?: 0L,
             )
         }
-    }
-
-    private fun incrementWithTtl(key: String) {
-        val current = redisTemplate.opsForValue().increment(key)
-        if (current == null) {
-            throw IllegalStateException("Redis increment returned null")
-        }
-        if (current == 1L) {
-            redisTemplate.expire(key, properties.windowSeconds, TimeUnit.SECONDS)
-        }
-    }
-
-    private fun readCounter(key: String): Long {
-        val value = redisTemplate.opsForValue().get(key) ?: return 0L
-        return value.toLongOrNull() ?: 0L
     }
 
     private fun buildKeySet(clientIp: String, email: String): KeySet {
@@ -99,7 +110,7 @@ class LoginRateLimitService(
     private fun normalizeEmail(email: String): String = email.trim().lowercase()
 
     private fun hash(value: String): String {
-        return MessageDigest.getInstance("SHA-256")
+        return SHA256.get()
             .digest(value.toByteArray())
             .joinToString("") { "%02x".format(it) }
             .take(16)
