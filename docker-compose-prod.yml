@@ -1,6 +1,6 @@
 services:
   app:
-    build: .
+    image: ${ECR_IMAGE}
     container_name: blog-api
     restart: always
     ports:

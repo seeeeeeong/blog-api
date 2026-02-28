@@ -85,3 +85,8 @@ output "monitoring_sns_topic_arn" {
   description = "CloudWatch 알림 SNS 토픽 ARN (이메일 미사용 시 null)"
   value       = try(aws_sns_topic.monitoring_alerts[0].arn, null)
 }
+
+output "ecr_registry_url" {
+  description = "ECR 리포지토리 URL (GitHub Actions ECR_REGISTRY 값)"
+  value       = aws_ecr_repository.blog_api.repository_url
+}
