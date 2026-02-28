@@ -1,5 +1,6 @@
 package com.blog.api.core.domain
 
+import com.blog.api.core.support.converter.PostMarkdownConverter
 import com.blog.api.core.support.error.CoreException
 import com.blog.api.core.support.error.ErrorType
 import com.blog.api.core.enum.PostStatus
@@ -14,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional
 @Transactional(readOnly = true)
 class PostService(
     private val postRepository: PostRepository,
-    private val postHtmlCacheService: PostHtmlCacheService,
+    private val postMarkdownConverter: PostMarkdownConverter,
     private val postViewService: PostViewService,
 ) {
 
@@ -27,6 +28,9 @@ class PostService(
     @Transactional
     fun getPost(postId: Long, clientIp: String): Post {
         val post = findPostById(postId)
+        if (post.status == PostStatus.DELETED) {
+            throw CoreException(ErrorType.POST_NOT_FOUND)
+        }
         incrementViewCountIfNeeded(postId, clientIp)
         return toPost(post)
     }
@@ -47,9 +51,7 @@ class PostService(
         if (query.isBlank()) {
             return Page.empty(pageable)
         }
-
-        val results = searchByQuery(query, categoryId, pageable)
-        return results.map { toPost(it) }
+        return searchByQuery(query, categoryId, pageable).map { toPost(it) }
     }
 
     @Transactional
@@ -65,7 +67,6 @@ class PostService(
             status = postUpdate.status,
         )
 
-        postHtmlCacheService.evict(postId)
         return toPost(post)
     }
 
@@ -73,8 +74,7 @@ class PostService(
     fun deletePost(postId: Long, userId: Long) {
         val post = findPostById(postId)
         checkOwnership(post, userId)
-        postRepository.delete(post)
-        postHtmlCacheService.evict(postId)
+        post.softDelete()
     }
 
     private fun findPostById(postId: Long): PostEntity =
@@ -119,7 +119,7 @@ class PostService(
             categoryId = entity.categoryId,
             title = entity.title,
             content = entity.content,
-            contentHtml = postHtmlCacheService.getHtml(entity.id!!, entity.content),
+            contentHtml = postMarkdownConverter.convertToHtml(entity.content),
             thumbnailUrl = entity.thumbnailUrl.orEmpty(),
             viewCount = entity.viewCount,
             status = entity.status,
