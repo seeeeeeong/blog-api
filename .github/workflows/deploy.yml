@@ -20,19 +20,22 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-northeast-2
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push Docker image
-        env:
-          ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          docker build -t $ECR_REGISTRY/blog-api:$IMAGE_TAG .
-          docker tag $ECR_REGISTRY/blog-api:$IMAGE_TAG $ECR_REGISTRY/blog-api:latest
-          docker push $ECR_REGISTRY/blog-api:$IMAGE_TAG
-          docker push $ECR_REGISTRY/blog-api:latest
+      - name: Build and push Docker image (arm64)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ${{ secrets.ECR_REGISTRY }}/blog-api:${{ github.sha }}
+            ${{ secrets.ECR_REGISTRY }}/blog-api:latest
 
   deploy:
     runs-on: ubuntu-latest
