@@ -5,6 +5,10 @@ spring:
     import: optional:file:.env[.properties]
   profiles:
     active: local
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
 server:
   port: ${PORT:8080}
 
