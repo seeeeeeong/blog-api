@@ -1,13 +1,14 @@
 package com.blog.api.core.api.controller.v1
 
 import com.blog.api.core.support.response.ApiResponse
-import com.blog.api.core.api.controller.v1.reqeust.UserLogoutRequest
-import com.blog.api.core.api.controller.v1.reqeust.UserTokenRequest
-import com.blog.api.core.api.controller.v1.reqeust.UserLoginRequest
+import com.blog.api.core.api.controller.v1.request.UserLogoutRequest
+import com.blog.api.core.api.controller.v1.request.UserTokenRequest
+import com.blog.api.core.api.controller.v1.request.UserLoginRequest
 import com.blog.api.core.api.controller.v1.response.UserTokenResponse
 import com.blog.api.core.domain.UserService
 import com.blog.api.core.support.web.HttpServletRequestUtils
 import jakarta.servlet.http.HttpServletRequest
+import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -21,7 +22,7 @@ class UserController(
 
     @PostMapping("/login")
     fun login(
-        @RequestBody request: UserLoginRequest,
+        @Valid @RequestBody request: UserLoginRequest,
         httpServletRequest: HttpServletRequest,
     ): ApiResponse<UserTokenResponse> {
         val clientIp = HttpServletRequestUtils.resolveClientIp(httpServletRequest)

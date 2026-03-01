@@ -25,6 +25,10 @@ class AdminArgumentResolver : HandlerMethodArgumentResolver {
         val authentication = SecurityContextHolder.getContext().authentication
             ?: throw CoreException(ErrorType.UNAUTHORIZED)
 
+        if (authentication.authorities.none { it.authority == "ROLE_ADMIN" }) {
+            throw CoreException(ErrorType.FORBIDDEN)
+        }
+
         return authentication.principal as? Long
             ?: throw CoreException(ErrorType.UNAUTHORIZED)
     }

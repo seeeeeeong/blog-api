@@ -6,14 +6,6 @@ import org.springframework.data.repository.query.Param
 
 interface CommentRepository : JpaRepository<CommentEntity, Long> {
 
-    @Query(
-        value = """
-            SELECT * FROM comments
-            WHERE post_id = :postId
-            AND is_deleted = false
-            ORDER BY created_at ASC
-        """,
-        nativeQuery = true
-    )
+    @Query("SELECT c FROM CommentEntity c WHERE c.postId = :postId AND c.isDeleted = false ORDER BY c.createdAt ASC")
     fun findAllByPostId(@Param("postId") postId: Long): List<CommentEntity>
 }

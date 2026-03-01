@@ -1,6 +1,6 @@
 package com.blog.api.core.api.controller.v1
 
-import com.blog.api.core.api.controller.v1.reqeust.ImagePresignedUrlCompleteRequest
+import com.blog.api.core.api.controller.v1.request.ImagePresignedUrlCompleteRequest
 import com.blog.api.core.api.controller.v1.response.ImagePresignedUrlCompleteResponse
 import com.blog.api.core.support.response.ApiResponse
 import com.blog.api.core.api.controller.v1.response.ImagePresignedUrlResponse

@@ -9,7 +9,7 @@ class RefreshTokenRepository(
     private val redisTemplate: RedisTemplate<String, String>,
 ) {
     companion object {
-        private const val TOKEN_KEY = "rt:"
+        private const val TOKEN_KEY = "auth:refresh-token:"
     }
 
     fun save(tokenId: String, userId: Long, ttlSeconds: Long) {

@@ -55,6 +55,15 @@ class JwtProvider(
         return builder.compact()
     }
 
+    fun parseRefreshTokenClaims(token: String): RefreshTokenClaims {
+        val claims = parseClaims(token)
+        return RefreshTokenClaims(
+            tokenId = claims.getOrNull(TOKEN_ID_CLAIM) ?: throw CoreException(ErrorType.INVALID_TOKEN),
+            userId = claims.subject.toLong(),
+            roleName = claims.getOrNull(ROLE_CLAIM) ?: throw CoreException(ErrorType.INVALID_TOKEN),
+        )
+    }
+
     fun parseClaims(token: String): Claims =
         runCatching { parse(token) }
             .getOrElse { throw CoreException(ErrorType.INVALID_TOKEN) }

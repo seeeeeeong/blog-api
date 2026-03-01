@@ -41,7 +41,6 @@ class SecurityConfig(
             .authorizeHttpRequests { authorize ->
                 authorize
                     // Health check
-                    .requestMatchers("/api/health").permitAll()
                     .requestMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus").permitAll()
 
                     // Swagger UI
@@ -51,10 +50,21 @@ class SecurityConfig(
                     .requestMatchers("/api/auth/github/**").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/v1/users/login", "/api/v1/users/refresh").permitAll()
 
+                    // Post write APIs (ADMIN only)
+                    .requestMatchers(HttpMethod.POST, "/api/v1/posts").hasRole("ADMIN")
+                    .requestMatchers(
+                        mvc.pattern(HttpMethod.PUT, "/api/v1/posts/{postId:[0-9]+}")
+                    ).hasRole("ADMIN")
+                    .requestMatchers(
+                        mvc.pattern(HttpMethod.DELETE, "/api/v1/posts/{postId:[0-9]+}")
+                    ).hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.GET, "/api/v1/posts/drafts").hasRole("ADMIN")
+
                     // Public Read APIs
                     .requestMatchers(
                         HttpMethod.GET,
                         "/api/v1/posts",
+                        "/api/v1/posts/popular",
                         "/api/v1/posts/search",
                         "/api/v1/posts/categories/**"
                     ).permitAll()

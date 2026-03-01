@@ -4,13 +4,12 @@ import com.blog.api.core.domain.Post
 import com.blog.api.core.enum.PostStatus
 import java.time.LocalDateTime
 
-data class PostResponse(
+data class PostSummaryResponse(
     val id: Long,
     val userId: Long,
     val categoryId: Long,
     val title: String,
-    val content: String,
-    val contentHtml: String,
+    val excerpt: String,
     val thumbnailUrl: String?,
     val viewCount: Int,
     val status: PostStatus,
@@ -18,14 +17,15 @@ data class PostResponse(
     val updatedAt: LocalDateTime
 ) {
     companion object {
-        fun of(post: Post, contentHtml: String): PostResponse {
-            return PostResponse(
+        private const val EXCERPT_MAX_LENGTH = 140
+
+        fun of(post: Post): PostSummaryResponse {
+            return PostSummaryResponse(
                 id = post.id,
                 userId = post.userId,
                 categoryId = post.categoryId,
                 title = post.title,
-                content = post.content,
-                contentHtml = contentHtml,
+                excerpt = post.content.take(EXCERPT_MAX_LENGTH),
                 thumbnailUrl = post.thumbnailUrl,
                 viewCount = post.viewCount,
                 status = post.status,

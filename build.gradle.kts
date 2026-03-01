@@ -56,13 +56,6 @@ dependencies {
     implementation(platform("software.amazon.awssdk:bom:2.25.16"))
     implementation("software.amazon.awssdk:s3")
 
-    // Resilience4j
-    implementation("io.github.resilience4j:resilience4j-spring-boot3:2.2.0")
-    implementation("io.github.resilience4j:resilience4j-kotlin:2.2.0")
-
-    // Caffeine local cache
-    implementation("com.github.ben-manes.caffeine:caffeine")
-
     // Markdown + Sanitization
     implementation("org.commonmark:commonmark:0.22.0")
     implementation("org.commonmark:commonmark-ext-gfm-tables:0.22.0")

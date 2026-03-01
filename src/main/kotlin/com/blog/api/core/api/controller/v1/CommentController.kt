@@ -2,12 +2,13 @@ package com.blog.api.core.api.controller.v1
 
 import com.blog.api.core.support.response.ApiResponse
 import com.blog.api.core.support.auth.OAuthPrincipal
-import com.blog.api.core.api.controller.v1.reqeust.CommentCreateRequest
-import com.blog.api.core.api.controller.v1.reqeust.CommentUpdateRequest
+import com.blog.api.core.api.controller.v1.request.CommentCreateRequest
+import com.blog.api.core.api.controller.v1.request.CommentUpdateRequest
 import com.blog.api.core.api.controller.v1.response.CommentResponse
 import com.blog.api.core.domain.OAuthUser
 import com.blog.api.core.domain.CommentWithReplies
 import com.blog.api.core.domain.CommentService
+import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -30,7 +31,7 @@ class CommentController(
     fun createComment(
         @PathVariable postId: Long,
         @OAuthPrincipal oauthUser: OAuthUser,
-        @RequestBody request: CommentCreateRequest
+        @Valid @RequestBody request: CommentCreateRequest
     ): ApiResponse<CommentResponse> {
         val comment = commentService.createComment(request.toCommentCreate(postId, oauthUser))
         return ApiResponse.success(CommentResponse.of(CommentWithReplies(comment, emptyList())))
@@ -49,9 +50,9 @@ class CommentController(
         @PathVariable postId: Long,
         @PathVariable commentId: Long,
         @OAuthPrincipal oauthUser: OAuthUser,
-        @RequestBody request: CommentUpdateRequest
+        @Valid @RequestBody request: CommentUpdateRequest
     ): ApiResponse<CommentResponse> {
-        val comment = commentService.updateComment(commentId, oauthUser.id.toString(), request.toCommentUpdate())
+        val comment = commentService.updateComment(postId, commentId, oauthUser.id.toString(), request.toCommentUpdate())
         return ApiResponse.success(CommentResponse.of(CommentWithReplies(comment, emptyList())))
     }
 
@@ -62,7 +63,7 @@ class CommentController(
         @PathVariable commentId: Long,
         @OAuthPrincipal oauthUser: OAuthUser
     ): ApiResponse<Any> {
-        commentService.deleteComment(commentId, oauthUser.id.toString())
+        commentService.deleteComment(postId, commentId, oauthUser.id.toString())
         return ApiResponse.success()
     }
 }

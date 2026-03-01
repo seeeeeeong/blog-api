@@ -1,18 +1,17 @@
-package com.blog.api.core.api.controller.v1.reqeust
+package com.blog.api.core.api.controller.v1.request
 
 import com.blog.api.core.domain.CommentCreate
 import com.blog.api.core.domain.OAuthUser
-import com.blog.api.core.support.error.CoreException
-import com.blog.api.core.support.error.ErrorType
+import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.Size
 
 data class CommentCreateRequest(
+    @field:NotBlank
+    @field:Size(max = 1000)
     val content: String,
     val parentId: Long? = null
 ) {
     fun toCommentCreate(postId: Long, oauthUser: OAuthUser): CommentCreate {
-        if (content.isBlank()) throw CoreException(ErrorType.INVALID_INPUT)
-        if (content.length > 1000) throw CoreException(ErrorType.INVALID_INPUT)
-
         return CommentCreate(
             postId = postId,
             oauthId = oauthUser.id.toString(),

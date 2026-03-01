@@ -1,11 +1,14 @@
 package com.blog.api.core.domain
 
+import com.blog.api.core.enum.PostStatus
 import com.blog.api.core.support.converter.PostMarkdownConverter
 import com.blog.api.core.support.error.CoreException
 import com.blog.api.core.support.error.ErrorType
 import com.blog.api.storage.CommentEntity
 import com.blog.api.storage.CommentRepository
 import com.blog.api.storage.PostRepository
+import com.blog.api.storage.toComment
+import com.blog.api.storage.toCommentWithReplies
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -35,7 +38,7 @@ class CommentService(
             )
         )
 
-        return toComment(saved)
+        return saved.toComment(postMarkdownConverter)
     }
 
     fun getCommentsByPost(postId: Long): List<CommentWithReplies> {
@@ -46,20 +49,22 @@ class CommentService(
 
         val repliesByParent = buildRepliesByParent(comments)
         val rootComments = findRootComments(comments)
-        return rootComments.map { toCommentWithReplies(it, repliesByParent) }
+        return rootComments.map { it.toCommentWithReplies(repliesByParent, postMarkdownConverter) }
     }
 
     @Transactional
-    fun updateComment(commentId: Long, oauthId: String, commentUpdate: CommentUpdate): Comment {
+    fun updateComment(postId: Long, commentId: Long, oauthId: String, commentUpdate: CommentUpdate): Comment {
         val comment = findActiveComment(commentId)
+        validatePostId(comment, postId)
         validateOwner(comment, oauthId)
         comment.updateContent(commentUpdate.content)
-        return toComment(comment)
+        return comment.toComment(postMarkdownConverter)
     }
 
     @Transactional
-    fun deleteComment(commentId: Long, oauthId: String) {
+    fun deleteComment(postId: Long, commentId: Long, oauthId: String) {
         val comment = findActiveComment(commentId)
+        validatePostId(comment, postId)
         validateOwner(comment, oauthId)
         comment.delete()
     }
@@ -77,8 +82,8 @@ class CommentService(
     }
 
     private fun ensurePostExists(postId: Long) {
-        postRepository.findById(postId)
-            .orElseThrow { CoreException(ErrorType.POST_NOT_FOUND) }
+        val exists = postRepository.existsByIdAndStatus(postId, PostStatus.PUBLISHED)
+        if (!exists) throw CoreException(ErrorType.POST_NOT_FOUND)
     }
 
     private fun buildRepliesByParent(comments: List<CommentEntity>): Map<Long, List<Comment>> {
@@ -88,7 +93,7 @@ class CommentService(
             .mapValues { (_, groupedComments) ->
                 groupedComments
                     .sortedBy { it.createdAt }
-                    .map { toComment(it) }
+                    .map { it.toComment(postMarkdownConverter) }
             }
     }
 
@@ -98,43 +103,18 @@ class CommentService(
             .sortedByDescending { it.createdAt }
     }
 
-    private fun toCommentWithReplies(
-        rootComment: CommentEntity,
-        repliesByParent: Map<Long, List<Comment>>,
-    ): CommentWithReplies {
-        val rootCommentId = rootComment.id ?: throw CoreException(ErrorType.COMMENT_NOT_FOUND)
-        val replies = repliesByParent[rootCommentId].orEmpty()
-        return CommentWithReplies(
-            comment = toComment(rootComment),
-            replies = replies,
-        )
-    }
-
     private fun findActiveComment(commentId: Long): CommentEntity {
         return commentRepository.findById(commentId)
             .filter { it.isActive() }
             .orElseThrow { CoreException(ErrorType.COMMENT_NOT_FOUND) }
     }
 
-    private fun validateOwner(comment: CommentEntity, oauthId: String) {
-        if (comment.oauthId == oauthId) {
-            return
-        }
-        throw CoreException(ErrorType.FORBIDDEN)
+    private fun validatePostId(comment: CommentEntity, postId: Long) {
+        if (comment.postId != postId) throw CoreException(ErrorType.COMMENT_NOT_FOUND)
     }
 
-    private fun toComment(entity: CommentEntity): Comment {
-        return Comment(
-            id = entity.id!!,
-            postId = entity.postId,
-            oauthId = entity.oauthId,
-            oauthUsername = entity.oauthUsername,
-            oauthAvatarUrl = entity.oauthAvatarUrl ?: "",
-            parentId = entity.parentId ?: 0L,
-            content = entity.content,
-            contentHtml = postMarkdownConverter.convertToHtml(entity.content),
-            createdAt = entity.createdAt,
-            updatedAt = entity.updatedAt,
-        )
+    private fun validateOwner(comment: CommentEntity, oauthId: String) {
+        if (comment.oauthId != oauthId) throw CoreException(ErrorType.FORBIDDEN)
     }
+
 }

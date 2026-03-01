@@ -1,7 +1,6 @@
 package com.blog.api.core.support.connector
 
 import org.slf4j.LoggerFactory
-import org.springframework.data.redis.RedisConnectionFailureException
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
 import java.util.concurrent.TimeUnit
@@ -10,19 +9,15 @@ import java.util.concurrent.TimeUnit
 class RedisOps(
     private val redisTemplate: RedisTemplate<String, String>,
 ) {
-
     private val logger = LoggerFactory.getLogger(RedisOps::class.java)
 
-    fun setIfAbsent(key: String, value: String, timeout: Long, unit: TimeUnit): SetIfAbsentResult {
+    /** null = Redis 오류 (fail-open 여부는 호출부 판단) */
+    fun setIfAbsent(key: String, value: String, timeout: Long, unit: TimeUnit): Boolean? {
         return try {
-            val isSet = redisTemplate.opsForValue().setIfAbsent(key, value, timeout, unit) == true
-            SetIfAbsentResult(isSet = isSet, isError = false)
+            redisTemplate.opsForValue().setIfAbsent(key, value, timeout, unit)
         } catch (e: Exception) {
-            when (e) {
-                is RedisConnectionFailureException -> logger.error("Redis connection failed: key=$key", e)
-                else -> logger.warn("Unexpected Redis error: key=$key, error=${e.message}", e)
-            }
-            SetIfAbsentResult(isSet = false, isError = true)
+            logger.warn("Redis setIfAbsent failed: key=$key, error=${e.message}")
+            null
         }
     }
 
@@ -30,7 +25,7 @@ class RedisOps(
         try {
             redisTemplate.opsForValue().set(key, value, timeout, unit)
         } catch (e: Exception) {
-            logger.warn("Redis set failed: key=$key, error=${e.message}", e)
+            logger.warn("Redis set failed: key=$key, error=${e.message}")
         }
     }
 
@@ -38,7 +33,7 @@ class RedisOps(
         return try {
             redisTemplate.opsForValue().get(key)
         } catch (e: Exception) {
-            logger.warn("Redis get failed: key=$key, error=${e.message}", e)
+            logger.warn("Redis get failed: key=$key, error=${e.message}")
             null
         }
     }
@@ -47,12 +42,36 @@ class RedisOps(
         try {
             redisTemplate.delete(key)
         } catch (e: Exception) {
-            logger.warn("Redis delete failed: key=$key, error=${e.message}", e)
+            logger.warn("Redis delete failed: key=$key, error=${e.message}")
         }
     }
 
-    data class SetIfAbsentResult(
-        val isSet: Boolean,
-        val isError: Boolean
-    )
+    /** 실패 시 throw — 호출부에서 catch 후 fallback 처리 */
+    fun zrevrange(key: String, start: Long, end: Long): List<String> {
+        return redisTemplate.opsForZSet().reverseRange(key, start, end)?.toList() ?: emptyList()
+    }
+
+    fun zincrby(key: String, delta: Double, member: String) {
+        try {
+            redisTemplate.opsForZSet().incrementScore(key, member, delta)
+        } catch (e: Exception) {
+            logger.warn("Redis ZINCRBY failed: key=$key, error=${e.message}")
+        }
+    }
+
+    fun zadd(key: String, score: Double, member: String) {
+        try {
+            redisTemplate.opsForZSet().add(key, member, score)
+        } catch (e: Exception) {
+            logger.warn("Redis ZADD failed: key=$key, error=${e.message}")
+        }
+    }
+
+    fun zrem(key: String, member: String) {
+        try {
+            redisTemplate.opsForZSet().remove(key, member)
+        } catch (e: Exception) {
+            logger.warn("Redis ZREM failed: key=$key, error=${e.message}")
+        }
+    }
 }

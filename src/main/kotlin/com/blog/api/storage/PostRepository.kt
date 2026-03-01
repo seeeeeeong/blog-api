@@ -10,9 +10,13 @@ import org.springframework.data.repository.query.Param
 
 interface PostRepository : JpaRepository<PostEntity, Long> {
 
+    fun existsByIdAndStatus(id: Long, status: PostStatus): Boolean
+
     @Modifying(clearAutomatically = true)
     @Query("UPDATE PostEntity p SET p.viewCount = p.viewCount + 1 WHERE p.id = :postId")
     fun incrementViewCount(@Param("postId") postId: Long)
+
+    fun findAllByIdInAndStatus(ids: List<Long>, status: PostStatus): List<PostEntity>
 
     fun findByStatus(status: PostStatus, pageable: Pageable): Page<PostEntity>
 

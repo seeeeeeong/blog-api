@@ -14,4 +14,5 @@ ENTRYPOINT ["java", "-Xms128m", "-Xmx256m", \
     "-XX:+HeapDumpOnOutOfMemoryError", \
     "-XX:HeapDumpPath=/app/heapdump.hprof", \
     "-XX:+ExitOnOutOfMemoryError", \
-    "-jar", "-Dspring.profiles.active=prod", "app.jar"]
+    "-Dspring.profiles.active=prod", \
+    "-jar", "app.jar"]

@@ -1,8 +1,8 @@
-package com.blog.api.core.api.controller.v1.response
+package com.blog.api.core.support.oauth
 
 import com.fasterxml.jackson.annotation.JsonProperty
 
-data class OAuthTokenResponse(
+data class GithubTokenResponse(
     @JsonProperty("access_token")
     val accessToken: String,
 )

@@ -3,12 +3,18 @@ package com.blog.api.core.api.controller
 import com.blog.api.core.support.response.ApiResponse
 import com.blog.api.core.support.error.CoreException
 import com.blog.api.core.support.error.ErrorType
+import jakarta.validation.ConstraintViolationException
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.boot.logging.LogLevel
 import org.springframework.http.ResponseEntity
+import org.springframework.http.converter.HttpMessageNotReadableException
+import org.springframework.validation.BindException
+import org.springframework.web.bind.MethodArgumentNotValidException
+import org.springframework.web.bind.MissingServletRequestParameterException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 
 @RestControllerAdvice
 class ApiControllerAdvice {
@@ -22,6 +28,20 @@ class ApiControllerAdvice {
             else -> log.info("CoreException : {}", e.message, e)
         }
         return ResponseEntity(ApiResponse.error(e.errorType, e.data), e.errorType.status)
+    }
+
+    @ExceptionHandler(
+        ConstraintViolationException::class,
+        MethodArgumentTypeMismatchException::class,
+        MethodArgumentNotValidException::class,
+        MissingServletRequestParameterException::class,
+        HttpMessageNotReadableException::class,
+        BindException::class,
+        org.springframework.web.bind.ServletRequestBindingException::class,
+    )
+    fun handleBadRequestException(e: Exception): ResponseEntity<ApiResponse<Any>> {
+        log.info("Bad request : {}", e.message)
+        return ResponseEntity(ApiResponse.error(ErrorType.INVALID_INPUT), ErrorType.INVALID_INPUT.status)
     }
 
     @ExceptionHandler(Exception::class)

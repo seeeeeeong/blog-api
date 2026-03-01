@@ -1,5 +1,6 @@
 package com.blog.api.core.support.security
 
+import com.blog.api.core.support.error.CoreException
 import com.blog.api.core.support.web.HttpServletRequestUtils
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
@@ -34,11 +35,15 @@ class JwtAuthenticationFilter(
     }
 
     private fun authenticateUser(token: String) {
-        val userId = jwtProvider.getUserIdFromToken(token)
-        val role = jwtProvider.getRoleFromToken(token)
-        val authorities = listOf(SimpleGrantedAuthority("ROLE_$role"))
-        val authentication = UsernamePasswordAuthenticationToken(userId, null, authorities)
-        SecurityContextHolder.getContext().authentication = authentication
+        try {
+            val userId = jwtProvider.getUserIdFromToken(token)
+            val role = jwtProvider.getRoleFromToken(token)
+            val authorities = listOf(SimpleGrantedAuthority("ROLE_$role"))
+            val authentication = UsernamePasswordAuthenticationToken(userId, null, authorities)
+            SecurityContextHolder.getContext().authentication = authentication
+        } catch (e: CoreException) {
+            // role 클레임 없는 토큰(OAuth 댓글 토큰 등) → SecurityContext 미설정, 요청 계속 진행
+        }
     }
 
     companion object {

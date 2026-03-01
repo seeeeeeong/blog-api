@@ -75,34 +75,17 @@ class ImageService(
     fun completePresignedUpload(adminUserId: Long, uploadToken: String, key: String): ImageUploadComplete {
         val normalizedUploadToken = uploadToken.trim()
         val normalizedKey = key.trim()
-        if (normalizedUploadToken.isEmpty() || normalizedKey.isEmpty()) {
-            throw CoreException(ErrorType.INVALID_INPUT)
-        }
-
-        if (isOwnedKey(adminUserId, normalizedKey)) {
-            val isConsumed = imageUploadTokenRepository.consume(
-                uploadToken = normalizedUploadToken,
-                userId = adminUserId,
-                key = normalizedKey
-            )
-            if (isConsumed) {
-                return ImageUploadComplete(
-                    fileUrl = buildFileUrl(normalizedKey),
-                    key = normalizedKey
-                )
-            }
-        }
-
-        throw CoreException(ErrorType.INVALID_INPUT)
+        if (normalizedUploadToken.isEmpty() || normalizedKey.isEmpty()) throw CoreException(ErrorType.INVALID_INPUT)
+        if (!isOwnedKey(adminUserId, normalizedKey)) throw CoreException(ErrorType.INVALID_INPUT)
+        val consumed = imageUploadTokenRepository.consume(uploadToken = normalizedUploadToken, userId = adminUserId, key = normalizedKey)
+        if (!consumed) throw CoreException(ErrorType.INVALID_INPUT)
+        return ImageUploadComplete(fileUrl = buildFileUrl(normalizedKey), key = normalizedKey)
     }
 
     fun deleteImage(adminUserId: Long, key: String) {
         val normalizedKey = key.trim()
-        if (isOwnedKey(adminUserId, normalizedKey)) {
-            s3Client.deleteObject(createDeleteObjectRequest(normalizedKey))
-            return
-        }
-        throw CoreException(ErrorType.FORBIDDEN)
+        if (!isOwnedKey(adminUserId, normalizedKey)) throw CoreException(ErrorType.FORBIDDEN)
+        s3Client.deleteObject(createDeleteObjectRequest(normalizedKey))
     }
 
     private fun generateKey(adminUserId: Long, folder: String, contentType: String): String {
@@ -151,18 +134,13 @@ class ImageService(
     }
 
     private fun validateContentType(contentType: String) {
-        if (imagePresignedProperties.allowedContentTypes.contains(contentType)) {
-            return
-        }
-        throw CoreException(ErrorType.INVALID_INPUT)
+        if (contentType !in imagePresignedProperties.allowedContentTypes) throw CoreException(ErrorType.INVALID_INPUT)
     }
 
     private fun resolveFolder(folder: String?): String {
         val candidate = folder?.trim()?.lowercase().orEmpty().ifBlank { s3Properties.defaultFolder.lowercase() }
-        if (imagePresignedProperties.allowedFolders.contains(candidate)) {
-            return candidate
-        }
-        throw CoreException(ErrorType.INVALID_INPUT)
+        if (candidate !in imagePresignedProperties.allowedFolders) throw CoreException(ErrorType.INVALID_INPUT)
+        return candidate
     }
 
     private fun ownerPrefix(adminUserId: Long): String = "$ROOT_FOLDER_PREFIX/$adminUserId/"

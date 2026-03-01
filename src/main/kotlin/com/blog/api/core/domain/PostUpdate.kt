@@ -6,6 +6,6 @@ data class PostUpdate(
     val categoryId: Long,
     val title: String,
     val content: String,
-    val thumbnailUrl: String,
+    val thumbnailUrl: String?,
     val status: PostStatus
 )

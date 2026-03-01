@@ -41,7 +41,7 @@ class OAuthUserArgumentResolver(
                 login = jwtProvider.getOAuthUsernameFromToken(token),
                 avatarUrl = jwtProvider.getOAuthAvatarUrlFromToken(token).orEmpty(),
                 name = "",
-                email = ""
+                email = null
             )
         }
 

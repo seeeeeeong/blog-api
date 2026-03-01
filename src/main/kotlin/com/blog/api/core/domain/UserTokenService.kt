@@ -17,8 +17,9 @@ class UserTokenService(
 
     fun rotate(tokenId: String): String {
         val userId = findUserIdByTokenId(tokenId)
+        val newTokenId = issueToken(userId)
         refreshTokenRepository.delete(tokenId)
-        return issueToken(userId)
+        return newTokenId
     }
 
     fun revoke(tokenId: String) {

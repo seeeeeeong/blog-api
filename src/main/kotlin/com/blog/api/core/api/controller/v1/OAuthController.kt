@@ -1,7 +1,7 @@
 package com.blog.api.core.api.controller.v1
 
 import com.blog.api.core.support.response.ApiResponse
-import com.blog.api.core.api.controller.v1.reqeust.OAuthLoginRequest
+import com.blog.api.core.api.controller.v1.request.OAuthLoginRequest
 import com.blog.api.core.api.controller.v1.response.OAuthLoginResponse
 import com.blog.api.core.domain.OAuthService
 import com.blog.api.core.support.properties.OAuthUserProperties
