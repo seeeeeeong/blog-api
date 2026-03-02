@@ -4,5 +4,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 
 @ConfigurationProperties(prefix = "post-ranking")
 data class PostRankingProperties(
-    val redisCooldownMs: Long = 30_000,
+    val localFallbackTtlSeconds: Long = 60,
+    val localFallbackMaxSize: Long = 50,
 )

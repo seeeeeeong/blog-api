@@ -4,6 +4,10 @@ import com.blog.api.core.enum.PostStatus
 import com.blog.api.core.support.connector.RedisOps
 import com.blog.api.core.support.properties.PostRankingProperties
 import com.blog.api.storage.PostRepository
+import com.github.benmanes.caffeine.cache.Caffeine
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException
+import io.github.resilience4j.circuitbreaker.CircuitBreaker
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry
 import org.slf4j.LoggerFactory
 import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.context.event.EventListener
@@ -11,32 +15,45 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.util.concurrent.atomic.AtomicLong
+import java.time.Duration
 
 @Service
 class PostRankingService(
     private val redisOps: RedisOps,
     private val postRepository: PostRepository,
     private val properties: PostRankingProperties,
+    circuitBreakerRegistry: CircuitBreakerRegistry,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
-    private val redisDownUntil = AtomicLong(0L)
+    private val cb = circuitBreakerRegistry.circuitBreaker("post-ranking-redis")
+    private val localFallbackCache = Caffeine.newBuilder()
+        .expireAfterWrite(Duration.ofSeconds(properties.localFallbackTtlSeconds.coerceAtLeast(1)))
+        .maximumSize(properties.localFallbackMaxSize.coerceAtLeast(1))
+        .build<Int, List<Long>>()
 
     companion object {
         private const val RANKING_KEY = "post:ranking"
     }
 
     fun getTopPostIds(limit: Int): List<Long> {
-        if (System.currentTimeMillis() < redisDownUntil.get()) {
-            return getTopIdsFromDb(limit, reseed = false)
-        }
+        val normalizedLimit = limit.coerceAtLeast(1)
         return try {
-            val ids = redisOps.zrevrange(RANKING_KEY, 0, limit - 1L).map { it.toLong() }
-            if (ids.isEmpty()) getTopIdsFromDb(limit, reseed = true) else ids
+            val ids = CircuitBreaker.decorateSupplier(cb) {
+                redisOps.zrevrange(RANKING_KEY, 0, normalizedLimit - 1L).mapNotNull { it.toLongOrNull() }
+            }.get()
+
+            if (ids.isEmpty()) {
+                getTopIdsFromLocalOrDb(normalizedLimit, reseed = true, reason = "redis-key-miss")
+            } else {
+                localFallbackCache.put(normalizedLimit, ids)
+                ids
+            }
+        } catch (e: CallNotPermittedException) {
+            logger.warn("ranking: CB OPEN, using local cache/DB fallback")
+            getTopIdsFromLocalOrDb(normalizedLimit, reseed = false, reason = "cb-open")
         } catch (e: Exception) {
-            logger.warn("ranking: Redis unavailable, cooling down {}ms, falling back to DB: {}", properties.redisCooldownMs, e.message)
-            redisDownUntil.set(System.currentTimeMillis() + properties.redisCooldownMs)
-            getTopIdsFromDb(limit, reseed = false)
+            logger.warn("ranking: Redis error [CB state={}], using local cache/DB fallback: {}", cb.state, e.message)
+            getTopIdsFromLocalOrDb(normalizedLimit, reseed = false, reason = "redis-error")
         }
     }
 
@@ -84,5 +101,18 @@ class PostRankingService(
             }
         }
         return posts.map { it.id!! }
+    }
+
+    private fun getTopIdsFromLocalOrDb(limit: Int, reseed: Boolean, reason: String): List<Long> {
+        localFallbackCache.getIfPresent(limit)?.takeIf { it.isNotEmpty() }?.let { cached ->
+            logger.info("ranking: served {} posts from local fallback cache ({})", cached.size, reason)
+            return cached
+        }
+
+        val dbIds = getTopIdsFromDb(limit, reseed)
+        if (dbIds.isNotEmpty()) {
+            localFallbackCache.put(limit, dbIds)
+        }
+        return dbIds
     }
 }

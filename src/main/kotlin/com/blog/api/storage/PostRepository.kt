@@ -34,14 +34,16 @@ interface PostRepository : JpaRepository<PostEntity, Long> {
         pageable: Pageable
     ): Page<PostEntity>
 
+    // ILIKE + pg_trgm GIN 인덱스: 부분 문자열 검색 의미를 그대로 유지하면서 인덱스 사용
+    // (3자 미만 쿼리는 trigram 후보 없어 seq scan으로 fallback — 개인 블로그 규모에서는 무방)
     @Query(
         value = """
             SELECT p.*
             FROM posts p
             WHERE p.status = 'PUBLISHED'
             AND (
-                LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%'))
-                OR LOWER(p.content) LIKE LOWER(CONCAT('%', :query, '%'))
+                p.title ILIKE CONCAT('%', :query, '%')
+                OR p.content ILIKE CONCAT('%', :query, '%')
             )
             ORDER BY p.created_at DESC
         """,
@@ -50,8 +52,8 @@ interface PostRepository : JpaRepository<PostEntity, Long> {
             FROM posts p
             WHERE p.status = 'PUBLISHED'
             AND (
-                LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%'))
-                OR LOWER(p.content) LIKE LOWER(CONCAT('%', :query, '%'))
+                p.title ILIKE CONCAT('%', :query, '%')
+                OR p.content ILIKE CONCAT('%', :query, '%')
             )
         """,
         nativeQuery = true
@@ -68,8 +70,8 @@ interface PostRepository : JpaRepository<PostEntity, Long> {
             WHERE p.status = 'PUBLISHED'
             AND p.category_id = :categoryId
             AND (
-                LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%'))
-                OR LOWER(p.content) LIKE LOWER(CONCAT('%', :query, '%'))
+                p.title ILIKE CONCAT('%', :query, '%')
+                OR p.content ILIKE CONCAT('%', :query, '%')
             )
             ORDER BY p.created_at DESC
         """,
@@ -79,8 +81,8 @@ interface PostRepository : JpaRepository<PostEntity, Long> {
             WHERE p.status = 'PUBLISHED'
             AND p.category_id = :categoryId
             AND (
-                LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%'))
-                OR LOWER(p.content) LIKE LOWER(CONCAT('%', :query, '%'))
+                p.title ILIKE CONCAT('%', :query, '%')
+                OR p.content ILIKE CONCAT('%', :query, '%')
             )
         """,
         nativeQuery = true
