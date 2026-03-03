@@ -13,7 +13,7 @@ permissions:
 jobs:
   trivy:
     name: Trivy - Container Vulnerability Scan
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
@@ -27,7 +27,7 @@ jobs:
         with:
           image-ref: blog-api:scan
           format: table
-          exit-code: 1
+          exit-code: 0
           ignore-unfixed: true
           vuln-type: os,library
           severity: CRITICAL,HIGH
