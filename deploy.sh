@@ -8,6 +8,8 @@ APP_DIR=/home/ec2-user/app
 ACTIVE_FILE=$APP_DIR/.active_color
 COMPOSE_FILE=docker-compose-prod.yml
 ENV_FILE=$APP_DIR/.env.prod
+HEALTH_CHECK_RETRIES=24
+HEALTH_CHECK_INTERVAL_SECONDS=5
 
 if docker compose version >/dev/null 2>&1; then
   COMPOSE=(docker compose -f "$COMPOSE_FILE")
@@ -72,6 +74,20 @@ is_container_running() {
   [ "$(docker inspect -f '{{.State.Running}}' "$name" 2>/dev/null || echo "false")" = "true" ]
 }
 
+print_failure_diagnostics() {
+  local container_name=$1
+  echo "----- Deployment Diagnostics: ${container_name} -----"
+  docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'
+  echo "----- ${container_name} inspect(state/health) -----"
+  docker inspect "$container_name" --format '{{json .State}}' 2>/dev/null || true
+  echo "----- ${container_name} logs (tail 200) -----"
+  docker logs --tail 200 "$container_name" 2>/dev/null || true
+  echo "----- blog-postgres logs (tail 80) -----"
+  docker logs --tail 80 blog-postgres 2>/dev/null || true
+  echo "----- blog-redis logs (tail 80) -----"
+  docker logs --tail 80 blog-redis 2>/dev/null || true
+}
+
 if [ ! -f "$ACTIVE_FILE" ] \
   || ! is_container_running blog-postgres \
   || ! is_container_running blog-redis \
@@ -90,21 +106,22 @@ else
     "${COMPOSE[@]}" up -d --no-deps app-green
 fi
 
-# Health check 대기 (최대 60초, 5초 간격 × 12회)
+# Health check 대기 (기본 120초, 5초 간격 × 24회)
 echo "Waiting for app-$NEXT to be healthy..."
-for i in $(seq 1 12); do
+for i in $(seq 1 "$HEALTH_CHECK_RETRIES"); do
   STATUS=$(docker inspect --format='{{.State.Health.Status}}' "blog-api-$NEXT" 2>/dev/null || echo "unknown")
-  echo "  [$i/12] status=$STATUS"
+  echo "  [$i/$HEALTH_CHECK_RETRIES] status=$STATUS"
   if [ "$STATUS" = "healthy" ]; then
     echo "Health check passed."
     break
   fi
-  if [ "$i" = "12" ]; then
+  if [ "$i" = "$HEALTH_CHECK_RETRIES" ]; then
     echo "Health check timed out. Rolling back app-$NEXT."
+    print_failure_diagnostics "blog-api-$NEXT"
     "${COMPOSE[@]}" stop "app-$NEXT" || true
     exit 1
   fi
-  sleep 5
+  sleep "$HEALTH_CHECK_INTERVAL_SECONDS"
 done
 
 # 이전 슬롯 중지
