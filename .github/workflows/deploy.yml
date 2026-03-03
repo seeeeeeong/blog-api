@@ -71,11 +71,12 @@ jobs:
           OAUTH_REDIRECT_URL: ${{ vars.OAUTH_REDIRECT_URL || secrets.OAUTH_REDIRECT_URL }}
           OAUTH_CALLBACK_URL: ${{ vars.OAUTH_CALLBACK_URL || secrets.OAUTH_CALLBACK_URL }}
           AWS_S3_BUCKET: ${{ vars.AWS_S3_BUCKET || secrets.AWS_S3_BUCKET }}
-          AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION }}
+          APP_AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION }}
           AWS_CLOUDFRONT_DOMAIN: ${{ vars.AWS_CLOUDFRONT_DOMAIN || secrets.AWS_CLOUDFRONT_DOMAIN }}
         run: |
           set -euo pipefail
 
+          SSM_REGION="ap-northeast-2"
           INSTANCE_ID="${EC2_INSTANCE_ID_SECRET:-}"
           INSTANCE_TAG_NAME="${EC2_NAME_TAG:-blog-server}"
           TARGET_INSTANCE_ID=""
@@ -92,7 +93,7 @@ jobs:
           OAUTH_REDIRECT_URL=${OAUTH_REDIRECT_URL:-}
           OAUTH_CALLBACK_URL=${OAUTH_CALLBACK_URL:-}
           AWS_S3_BUCKET=${AWS_S3_BUCKET:-}
-          AWS_REGION=${AWS_REGION:-ap-northeast-2}
+          AWS_REGION=${APP_AWS_REGION:-ap-northeast-2}
           AWS_CLOUDFRONT_DOMAIN=${AWS_CLOUDFRONT_DOMAIN:-}
           EOF
 
@@ -115,6 +116,7 @@ jobs:
           if [ -n "$INSTANCE_ID" ]; then
             set +e
             SEND_OUTPUT=$(aws ssm send-command \
+              --region "$SSM_REGION" \
               --instance-ids "$INSTANCE_ID" \
               --document-name "AWS-RunShellScript" \
               --parameters "file://$PARAMS_FILE" \
@@ -140,6 +142,7 @@ jobs:
           if [ -z "$COMMAND_ID" ] && [ -n "$TFSTATE_INSTANCE_ID" ] && [ "$TFSTATE_INSTANCE_ID" != "$INSTANCE_ID" ]; then
             set +e
             SEND_OUTPUT=$(aws ssm send-command \
+              --region "$SSM_REGION" \
               --instance-ids "$TFSTATE_INSTANCE_ID" \
               --document-name "AWS-RunShellScript" \
               --parameters "file://$PARAMS_FILE" \
@@ -161,6 +164,7 @@ jobs:
           if [ -z "$COMMAND_ID" ]; then
             echo "Retrying send-command by tag target: $INSTANCE_TAG_NAME"
             COMMAND_ID=$(aws ssm send-command \
+              --region "$SSM_REGION" \
               --targets "Key=tag:Name,Values=$INSTANCE_TAG_NAME" \
               --document-name "AWS-RunShellScript" \
               --parameters "file://$PARAMS_FILE" \
@@ -170,6 +174,7 @@ jobs:
 
             for i in {1..30}; do
               TARGET_INSTANCE_ID=$(aws ssm list-command-invocations \
+                --region "$SSM_REGION" \
                 --command-id "$COMMAND_ID" \
                 --details \
                 --query 'CommandInvocations[0].InstanceId' \
@@ -193,6 +198,7 @@ jobs:
           echo "Waiting for SSM command to complete (max 15min)..."
           for i in $(seq 1 180); do
             CURRENT_STATUS=$(aws ssm get-command-invocation \
+              --region "$SSM_REGION" \
               --command-id "$COMMAND_ID" \
               --instance-id "$TARGET_INSTANCE_ID" \
               --query 'StatusDetails' \
@@ -205,18 +211,21 @@ jobs:
           done
 
           STATUS=$(aws ssm get-command-invocation \
+            --region "$SSM_REGION" \
             --command-id "$COMMAND_ID" \
             --instance-id "$TARGET_INSTANCE_ID" \
             --query 'StatusDetails' \
             --output text)
 
           STDOUT=$(aws ssm get-command-invocation \
+            --region "$SSM_REGION" \
             --command-id "$COMMAND_ID" \
             --instance-id "$TARGET_INSTANCE_ID" \
             --query 'StandardOutputContent' \
             --output text || true)
 
           STDERR=$(aws ssm get-command-invocation \
+            --region "$SSM_REGION" \
             --command-id "$COMMAND_ID" \
             --instance-id "$TARGET_INSTANCE_ID" \
             --query 'StandardErrorContent' \
