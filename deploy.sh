@@ -80,8 +80,16 @@ print_failure_diagnostics() {
   docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'
   echo "----- ${container_name} inspect(state/health) -----"
   docker inspect "$container_name" --format '{{json .State}}' 2>/dev/null || true
+  echo "----- ${container_name} inspect(restart-count) -----"
+  docker inspect "$container_name" --format '{{.RestartCount}}' 2>/dev/null || true
   echo "----- ${container_name} logs (tail 200) -----"
   docker logs --tail 200 "$container_name" 2>/dev/null || true
+  echo "----- ${container_name} previous logs (tail 200) -----"
+  docker logs --previous --tail 200 "$container_name" 2>/dev/null || true
+  echo "----- ${container_name} /app/logs/blog-api-error.log (tail 200) -----"
+  docker exec "$container_name" sh -lc 'test -f /app/logs/blog-api-error.log && tail -n 200 /app/logs/blog-api-error.log || echo "no /app/logs/blog-api-error.log"' 2>/dev/null || true
+  echo "----- ${container_name} /app/logs/blog-api-prod.log (tail 200) -----"
+  docker exec "$container_name" sh -lc 'test -f /app/logs/blog-api-prod.log && tail -n 200 /app/logs/blog-api-prod.log || echo "no /app/logs/blog-api-prod.log"' 2>/dev/null || true
   echo "----- blog-postgres logs (tail 80) -----"
   docker logs --tail 80 blog-postgres 2>/dev/null || true
   echo "----- blog-redis logs (tail 80) -----"
