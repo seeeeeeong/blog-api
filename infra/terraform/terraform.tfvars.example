@@ -4,5 +4,6 @@ ec2_instance_type = "t4g.micro"
 github_repo       = "owner/blog-api"  # GitHub OIDC 신뢰 정책에 사용
 domain_name       = ""                # 도메인 있으면 입력 (예: example.com)
 cloudfront_acm_certificate_arn = ""  # CloudFront용 ACM ARN(us-east-1)
+cloudfront_origin_secret = ""        # EC2 직접 접근 차단용 비밀값 (openssl rand -hex 32). GitHub Secret CLOUDFRONT_SECRET과 동일값 필수
 monitoring_alert_email = ""           # 이메일 알림이 필요하면 입력
 cpu_alarm_threshold    = 80           # CPU 임계치 (%)

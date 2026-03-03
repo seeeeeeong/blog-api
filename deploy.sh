@@ -55,6 +55,7 @@ required_vars=(
   OAUTH_CALLBACK_URL
   AWS_S3_BUCKET
   AWS_CLOUDFRONT_DOMAIN
+  CLOUDFRONT_SECRET
 )
 missing_vars=()
 

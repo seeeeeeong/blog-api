@@ -35,27 +35,27 @@ output "api_cdn_domain" {
 
 output "api_base_url" {
   description = "blog-web VITE_API_BASE_URL 값"
-  value = local.use_custom_cloudfront_domain ? "https://api.${var.domain_name}/api" : "https://${aws_cloudfront_distribution.api.domain_name}/api"
+  value       = local.use_custom_cloudfront_domain ? "https://api.${var.domain_name}/api" : "https://${aws_cloudfront_distribution.api.domain_name}/api"
 }
 
 output "frontend_base_url" {
   description = "프론트엔드 기본 URL"
-  value = local.use_custom_cloudfront_domain ? "https://${var.domain_name}" : "https://${aws_cloudfront_distribution.frontend.domain_name}"
+  value       = local.use_custom_cloudfront_domain ? "https://${var.domain_name}" : "https://${aws_cloudfront_distribution.frontend.domain_name}"
 }
 
 output "api_env_cors_allowed_origins" {
-  description = "blog-api CORS_ALLOWED_ORIGINS 권장값"
-  value = local.use_custom_cloudfront_domain ? "https://${var.domain_name}" : "https://${aws_cloudfront_distribution.frontend.domain_name}"
+  description = "blog-api CORS_ALLOWED_ORIGINS 권장값 (www 포함, 쉼표 구분)"
+  value       = local.use_custom_cloudfront_domain ? "https://${var.domain_name},https://www.${var.domain_name}" : "https://${aws_cloudfront_distribution.frontend.domain_name}"
 }
 
 output "api_env_oauth_redirect_url" {
   description = "blog-api OAUTH_REDIRECT_URL 권장값"
-  value = local.use_custom_cloudfront_domain ? "https://${var.domain_name}/auth/callback" : "https://${aws_cloudfront_distribution.frontend.domain_name}/auth/callback"
+  value       = local.use_custom_cloudfront_domain ? "https://${var.domain_name}/auth/callback" : "https://${aws_cloudfront_distribution.frontend.domain_name}/auth/callback"
 }
 
 output "api_env_oauth_callback_url" {
   description = "blog-api OAUTH_CALLBACK_URL 권장값"
-  value = local.use_custom_cloudfront_domain ? "https://api.${var.domain_name}/api/auth/github/callback" : "https://${aws_cloudfront_distribution.api.domain_name}/api/auth/github/callback"
+  value       = local.use_custom_cloudfront_domain ? "https://api.${var.domain_name}/api/auth/github/callback" : "https://${aws_cloudfront_distribution.api.domain_name}/api/auth/github/callback"
 }
 
 output "api_env_aws_s3_bucket" {
