@@ -31,7 +31,7 @@ class OAuthService(
 
     private val secureRandom = SecureRandom()
 
-    fun createAuthorizationUrl(): String {
+    fun createAuthorization(): OAuthAuthorization {
         val state = generateState()
         val builder = UriComponentsBuilder.fromUriString(properties.authorizationUri)
             .queryParam("client_id", properties.clientId)
@@ -39,11 +39,16 @@ class OAuthService(
             .queryParam("state", state)
             .queryParam("scope", properties.scope)
         properties.callbackUrl.takeIf { it.isNotBlank() }?.let { builder.queryParam("redirect_uri", it) }
-        return builder.build().encode().toUriString()
+        return OAuthAuthorization(
+            url = builder.build().encode().toUriString(),
+            state = state,
+            stateTtlSeconds = STATE_TTL_SECONDS,
+        )
     }
 
-    fun handleCallback(code: String, state: String): String {
+    fun handleCallback(code: String, state: String, stateCookie: String?): String {
         if (code.isBlank() || state.isBlank()) throw CoreException(ErrorType.INVALID_INPUT)
+        if (stateCookie.isNullOrBlank() || stateCookie != state) throw CoreException(ErrorType.OAUTH_STATE_INVALID)
         validateAndConsumeState(state)
 
         val githubToken = githubOAuthClient.fetchAccessToken(code)
@@ -66,7 +71,7 @@ class OAuthService(
         return objectMapper.readValue(payloadJson)
     }
 
-    fun verifyToken(token: String): Boolean = jwtProvider.validateToken(token)
+    fun verifyToken(token: String): Boolean = jwtProvider.validateOAuthCommentToken(token)
 
     private fun generateState(): String {
         val state = generateRandomToken()

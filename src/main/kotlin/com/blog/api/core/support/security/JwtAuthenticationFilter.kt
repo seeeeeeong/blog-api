@@ -18,7 +18,7 @@ class JwtAuthenticationFilter(
 
     override fun shouldNotFilter(request: HttpServletRequest): Boolean {
         val path = request.requestURI
-        return skipPaths.any { path.contains(it) }
+        return path.startsWith(AUTH_GITHUB_PATH_PREFIX) || COMMENT_PATH_REGEX.matches(path)
     }
 
     override fun doFilterInternal(
@@ -27,7 +27,7 @@ class JwtAuthenticationFilter(
         filterChain: FilterChain
     ) {
         val token = HttpServletRequestUtils.extractBearerToken(request)
-        if (token != null && jwtProvider.validateToken(token)) {
+        if (token != null && jwtProvider.validateUserAccessToken(token)) {
             authenticateUser(token)
         }
 
@@ -42,11 +42,12 @@ class JwtAuthenticationFilter(
             val authentication = UsernamePasswordAuthenticationToken(userId, null, authorities)
             SecurityContextHolder.getContext().authentication = authentication
         } catch (e: CoreException) {
-            // role 클레임 없는 토큰(OAuth 댓글 토큰 등) → SecurityContext 미설정, 요청 계속 진행
+            // 타입/클레임 불일치 토큰은 SecurityContext를 비우고 요청 흐름을 유지한다.
         }
     }
 
     companion object {
-        private val skipPaths = listOf("/comments", "/auth/github")
+        private const val AUTH_GITHUB_PATH_PREFIX = "/api/auth/github"
+        private val COMMENT_PATH_REGEX = Regex("^/api/v1/posts/\\d+/comments(?:/.*)?$")
     }
 }

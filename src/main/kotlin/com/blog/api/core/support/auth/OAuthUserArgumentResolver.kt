@@ -31,7 +31,7 @@ class OAuthUserArgumentResolver(
             ?: throw CoreException(ErrorType.INVALID_TOKEN)
 
         val token = HttpServletRequestUtils.extractBearerTokenOrThrow(request)
-        val isValidToken = jwtProvider.validateToken(token)
+        val isValidToken = jwtProvider.validateOAuthCommentToken(token)
         if (isValidToken) {
             val oauthId = jwtProvider.getOAuthIdFromToken(token).toLongOrNull()
                 ?: throw CoreException(ErrorType.INVALID_TOKEN)
