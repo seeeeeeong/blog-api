@@ -101,17 +101,36 @@ if [ ! -f "$ACTIVE_FILE" ] \
   || ! is_container_running blog-redis \
   || ! is_container_running blog-caddy; then
   echo "Bootstrap: ensuring postgres/redis/caddy are running..."
-  "${COMPOSE[@]}" up -d postgres redis
-  "${COMPOSE[@]}" up -d --no-deps caddy
+  "${COMPOSE[@]}" up -d postgres redis >/tmp/deploy-bootstrap.log 2>&1 || {
+    tail -n 200 /tmp/deploy-bootstrap.log || true
+    exit 1
+  }
+  "${COMPOSE[@]}" up -d --no-deps caddy >/tmp/deploy-caddy.log 2>&1 || {
+    tail -n 200 /tmp/deploy-caddy.log || true
+    exit 1
+  }
 fi
 
 # 비활성 슬롯에 새 이미지 배포
+APP_UP_LOG=/tmp/deploy-app-up.log
 if [ "$NEXT" = "blue" ]; then
+  set +e
   ECR_IMAGE_BLUE="$NEW_IMAGE" ECR_IMAGE_GREEN="${ECR_IMAGE_GREEN:-scratch}" \
-    "${COMPOSE[@]}" up -d --no-deps app-blue
+    "${COMPOSE[@]}" up -d --no-deps app-blue >"$APP_UP_LOG" 2>&1
+  APP_UP_EXIT=$?
+  set -e
 else
+  set +e
   ECR_IMAGE_GREEN="$NEW_IMAGE" ECR_IMAGE_BLUE="${ECR_IMAGE_BLUE:-scratch}" \
-    "${COMPOSE[@]}" up -d --no-deps app-green
+    "${COMPOSE[@]}" up -d --no-deps app-green >"$APP_UP_LOG" 2>&1
+  APP_UP_EXIT=$?
+  set -e
+fi
+
+if [ "$APP_UP_EXIT" -ne 0 ]; then
+  echo "Failed to start app-$NEXT via docker compose."
+  tail -n 200 "$APP_UP_LOG" || true
+  exit 1
 fi
 
 # Health check 대기 (기본 120초, 5초 간격 × 24회)
