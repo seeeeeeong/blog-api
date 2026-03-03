@@ -125,6 +125,8 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      - CLOUDFRONT_SECRET=${CLOUDFRONT_SECRET}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy-data:/data

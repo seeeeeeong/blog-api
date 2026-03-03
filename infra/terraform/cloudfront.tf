@@ -138,6 +138,11 @@ resource "aws_cloudfront_distribution" "api" {
     domain_name = aws_instance.main.public_dns
     origin_id   = "ec2-api"
 
+    custom_header {
+      name  = "X-CloudFront-Secret"
+      value = var.cloudfront_origin_secret
+    }
+
     custom_origin_config {
       http_port              = 80
       https_port             = 443

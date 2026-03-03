@@ -36,6 +36,13 @@ variable "domain_name" {
   default     = ""
 }
 
+variable "cloudfront_origin_secret" {
+  description = "CloudFront → EC2 Origin Custom Header 값. Caddy에서 이 값 없는 요청을 403으로 차단해 EC2 직접 접근을 방지함."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "cloudfront_acm_certificate_arn" {
   description = "CloudFront용 ACM 인증서 ARN(us-east-1). 비우면 기본 인증서 사용"
   type        = string

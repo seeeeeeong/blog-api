@@ -74,6 +74,7 @@ jobs:
           AWS_S3_BUCKET: ${{ vars.AWS_S3_BUCKET || secrets.AWS_S3_BUCKET }}
           APP_AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION }}
           AWS_CLOUDFRONT_DOMAIN: ${{ vars.AWS_CLOUDFRONT_DOMAIN || secrets.AWS_CLOUDFRONT_DOMAIN }}
+          CLOUDFRONT_SECRET: ${{ secrets.CLOUDFRONT_SECRET }}
         run: |
           set -euo pipefail
 
@@ -97,6 +98,7 @@ jobs:
             echo "AWS_S3_BUCKET=${AWS_S3_BUCKET:-}"
             echo "AWS_REGION=${APP_AWS_REGION:-ap-northeast-2}"
             echo "AWS_CLOUDFRONT_DOMAIN=${AWS_CLOUDFRONT_DOMAIN:-}"
+            echo "CLOUDFRONT_SECRET=${CLOUDFRONT_SECRET:-}"
           } > .env.prod
 
           ARCHIVE_B64=$(tar czf - deploy.sh docker-compose-prod.yml Caddyfile .env.prod | base64 | tr -d '\n')
