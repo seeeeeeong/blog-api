@@ -7,6 +7,7 @@ NEW_IMAGE=$1
 APP_DIR=/home/ec2-user/app
 ACTIVE_FILE=$APP_DIR/.active_color
 COMPOSE_FILE=docker-compose-prod.yml
+ENV_FILE=$APP_DIR/.env.prod
 
 if docker compose version >/dev/null 2>&1; then
   COMPOSE=(docker compose -f "$COMPOSE_FILE")
@@ -30,6 +31,41 @@ aws ecr get-login-password --region ap-northeast-2 \
   | docker login --username AWS --password-stdin "$(echo "$NEW_IMAGE" | cut -d/ -f1)"
 
 cd "$APP_DIR"
+
+if [ ! -f "$ENV_FILE" ]; then
+  echo "Missing env file: $ENV_FILE"
+  echo "Please provide deployment env vars before running deploy."
+  exit 1
+fi
+
+set -a
+# shellcheck disable=SC1090
+source "$ENV_FILE"
+set +a
+
+required_vars=(
+  DB_PASSWORD
+  JWT_SECRET
+  GITHUB_CLIENT_ID
+  GITHUB_CLIENT_SECRET
+  CORS_ALLOWED_ORIGINS
+  OAUTH_REDIRECT_URL
+  OAUTH_CALLBACK_URL
+  AWS_S3_BUCKET
+  AWS_CLOUDFRONT_DOMAIN
+)
+missing_vars=()
+
+for var_name in "${required_vars[@]}"; do
+  if [ -z "${!var_name:-}" ]; then
+    missing_vars+=("$var_name")
+  fi
+done
+
+if [ "${#missing_vars[@]}" -gt 0 ]; then
+  echo "Missing required env vars in $ENV_FILE: ${missing_vars[*]}"
+  exit 1
+fi
 
 is_container_running() {
   local name=$1
