@@ -55,3 +55,4 @@ jobs:
         with:
           working_directory: infra/terraform
           soft_fail: false
+          github_token: ${{ github.token }}
