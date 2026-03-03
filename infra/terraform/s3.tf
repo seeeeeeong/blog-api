@@ -15,7 +15,10 @@ resource "aws_s3_bucket_cors_configuration" "images" {
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["PUT", "POST"]
-    allowed_origins = ["*"]
+    allowed_origins = local.use_custom_cloudfront_domain ? [
+      "https://${var.domain_name}",
+      "https://www.${var.domain_name}"
+    ] : ["https://${aws_cloudfront_distribution.frontend.domain_name}"]
     max_age_seconds = 3600
   }
 }

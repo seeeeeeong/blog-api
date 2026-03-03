@@ -1,8 +1,8 @@
 project_name      = "blog"
 aws_region        = "ap-northeast-2"
 ec2_instance_type = "t4g.micro"
-ec2_key_name      = "blog-key"   # AWS 콘솔에서 키페어 생성 후 이름 입력
-domain_name       = ""           # 도메인 있으면 입력 (예: example.com)
-cloudfront_acm_certificate_arn = "" # CloudFront용 ACM ARN(us-east-1)
-monitoring_alert_email = ""      # 이메일 알림이 필요하면 입력
-cpu_alarm_threshold    = 80      # CPU 임계치 (%)
+github_repo       = "owner/blog-api"  # GitHub OIDC 신뢰 정책에 사용
+domain_name       = ""                # 도메인 있으면 입력 (예: example.com)
+cloudfront_acm_certificate_arn = ""  # CloudFront용 ACM ARN(us-east-1)
+monitoring_alert_email = ""           # 이메일 알림이 필요하면 입력
+cpu_alarm_threshold    = 80           # CPU 임계치 (%)

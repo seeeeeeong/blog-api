@@ -18,8 +18,15 @@ variable "ec2_instance_type" {
 }
 
 variable "ec2_key_name" {
-  description = "EC2 SSH 키페어 이름 (AWS 콘솔에서 미리 생성)"
+  description = "EC2 SSH 키페어 이름 (SSM 도입 후 불필요 — 빈 문자열 유지)"
   type        = string
+  default     = ""
+}
+
+variable "github_repo" {
+  description = "GitHub 저장소 (owner/repo 형식). OIDC 신뢰 정책에 사용"
+  type        = string
+  default     = "sinseonglee/blog-api"
 }
 
 # --- Domain ---

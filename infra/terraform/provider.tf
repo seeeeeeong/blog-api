@@ -7,6 +7,9 @@ terraform {
       version = "~> 5.0"
     }
   }
+
+  # Use -backend-config (e.g. backend.hcl) at init time.
+  backend "s3" {}
 }
 
 provider "aws" {

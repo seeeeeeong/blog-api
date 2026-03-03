@@ -2,5 +2,10 @@
     @actuator path /actuator/*
     respond @actuator 404
 
-    reverse_proxy app:8080
+    reverse_proxy app-blue:8080 app-green:8080 {
+        health_uri      /actuator/health
+        health_interval 5s
+        health_timeout  3s
+        fail_duration   10s
+    }
 }

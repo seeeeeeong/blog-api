@@ -68,9 +68,19 @@ output "api_env_aws_cloudfront_domain" {
   value       = aws_cloudfront_distribution.images.domain_name
 }
 
-output "ssh_command" {
-  description = "SSH 접속 명령어"
-  value       = "ssh -i ~/.ssh/${var.ec2_key_name}.pem ec2-user@${aws_eip.main.public_ip}"
+output "github_actions_role_arn" {
+  description = "GitHub Actions OIDC Role ARN (GitHub Secret: AWS_ROLE_ARN)"
+  value       = aws_iam_role.github_actions.arn
+}
+
+output "ec2_instance_id" {
+  description = "EC2 인스턴스 ID (GitHub Secret: EC2_INSTANCE_ID)"
+  value       = aws_instance.main.id
+}
+
+output "ssm_session_command" {
+  description = "SSM Session Manager 접속 명령어"
+  value       = "aws ssm start-session --target ${aws_instance.main.id} --region ${var.aws_region}"
 }
 
 output "cloudwatch_alarm_names" {
