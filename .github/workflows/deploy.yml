@@ -59,8 +59,57 @@ jobs:
       - name: Deploy via SSM
         env:
           ECR_IMAGE: ${{ secrets.ECR_REGISTRY }}/blog-api:${{ needs.build.outputs.image_tag }}
+          EC2_INSTANCE_ID_SECRET: ${{ secrets.EC2_INSTANCE_ID }}
+          EC2_NAME_TAG: ${{ vars.EC2_NAME_TAG }}
         run: |
           set -euo pipefail
+
+          resolve_state_by_id() {
+            local instance_id="$1"
+            aws ec2 describe-instances \
+              --instance-ids "$instance_id" \
+              --query 'Reservations[0].Instances[0].State.Name' \
+              --output text 2>/dev/null || true
+          }
+
+          find_running_instance_by_tag() {
+            local tag_name="$1"
+            aws ec2 describe-instances \
+              --filters "Name=tag:Name,Values=$tag_name" "Name=instance-state-name,Values=running" \
+              --query 'sort_by(Reservations[].Instances[], &LaunchTime)[-1].InstanceId' \
+              --output text
+          }
+
+          INSTANCE_ID="${EC2_INSTANCE_ID_SECRET:-}"
+          INSTANCE_TAG_NAME="${EC2_NAME_TAG:-blog-server}"
+          INSTANCE_STATE=""
+
+          if [ -n "$INSTANCE_ID" ]; then
+            INSTANCE_STATE=$(resolve_state_by_id "$INSTANCE_ID")
+            echo "EC2_INSTANCE_ID secret state: ${INSTANCE_STATE:-unknown}"
+          fi
+
+          if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_STATE" = "None" ] || [ "$INSTANCE_STATE" = "terminated" ] || [ "$INSTANCE_STATE" = "shutting-down" ] || [ "$INSTANCE_STATE" = "stopped" ] || [ "$INSTANCE_STATE" = "stopping" ]; then
+            CANDIDATE_ID=$(find_running_instance_by_tag "$INSTANCE_TAG_NAME")
+            if [ -n "$CANDIDATE_ID" ] && [ "$CANDIDATE_ID" != "None" ]; then
+              echo "Using running EC2 instance by tag [$INSTANCE_TAG_NAME]: $CANDIDATE_ID"
+              INSTANCE_ID="$CANDIDATE_ID"
+              INSTANCE_STATE="running"
+            fi
+          fi
+
+          if [ "$INSTANCE_STATE" = "pending" ]; then
+            aws ec2 wait instance-running --instance-ids "$INSTANCE_ID"
+            INSTANCE_STATE="running"
+          fi
+
+          if [ "$INSTANCE_STATE" != "running" ]; then
+            echo "::error::No running EC2 instance found for deployment. Check EC2 state and update secret EC2_INSTANCE_ID."
+            echo "Hint: terraform output ec2_instance_id"
+            exit 1
+          fi
+
+          echo "Target EC2 instance: $INSTANCE_ID"
 
           ARCHIVE_B64=$(tar czf - deploy.sh docker-compose-prod.yml Caddyfile | base64 | tr -d '\n')
           PARAMS_FILE=$(mktemp)
@@ -75,7 +124,7 @@ jobs:
           }' > "$PARAMS_FILE"
 
           COMMAND_ID=$(aws ssm send-command \
-            --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
+            --instance-ids "$INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
             --parameters "file://$PARAMS_FILE" \
             --timeout-seconds 900 \
@@ -86,23 +135,23 @@ jobs:
 
           aws ssm wait command-executed \
             --command-id "$COMMAND_ID" \
-            --instance-id "${{ secrets.EC2_INSTANCE_ID }}"
+            --instance-id "$INSTANCE_ID"
 
           STATUS=$(aws ssm get-command-invocation \
             --command-id "$COMMAND_ID" \
-            --instance-id "${{ secrets.EC2_INSTANCE_ID }}" \
+            --instance-id "$INSTANCE_ID" \
             --query 'StatusDetails' \
             --output text)
 
           STDOUT=$(aws ssm get-command-invocation \
             --command-id "$COMMAND_ID" \
-            --instance-id "${{ secrets.EC2_INSTANCE_ID }}" \
+            --instance-id "$INSTANCE_ID" \
             --query 'StandardOutputContent' \
             --output text || true)
 
           STDERR=$(aws ssm get-command-invocation \
             --command-id "$COMMAND_ID" \
-            --instance-id "${{ secrets.EC2_INSTANCE_ID }}" \
+            --instance-id "$INSTANCE_ID" \
             --query 'StandardErrorContent' \
             --output text || true)
 
