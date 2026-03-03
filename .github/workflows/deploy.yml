@@ -64,94 +64,9 @@ jobs:
         run: |
           set -euo pipefail
 
-          resolve_state_by_id() {
-            local instance_id="$1"
-            aws ec2 describe-instances \
-              --instance-ids "$instance_id" \
-              --query 'Reservations[0].Instances[0].State.Name' \
-              --output text 2>/dev/null || true
-          }
-
-          find_running_instance_by_tag() {
-            local tag_name="$1"
-            aws ec2 describe-instances \
-              --filters "Name=tag:Name,Values=$tag_name" "Name=instance-state-name,Values=running" \
-              --query 'sort_by(Reservations[].Instances[], &LaunchTime)[-1].InstanceId' \
-              --output text
-          }
-
-          find_running_instance_by_wildcard_tag() {
-            aws ec2 describe-instances \
-              --filters "Name=tag:Name,Values=*server*" "Name=instance-state-name,Values=running" \
-              --query 'sort_by(Reservations[].Instances[], &LaunchTime)[-1].InstanceId' \
-              --output text
-          }
-
-          find_any_running_instance() {
-            aws ec2 describe-instances \
-              --filters "Name=instance-state-name,Values=running" \
-              --query 'sort_by(Reservations[].Instances[], &LaunchTime)[-1].InstanceId' \
-              --output text
-          }
-
           INSTANCE_ID="${EC2_INSTANCE_ID_SECRET:-}"
           INSTANCE_TAG_NAME="${EC2_NAME_TAG:-blog-server}"
-          INSTANCE_STATE=""
-
-          if [ -n "$INSTANCE_ID" ]; then
-            INSTANCE_STATE=$(resolve_state_by_id "$INSTANCE_ID")
-            echo "EC2_INSTANCE_ID secret state: ${INSTANCE_STATE:-unknown}"
-          fi
-
-          if [ "$INSTANCE_STATE" = "stopped" ] || [ "$INSTANCE_STATE" = "stopping" ]; then
-            echo "Starting stopped EC2 instance: $INSTANCE_ID"
-            if aws ec2 start-instances --instance-ids "$INSTANCE_ID" --output text >/dev/null 2>&1; then
-              aws ec2 wait instance-running --instance-ids "$INSTANCE_ID"
-              INSTANCE_STATE="running"
-            else
-              echo "::warning::Failed to start EC2 instance via workflow role. Trying running-instance fallback."
-            fi
-          fi
-
-          if [ -z "$INSTANCE_ID" ] || [ -z "$INSTANCE_STATE" ] || [ "$INSTANCE_STATE" = "None" ] || [ "$INSTANCE_STATE" = "terminated" ] || [ "$INSTANCE_STATE" = "shutting-down" ]; then
-            CANDIDATE_ID=$(find_running_instance_by_tag "$INSTANCE_TAG_NAME")
-            if [ -n "$CANDIDATE_ID" ] && [ "$CANDIDATE_ID" != "None" ]; then
-              echo "Using running EC2 instance by tag [$INSTANCE_TAG_NAME]: $CANDIDATE_ID"
-              INSTANCE_ID="$CANDIDATE_ID"
-              INSTANCE_STATE="running"
-            fi
-          fi
-
-          if [ "$INSTANCE_STATE" != "running" ]; then
-            CANDIDATE_ID=$(find_running_instance_by_wildcard_tag)
-            if [ -n "$CANDIDATE_ID" ] && [ "$CANDIDATE_ID" != "None" ]; then
-              echo "Using running EC2 instance by wildcard tag (*server*): $CANDIDATE_ID"
-              INSTANCE_ID="$CANDIDATE_ID"
-              INSTANCE_STATE="running"
-            fi
-          fi
-
-          if [ "$INSTANCE_STATE" != "running" ]; then
-            CANDIDATE_ID=$(find_any_running_instance)
-            if [ -n "$CANDIDATE_ID" ] && [ "$CANDIDATE_ID" != "None" ]; then
-              echo "::warning::Using latest running EC2 instance without tag match: $CANDIDATE_ID"
-              INSTANCE_ID="$CANDIDATE_ID"
-              INSTANCE_STATE="running"
-            fi
-          fi
-
-          if [ "$INSTANCE_STATE" = "pending" ]; then
-            aws ec2 wait instance-running --instance-ids "$INSTANCE_ID"
-            INSTANCE_STATE="running"
-          fi
-
-          if [ "$INSTANCE_STATE" != "running" ]; then
-            echo "::error::No running EC2 instance found for deployment. Check EC2 state and update secret EC2_INSTANCE_ID."
-            echo "Hint: terraform output ec2_instance_id"
-            exit 1
-          fi
-
-          echo "Target EC2 instance: $INSTANCE_ID"
+          TARGET_INSTANCE_ID=""
 
           ARCHIVE_B64=$(tar czf - deploy.sh docker-compose-prod.yml Caddyfile | base64 | tr -d '\n')
           PARAMS_FILE=$(mktemp)
@@ -165,35 +80,84 @@ jobs:
             ]
           }' > "$PARAMS_FILE"
 
-          COMMAND_ID=$(aws ssm send-command \
-            --instance-ids "$INSTANCE_ID" \
-            --document-name "AWS-RunShellScript" \
-            --parameters "file://$PARAMS_FILE" \
-            --timeout-seconds 900 \
-            --query 'Command.CommandId' \
-            --output text)
+          COMMAND_ID=""
+
+          if [ -n "$INSTANCE_ID" ]; then
+            set +e
+            SEND_OUTPUT=$(aws ssm send-command \
+              --instance-ids "$INSTANCE_ID" \
+              --document-name "AWS-RunShellScript" \
+              --parameters "file://$PARAMS_FILE" \
+              --timeout-seconds 900 \
+              --query 'Command.CommandId' \
+              --output text 2>&1)
+            SEND_EXIT_CODE=$?
+            set -e
+
+            if [ "$SEND_EXIT_CODE" -eq 0 ]; then
+              COMMAND_ID="$SEND_OUTPUT"
+              TARGET_INSTANCE_ID="$INSTANCE_ID"
+              echo "Using EC2_INSTANCE_ID secret: $TARGET_INSTANCE_ID"
+            else
+              echo "::warning::send-command by EC2_INSTANCE_ID failed: $SEND_OUTPUT"
+              if ! printf '%s' "$SEND_OUTPUT" | grep -q "InvalidInstanceId"; then
+                echo "::error::send-command failed with non-recoverable error."
+                exit 1
+              fi
+            fi
+          fi
+
+          if [ -z "$COMMAND_ID" ]; then
+            echo "Retrying send-command by tag target: $INSTANCE_TAG_NAME"
+            COMMAND_ID=$(aws ssm send-command \
+              --targets "Key=tag:Name,Values=$INSTANCE_TAG_NAME" \
+              --document-name "AWS-RunShellScript" \
+              --parameters "file://$PARAMS_FILE" \
+              --timeout-seconds 900 \
+              --query 'Command.CommandId' \
+              --output text)
+
+            for i in {1..30}; do
+              TARGET_INSTANCE_ID=$(aws ssm list-command-invocations \
+                --command-id "$COMMAND_ID" \
+                --details \
+                --query 'CommandInvocations[0].InstanceId' \
+                --output text 2>/dev/null || true)
+              if [ -n "$TARGET_INSTANCE_ID" ] && [ "$TARGET_INSTANCE_ID" != "None" ] && [ "$TARGET_INSTANCE_ID" != "null" ]; then
+                break
+              fi
+              sleep 2
+            done
+
+            if [ -z "$TARGET_INSTANCE_ID" ] || [ "$TARGET_INSTANCE_ID" = "None" ] || [ "$TARGET_INSTANCE_ID" = "null" ]; then
+              echo "::error::No managed/running instance matched tag [$INSTANCE_TAG_NAME]."
+              echo "Update secret EC2_INSTANCE_ID or repository variable EC2_NAME_TAG."
+              exit 1
+            fi
+          fi
 
           echo "SSM Command ID: $COMMAND_ID"
+          echo "Target EC2 instance: $TARGET_INSTANCE_ID"
 
           aws ssm wait command-executed \
             --command-id "$COMMAND_ID" \
-            --instance-id "$INSTANCE_ID"
+            --instance-id "$TARGET_INSTANCE_ID"
 
           STATUS=$(aws ssm get-command-invocation \
             --command-id "$COMMAND_ID" \
-            --instance-id "$INSTANCE_ID" \
+            --instance-id "$TARGET_INSTANCE_ID" \
             --query 'StatusDetails' \
             --output text)
 
           STDOUT=$(aws ssm get-command-invocation \
             --command-id "$COMMAND_ID" \
-            --instance-id "$INSTANCE_ID" \
+            --instance-id "$TARGET_INSTANCE_ID" \
             --query 'StandardOutputContent' \
             --output text || true)
 
           STDERR=$(aws ssm get-command-invocation \
             --command-id "$COMMAND_ID" \
-            --instance-id "$INSTANCE_ID" \
+            --instance-id "$TARGET_INSTANCE_ID" \
             --query 'StandardErrorContent' \
             --output text || true)
 
