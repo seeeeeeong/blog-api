@@ -134,6 +134,11 @@ resource "aws_instance" "main" {
     chown ec2-user:ec2-user /home/ec2-user/app
   EOF
 
+  metadata_options {
+    http_tokens   = "required"
+    http_endpoint = "enabled"
+  }
+
   tags = { Name = "${var.project_name}-server" }
 
   lifecycle {

@@ -82,7 +82,7 @@ resource "aws_iam_role_policy" "github_actions" {
       # EC2: 인스턴스 조회
       {
         Effect   = "Allow"
-        Action   = ["ec2:DescribeInstances", "ec2:StartInstances"]
+        Action   = ["ec2:DescribeInstances"]
         Resource = "*"
       }
     ]
