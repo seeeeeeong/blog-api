@@ -83,21 +83,21 @@ jobs:
           TARGET_INSTANCE_ID=""
           TFSTATE_INSTANCE_ID=$(jq -r '.resources[] | select(.type=="aws_instance" and .name=="main") | .instances[0].attributes.id // empty' infra/terraform/terraform.tfstate 2>/dev/null || true)
 
-          cat > .env.prod <<EOF
-          DB_PASSWORD=${DB_PASSWORD:-}
-          JWT_SECRET=${JWT_SECRET:-}
-          SPRING_JPA_HIBERNATE_DDL_AUTO=${SPRING_JPA_HIBERNATE_DDL_AUTO:-update}
-          JWT_ACCESS_EXPIRATION=${JWT_ACCESS_EXPIRATION:-3600000}
-          JWT_REFRESH_EXPIRATION=${JWT_REFRESH_EXPIRATION:-1209600000}
-          GITHUB_CLIENT_ID=${OAUTH_GITHUB_CLIENT_ID:-}
-          GITHUB_CLIENT_SECRET=${OAUTH_GITHUB_CLIENT_SECRET:-}
-          CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-}
-          OAUTH_REDIRECT_URL=${OAUTH_REDIRECT_URL:-}
-          OAUTH_CALLBACK_URL=${OAUTH_CALLBACK_URL:-}
-          AWS_S3_BUCKET=${AWS_S3_BUCKET:-}
-          AWS_REGION=${APP_AWS_REGION:-ap-northeast-2}
-          AWS_CLOUDFRONT_DOMAIN=${AWS_CLOUDFRONT_DOMAIN:-}
-          EOF
+          {
+            echo "DB_PASSWORD=${DB_PASSWORD:-}"
+            echo "JWT_SECRET=${JWT_SECRET:-}"
+            echo "SPRING_JPA_HIBERNATE_DDL_AUTO=${SPRING_JPA_HIBERNATE_DDL_AUTO:-update}"
+            echo "JWT_ACCESS_EXPIRATION=${JWT_ACCESS_EXPIRATION:-3600000}"
+            echo "JWT_REFRESH_EXPIRATION=${JWT_REFRESH_EXPIRATION:-1209600000}"
+            echo "GITHUB_CLIENT_ID=${OAUTH_GITHUB_CLIENT_ID:-}"
+            echo "GITHUB_CLIENT_SECRET=${OAUTH_GITHUB_CLIENT_SECRET:-}"
+            echo "CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-}"
+            echo "OAUTH_REDIRECT_URL=${OAUTH_REDIRECT_URL:-}"
+            echo "OAUTH_CALLBACK_URL=${OAUTH_CALLBACK_URL:-}"
+            echo "AWS_S3_BUCKET=${AWS_S3_BUCKET:-}"
+            echo "AWS_REGION=${APP_AWS_REGION:-ap-northeast-2}"
+            echo "AWS_CLOUDFRONT_DOMAIN=${AWS_CLOUDFRONT_DOMAIN:-}"
+          } > .env.prod
 
           ARCHIVE_B64=$(tar czf - deploy.sh docker-compose-prod.yml Caddyfile .env.prod | base64 | tr -d '\n')
           PARAMS_FILE=$(mktemp)
@@ -109,6 +109,7 @@ jobs:
               "mkdir -p /home/ec2-user/app",
               "echo \"" + $archive + "\" | base64 -d | tar xzf - -C /home/ec2-user/app",
               "chmod +x /home/ec2-user/app/deploy.sh",
+              "set -a && source /home/ec2-user/app/.env.prod && set +a",
               "bash /home/ec2-user/app/deploy.sh \"" + $image + "\""
             ]
           }' > "$PARAMS_FILE"
