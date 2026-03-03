@@ -80,6 +80,20 @@ jobs:
               --output text
           }
 
+          find_running_instance_by_wildcard_tag() {
+            aws ec2 describe-instances \
+              --filters "Name=tag:Name,Values=*server*" "Name=instance-state-name,Values=running" \
+              --query 'sort_by(Reservations[].Instances[], &LaunchTime)[-1].InstanceId' \
+              --output text
+          }
+
+          find_any_running_instance() {
+            aws ec2 describe-instances \
+              --filters "Name=instance-state-name,Values=running" \
+              --query 'sort_by(Reservations[].Instances[], &LaunchTime)[-1].InstanceId' \
+              --output text
+          }
+
           INSTANCE_ID="${EC2_INSTANCE_ID_SECRET:-}"
           INSTANCE_TAG_NAME="${EC2_NAME_TAG:-blog-server}"
           INSTANCE_STATE=""
@@ -89,10 +103,38 @@ jobs:
             echo "EC2_INSTANCE_ID secret state: ${INSTANCE_STATE:-unknown}"
           fi
 
-          if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_STATE" = "None" ] || [ "$INSTANCE_STATE" = "terminated" ] || [ "$INSTANCE_STATE" = "shutting-down" ] || [ "$INSTANCE_STATE" = "stopped" ] || [ "$INSTANCE_STATE" = "stopping" ]; then
+          if [ "$INSTANCE_STATE" = "stopped" ] || [ "$INSTANCE_STATE" = "stopping" ]; then
+            echo "Starting stopped EC2 instance: $INSTANCE_ID"
+            if aws ec2 start-instances --instance-ids "$INSTANCE_ID" --output text >/dev/null 2>&1; then
+              aws ec2 wait instance-running --instance-ids "$INSTANCE_ID"
+              INSTANCE_STATE="running"
+            else
+              echo "::warning::Failed to start EC2 instance via workflow role. Trying running-instance fallback."
+            fi
+          fi
+
+          if [ -z "$INSTANCE_ID" ] || [ -z "$INSTANCE_STATE" ] || [ "$INSTANCE_STATE" = "None" ] || [ "$INSTANCE_STATE" = "terminated" ] || [ "$INSTANCE_STATE" = "shutting-down" ]; then
             CANDIDATE_ID=$(find_running_instance_by_tag "$INSTANCE_TAG_NAME")
             if [ -n "$CANDIDATE_ID" ] && [ "$CANDIDATE_ID" != "None" ]; then
               echo "Using running EC2 instance by tag [$INSTANCE_TAG_NAME]: $CANDIDATE_ID"
+              INSTANCE_ID="$CANDIDATE_ID"
+              INSTANCE_STATE="running"
+            fi
+          fi
+
+          if [ "$INSTANCE_STATE" != "running" ]; then
+            CANDIDATE_ID=$(find_running_instance_by_wildcard_tag)
+            if [ -n "$CANDIDATE_ID" ] && [ "$CANDIDATE_ID" != "None" ]; then
+              echo "Using running EC2 instance by wildcard tag (*server*): $CANDIDATE_ID"
+              INSTANCE_ID="$CANDIDATE_ID"
+              INSTANCE_STATE="running"
+            fi
+          fi
+
+          if [ "$INSTANCE_STATE" != "running" ]; then
+            CANDIDATE_ID=$(find_any_running_instance)
+            if [ -n "$CANDIDATE_ID" ] && [ "$CANDIDATE_ID" != "None" ]; then
+              echo "::warning::Using latest running EC2 instance without tag match: $CANDIDATE_ID"
               INSTANCE_ID="$CANDIDATE_ID"
               INSTANCE_STATE="running"
             fi
