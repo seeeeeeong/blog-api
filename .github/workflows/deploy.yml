@@ -67,6 +67,7 @@ jobs:
           INSTANCE_ID="${EC2_INSTANCE_ID_SECRET:-}"
           INSTANCE_TAG_NAME="${EC2_NAME_TAG:-blog-server}"
           TARGET_INSTANCE_ID=""
+          TFSTATE_INSTANCE_ID=$(jq -r '.resources[] | select(.type=="aws_instance" and .name=="main") | .instances[0].attributes.id // empty' infra/terraform/terraform.tfstate 2>/dev/null || true)
 
           ARCHIVE_B64=$(tar czf - deploy.sh docker-compose-prod.yml Caddyfile | base64 | tr -d '\n')
           PARAMS_FILE=$(mktemp)
@@ -104,6 +105,27 @@ jobs:
                 echo "::error::send-command failed with non-recoverable error."
                 exit 1
               fi
+            fi
+          fi
+
+          if [ -z "$COMMAND_ID" ] && [ -n "$TFSTATE_INSTANCE_ID" ] && [ "$TFSTATE_INSTANCE_ID" != "$INSTANCE_ID" ]; then
+            set +e
+            SEND_OUTPUT=$(aws ssm send-command \
+              --instance-ids "$TFSTATE_INSTANCE_ID" \
+              --document-name "AWS-RunShellScript" \
+              --parameters "file://$PARAMS_FILE" \
+              --timeout-seconds 900 \
+              --query 'Command.CommandId' \
+              --output text 2>&1)
+            SEND_EXIT_CODE=$?
+            set -e
+
+            if [ "$SEND_EXIT_CODE" -eq 0 ]; then
+              COMMAND_ID="$SEND_OUTPUT"
+              TARGET_INSTANCE_ID="$TFSTATE_INSTANCE_ID"
+              echo "Using terraform state instance id fallback: $TARGET_INSTANCE_ID"
+            else
+              echo "::warning::send-command by tfstate instance id failed: $SEND_OUTPUT"
             fi
           fi
 
