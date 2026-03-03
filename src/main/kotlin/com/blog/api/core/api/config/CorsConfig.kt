@@ -12,8 +12,9 @@ class CorsConfig(
 ) : WebMvcConfigurer {
 
     override fun addCorsMappings(registry: CorsRegistry) {
+        val origins = allowedOrigins.split(",").map { it.trim() }.filter { it.isNotBlank() }.toTypedArray()
         registry.addMapping("/**")
-            .allowedOrigins(*allowedOrigins.split(",").toTypedArray())
+            .allowedOrigins(*origins)
             .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
             .allowedHeaders("Content-Type", "Authorization", "X-Requested-With")
             .exposedHeaders("Authorization", "GitHub-Username", "GitHub-Avatar-Url")

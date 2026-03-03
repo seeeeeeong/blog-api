@@ -1,6 +1,7 @@
 package com.blog.api.core.api.config
 
 import com.blog.api.core.support.security.JwtAuthenticationFilter
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
@@ -13,6 +14,9 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.security.web.servlet.util.matcher.MvcRequestMatcher
+import org.springframework.web.cors.CorsConfiguration
+import org.springframework.web.cors.CorsConfigurationSource
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 import org.springframework.web.servlet.handler.HandlerMappingIntrospector
 
 @Configuration
@@ -20,6 +24,7 @@ import org.springframework.web.servlet.handler.HandlerMappingIntrospector
 @EnableMethodSecurity(prePostEnabled = true)
 class SecurityConfig(
     private val jwtAuthenticationFilter: JwtAuthenticationFilter,
+    @param:Value("\${cors.allowed-origins}") private val corsAllowedOrigins: String,
 ) {
 
     @Bean
@@ -32,7 +37,7 @@ class SecurityConfig(
         val mvc = MvcRequestMatcher.Builder(introspector)
         http
             .csrf { it.disable() }
-            .cors { }
+            .cors { it.configurationSource(corsConfigurationSource()) }
             .httpBasic { it.disable() }
             .formLogin { it.disable() }
             .sessionManagement {
@@ -40,6 +45,9 @@ class SecurityConfig(
             }
             .authorizeHttpRequests { authorize ->
                 authorize
+                    // CORS preflight
+                    .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
                     // Health check
                     .requestMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus").permitAll()
 
@@ -89,5 +97,20 @@ class SecurityConfig(
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
 
         return http.build()
+    }
+
+    @Bean
+    fun corsConfigurationSource(): CorsConfigurationSource {
+        val config = CorsConfiguration().apply {
+            allowedOrigins = corsAllowedOrigins.split(",").map { it.trim() }.filter { it.isNotBlank() }
+            allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "OPTIONS")
+            allowedHeaders = listOf("Content-Type", "Authorization", "X-Requested-With")
+            exposedHeaders = listOf("Authorization", "GitHub-Username", "GitHub-Avatar-Url")
+            allowCredentials = true
+            maxAge = 3600
+        }
+        return UrlBasedCorsConfigurationSource().apply {
+            registerCorsConfiguration("/**", config)
+        }
     }
 }
