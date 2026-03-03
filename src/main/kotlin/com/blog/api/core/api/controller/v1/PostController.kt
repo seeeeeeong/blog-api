@@ -55,6 +55,15 @@ class PostController(
         return ApiResponse.success(PostResponse.of(post, postService.getHtml(post.id, post.content)))
     }
 
+    @GetMapping("/{postId}/admin")
+    fun getPostForAdmin(
+        @PathVariable postId: Long,
+        @Admin userId: Long,
+    ): ApiResponse<PostResponse> {
+        val post = postService.getPostForAdmin(postId, userId)
+        return ApiResponse.success(PostResponse.of(post, postService.getHtml(post.id, post.content)))
+    }
+
     @GetMapping("/popular")
     fun getPopularPosts(
         @RequestParam(defaultValue = "5") @Min(1) @Max(20) limit: Int,

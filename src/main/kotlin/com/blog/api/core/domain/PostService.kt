@@ -37,6 +37,15 @@ class PostService(
         return post.toPost()
     }
 
+    fun getPostForAdmin(postId: Long, userId: Long): Post {
+        val post = findPostById(postId)
+        if (post.status == PostStatus.DELETED) {
+            throw CoreException(ErrorType.POST_NOT_FOUND)
+        }
+        checkOwnership(post, userId)
+        return post.toPost()
+    }
+
     fun getHtml(postId: Long, content: String): String {
         return postHtmlCacheService.getHtml(postId, content)
     }

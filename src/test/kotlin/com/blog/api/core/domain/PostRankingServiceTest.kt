@@ -81,6 +81,56 @@ class PostRankingServiceTest {
         )
     }
 
+    @Test
+    fun `CB OPEN이면 write 연산을 skip한다`() {
+        val redisOps = RecordingRedisOps(
+            available = { false },
+            result = { listOf("3", "2", "1") },
+        )
+        val service = createService(
+            redisOps = redisOps,
+            postRepository = mockPostRepository(limit = 3),
+            cbWaitMs = 30_000,
+        )
+
+        repeat(2) { service.getTopPostIds(3) } // 2회 실패로 OPEN 전환
+        assertEquals(CircuitBreaker.State.OPEN, extractCircuitBreaker(service).state)
+
+        service.incrementScore(1L)
+        service.remove(2L)
+        service.seed(3L, 300)
+
+        assertEquals(0, redisOps.zincrbyCalls)
+        assertEquals(0, redisOps.zremCalls)
+        assertEquals(0, redisOps.zaddCalls)
+    }
+
+    @Test
+    fun `CB HALF_OPEN에서는 write 연산을 허용한다`() {
+        val redisOps = RecordingRedisOps(
+            available = { true },
+            result = { listOf("3", "2", "1") },
+        )
+        val service = createService(
+            redisOps = redisOps,
+            postRepository = mockPostRepository(limit = 3),
+            cbWaitMs = 30_000,
+        )
+
+        extractCircuitBreaker(service).apply {
+            transitionToOpenState()
+            transitionToHalfOpenState()
+        }
+
+        service.incrementScore(1L)
+        service.remove(2L)
+        service.seed(3L, 300)
+
+        assertEquals(1, redisOps.zincrbyCalls)
+        assertEquals(1, redisOps.zremCalls)
+        assertEquals(1, redisOps.zaddCalls)
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private fun createService(
@@ -147,8 +197,39 @@ class PostRankingServiceTest {
      *  CircuitBreaker.decorateSupplier 에서 CallNotPermittedException 이 나오지 않으면 CLOSED 로 간주.
      *  여기서는 명시적 확인을 위해 필드에 노출된 cb 를 통해 검증한다. */
     private fun extractCbState(service: PostRankingService): CircuitBreaker.State {
+        return extractCircuitBreaker(service).state
+    }
+
+    private fun extractCircuitBreaker(service: PostRankingService): CircuitBreaker {
         val field = PostRankingService::class.java.getDeclaredField("cb")
         field.isAccessible = true
-        return (field.get(service) as CircuitBreaker).state
+        return field.get(service) as CircuitBreaker
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private class RecordingRedisOps(
+        private val available: () -> Boolean,
+        private val result: () -> List<String>,
+    ) : RedisOps(mock(RedisTemplate::class.java) as RedisTemplate<String, String>) {
+        var zincrbyCalls: Int = 0
+        var zremCalls: Int = 0
+        var zaddCalls: Int = 0
+
+        override fun zrevrange(key: String, start: Long, end: Long): List<String> {
+            if (!available()) throw RuntimeException("redis down")
+            return result()
+        }
+
+        override fun zincrby(key: String, delta: Double, member: String) {
+            zincrbyCalls++
+        }
+
+        override fun zadd(key: String, score: Double, member: String) {
+            zaddCalls++
+        }
+
+        override fun zrem(key: String, member: String) {
+            zremCalls++
+        }
     }
 }

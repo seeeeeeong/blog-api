@@ -58,14 +58,17 @@ class PostRankingService(
     }
 
     fun incrementScore(postId: Long) {
+        if (shouldSkipWrite("zincrby", postId.toString())) return
         redisOps.zincrby(RANKING_KEY, 1.0, postId.toString())
     }
 
     fun remove(postId: Long) {
+        if (shouldSkipWrite("zrem", postId.toString())) return
         redisOps.zrem(RANKING_KEY, postId.toString())
     }
 
     fun seed(postId: Long, viewCount: Int) {
+        if (shouldSkipWrite("zadd", postId.toString())) return
         redisOps.zadd(RANKING_KEY, viewCount.toDouble(), postId.toString())
     }
 
@@ -114,5 +117,13 @@ class PostRankingService(
             localFallbackCache.put(limit, dbIds)
         }
         return dbIds
+    }
+
+    private fun shouldSkipWrite(op: String, member: String): Boolean {
+        if (cb.state != CircuitBreaker.State.OPEN) {
+            return false
+        }
+        logger.info("ranking: skipped Redis {} for member={} because CB is OPEN", op, member)
+        return true
     }
 }
