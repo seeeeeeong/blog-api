@@ -18,7 +18,9 @@ import jakarta.persistence.Table
         Index(name = "idx_post_user_id", columnList = "user_id"),
         Index(name = "idx_post_category_id", columnList = "category_id"),
         Index(name = "idx_post_status", columnList = "status"),
-        Index(name = "idx_post_created_at", columnList = "created_at")
+        Index(name = "idx_post_created_at", columnList = "created_at"),
+        Index(name = "idx_post_user_status", columnList = "user_id,status"),
+        Index(name = "idx_post_category_status", columnList = "category_id,status"),
     ]
 )
 class PostEntity(

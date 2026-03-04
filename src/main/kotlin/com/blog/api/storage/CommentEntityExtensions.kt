@@ -14,7 +14,7 @@ fun CommentEntity.toComment(converter: PostMarkdownConverter): Comment = Comment
     oauthAvatarUrl = oauthAvatarUrl,
     parentId = parentId,
     content = content,
-    contentHtml = converter.convertToHtml(content),
+    contentHtml = contentHtml ?: converter.convertToHtml(content),
     createdAt = createdAt,
     updatedAt = updatedAt,
 )

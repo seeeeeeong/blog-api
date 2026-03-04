@@ -2,10 +2,9 @@
     @actuator path /actuator/*
     respond @actuator 404
 
-    # CloudFront Origin Secret 검증 — CLOUDFRONT_SECRET 미설정 시 비활성
+    # CloudFront Origin Secret 검증
     @direct_access {
         not header X-CloudFront-Secret {env.CLOUDFRONT_SECRET}
-        expression `{env.CLOUDFRONT_SECRET}` != ``
     }
     respond @direct_access 403
 

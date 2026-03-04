@@ -16,6 +16,10 @@ interface PostRepository : JpaRepository<PostEntity, Long> {
     @Query("UPDATE PostEntity p SET p.viewCount = p.viewCount + 1 WHERE p.id = :postId")
     fun incrementViewCount(@Param("postId") postId: Long)
 
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE PostEntity p SET p.viewCount = p.viewCount + :delta WHERE p.id = :postId")
+    fun incrementViewCountBy(@Param("postId") postId: Long, @Param("delta") delta: Int)
+
     fun findAllByIdInAndStatus(ids: List<Long>, status: PostStatus): List<PostEntity>
 
     fun findByStatus(status: PostStatus, pageable: Pageable): Page<PostEntity>

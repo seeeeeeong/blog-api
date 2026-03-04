@@ -74,4 +74,14 @@ class RedisOps(
             logger.warn("Redis ZREM failed: key=$key, error=${e.message}")
         }
     }
+
+    /** null = Redis 오류 */
+    fun zrangeWithScores(key: String, start: Long, end: Long): Set<org.springframework.data.redis.core.ZSetOperations.TypedTuple<String>>? {
+        return try {
+            redisTemplate.opsForZSet().rangeWithScores(key, start, end)
+        } catch (e: Exception) {
+            logger.warn("Redis ZRANGEWITHSCORES failed: key=$key, error=${e.message}")
+            null
+        }
+    }
 }

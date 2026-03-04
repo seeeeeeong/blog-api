@@ -27,6 +27,7 @@ class CommentService(
     fun createComment(commentCreate: CommentCreate): Comment {
         ensurePostExists(commentCreate.postId)
 
+        val contentHtml = postMarkdownConverter.convertToHtml(commentCreate.content)
         val saved = commentRepository.save(
             CommentEntity(
                 postId = commentCreate.postId,
@@ -35,6 +36,7 @@ class CommentService(
                 oauthAvatarUrl = commentCreate.oauthAvatarUrl.takeIf { it.isNotBlank() },
                 parentId = resolveParentId(commentCreate.parentId, commentCreate.postId),
                 content = commentCreate.content,
+                contentHtml = contentHtml,
             )
         )
 
@@ -42,13 +44,11 @@ class CommentService(
     }
 
     fun getCommentsByPost(postId: Long): List<CommentWithReplies> {
-        val comments = commentRepository.findAllByPostId(postId)
-        if (comments.isEmpty()) {
-            return emptyList()
-        }
+        val rootComments = commentRepository.findRootCommentsByPostId(postId)
+        if (rootComments.isEmpty()) return emptyList()
 
-        val repliesByParent = buildRepliesByParent(comments)
-        val rootComments = findRootComments(comments)
+        val replies = commentRepository.findReplyCommentsByPostId(postId)
+        val repliesByParent = buildRepliesByParent(replies)
         return rootComments.map { it.toCommentWithReplies(repliesByParent, postMarkdownConverter) }
     }
 
@@ -57,7 +57,7 @@ class CommentService(
         val comment = findActiveComment(commentId)
         validatePostId(comment, postId)
         validateOwner(comment, oauthId)
-        comment.updateContent(commentUpdate.content)
+        comment.updateContent(commentUpdate.content, postMarkdownConverter.convertToHtml(commentUpdate.content))
         return comment.toComment(postMarkdownConverter)
     }
 
@@ -86,21 +86,13 @@ class CommentService(
         if (!exists) throw CoreException(ErrorType.POST_NOT_FOUND)
     }
 
-    private fun buildRepliesByParent(comments: List<CommentEntity>): Map<Long, List<Comment>> {
-        return comments
-            .filter { it.parentId != null }
-            .groupBy { it.parentId!! }
-            .mapValues { (_, groupedComments) ->
-                groupedComments
-                    .sortedBy { it.createdAt }
-                    .map { it.toComment(postMarkdownConverter) }
-            }
-    }
-
-    private fun findRootComments(comments: List<CommentEntity>): List<CommentEntity> {
-        return comments
-            .filter { it.parentId == null }
-            .sortedByDescending { it.createdAt }
+    private fun buildRepliesByParent(replies: List<CommentEntity>): Map<Long, List<Comment>> {
+        val result = mutableMapOf<Long, MutableList<Comment>>()
+        for (reply in replies) {
+            result.getOrPut(reply.parentId!!) { mutableListOf() }
+                .add(reply.toComment(postMarkdownConverter))
+        }
+        return result
     }
 
     private fun findActiveComment(commentId: Long): CommentEntity {

@@ -87,7 +87,11 @@ output "cloudwatch_alarm_names" {
   description = "생성된 CloudWatch 알람 이름"
   value = [
     aws_cloudwatch_metric_alarm.ec2_cpu_high.alarm_name,
-    aws_cloudwatch_metric_alarm.ec2_status_check_failed.alarm_name
+    aws_cloudwatch_metric_alarm.ec2_status_check_failed.alarm_name,
+    aws_cloudwatch_metric_alarm.ec2_memory_high.alarm_name,
+    aws_cloudwatch_metric_alarm.ec2_disk_high.alarm_name,
+    aws_cloudwatch_metric_alarm.api_5xx_error_rate_high.alarm_name,
+    aws_cloudwatch_metric_alarm.container_restarts_detected.alarm_name,
   ]
 }
 
@@ -99,4 +103,9 @@ output "monitoring_sns_topic_arn" {
 output "ecr_registry_url" {
   description = "ECR 리포지토리 URL (GitHub Actions ECR_REGISTRY 값)"
   value       = aws_ecr_repository.blog_api.repository_url
+}
+
+output "ssm_parameter_prefix" {
+  description = "배포 런타임 설정 SSM Parameter prefix"
+  value       = var.ssm_parameter_prefix
 }

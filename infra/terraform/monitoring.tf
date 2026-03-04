@@ -53,3 +53,84 @@ resource "aws_cloudwatch_metric_alarm" "ec2_status_check_failed" {
   alarm_actions = local.cloudwatch_alarm_actions
   ok_actions    = local.cloudwatch_alarm_actions
 }
+
+resource "aws_cloudwatch_metric_alarm" "ec2_memory_high" {
+  alarm_name          = "${var.project_name}-ec2-memory-high"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 3
+  metric_name         = "mem_used_percent"
+  namespace           = "CWAgent"
+  period              = 300
+  statistic           = "Average"
+  threshold           = var.memory_alarm_threshold
+  alarm_description   = "EC2 메모리 사용률이 높습니다."
+  treat_missing_data  = "missing"
+
+  dimensions = {
+    InstanceId = aws_instance.main.id
+  }
+
+  alarm_actions = local.cloudwatch_alarm_actions
+  ok_actions    = local.cloudwatch_alarm_actions
+}
+
+resource "aws_cloudwatch_metric_alarm" "ec2_disk_high" {
+  alarm_name          = "${var.project_name}-ec2-disk-high"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 3
+  metric_name         = "disk_used_percent"
+  namespace           = "CWAgent"
+  period              = 300
+  statistic           = "Average"
+  threshold           = var.disk_alarm_threshold
+  alarm_description   = "EC2 루트 디스크 사용률이 높습니다."
+  treat_missing_data  = "missing"
+
+  dimensions = {
+    InstanceId = aws_instance.main.id
+  }
+
+  alarm_actions = local.cloudwatch_alarm_actions
+  ok_actions    = local.cloudwatch_alarm_actions
+}
+
+resource "aws_cloudwatch_metric_alarm" "api_5xx_error_rate_high" {
+  alarm_name          = "${var.project_name}-api-5xx-rate-high"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 3
+  metric_name         = "5xxErrorRate"
+  namespace           = "AWS/CloudFront"
+  period              = 300
+  statistic           = "Average"
+  threshold           = var.api_5xx_error_rate_threshold
+  alarm_description   = "CloudFront API 5xx 비율이 임계치를 초과했습니다."
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    DistributionId = aws_cloudfront_distribution.api.id
+    Region         = "Global"
+  }
+
+  alarm_actions = local.cloudwatch_alarm_actions
+  ok_actions    = local.cloudwatch_alarm_actions
+}
+
+resource "aws_cloudwatch_metric_alarm" "container_restarts_detected" {
+  alarm_name          = "${var.project_name}-container-restarts-detected"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 1
+  metric_name         = "ContainerRestartCount"
+  namespace           = "Blog/Infra"
+  period              = 300
+  statistic           = "Sum"
+  threshold           = var.container_restart_alarm_threshold
+  alarm_description   = "최근 5분 동안 컨테이너 재시작이 감지되었습니다."
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    InstanceId = aws_instance.main.id
+  }
+
+  alarm_actions = local.cloudwatch_alarm_actions
+  ok_actions    = local.cloudwatch_alarm_actions
+}

@@ -61,3 +61,33 @@ variable "cpu_alarm_threshold" {
   type        = number
   default     = 80
 }
+
+variable "memory_alarm_threshold" {
+  description = "EC2 메모리 사용률 경고 임계치(%) (CloudWatch Agent)"
+  type        = number
+  default     = 85
+}
+
+variable "disk_alarm_threshold" {
+  description = "EC2 디스크 사용률 경고 임계치(%) (CloudWatch Agent)"
+  type        = number
+  default     = 85
+}
+
+variable "api_5xx_error_rate_threshold" {
+  description = "CloudFront API 5xx 비율 경고 임계치(%)"
+  type        = number
+  default     = 1
+}
+
+variable "container_restart_alarm_threshold" {
+  description = "5분 동안 컨테이너 재시작 횟수 경고 임계치"
+  type        = number
+  default     = 1
+}
+
+variable "ssm_parameter_prefix" {
+  description = "배포 시 앱 설정을 읽을 SSM Parameter 경로 prefix (예: /blog/prod)"
+  type        = string
+  default     = "/blog/prod"
+}

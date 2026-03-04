@@ -31,6 +31,29 @@ resource "aws_iam_role_policy" "ec2_s3" {
           "s3:DeleteObject"
         ]
         Resource = "${aws_s3_bucket.images.arn}/admin/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject"
+        ]
+        Resource = "${aws_s3_bucket.images.arn}/backups/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:ListBucket"
+        ]
+        Resource = aws_s3_bucket.images.arn
+        Condition = {
+          StringLike = {
+            "s3:prefix" = [
+              "admin/*",
+              "backups/*"
+            ]
+          }
+        }
       }
     ]
   })
@@ -57,6 +80,56 @@ resource "aws_iam_role_policy" "ec2_ecr" {
           "ecr:GetDownloadUrlForLayer"
         ]
         Resource = aws_ecr_repository.blog_api.arn
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "ec2_ssm_parameter_read" {
+  name = "${var.project_name}-ec2-ssm-parameter-read"
+  role = aws_iam_role.ec2.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameter",
+          "ssm:GetParameters",
+          "ssm:GetParametersByPath"
+        ]
+        Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${trimprefix(var.ssm_parameter_prefix, "/")}/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt"
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "kms:ViaService" = "ssm.${var.aws_region}.amazonaws.com"
+          }
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "ec2_cloudwatch_put_metric" {
+  name = "${var.project_name}-ec2-cloudwatch-put-metric"
+  role = aws_iam_role.ec2.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "cloudwatch:PutMetricData"
+        ]
+        Resource = "*"
       }
     ]
   })
@@ -117,12 +190,42 @@ resource "aws_instance" "main" {
     swapon /swapfile
     echo '/swapfile swap swap defaults 0 0' >> /etc/fstab
 
-    # Docker 설치
+    # Docker / CloudWatch Agent 설치
     dnf update -y
-    dnf install -y docker git
+    dnf install -y docker git amazon-cloudwatch-agent cronie
     systemctl start docker
     systemctl enable docker
+    systemctl start crond
+    systemctl enable crond
     usermod -aG docker ec2-user
+
+    # CloudWatch Agent 메트릭 설정 (mem_used_percent, disk_used_percent)
+    cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'CWCONFIG'
+    {
+      "agent": {
+        "metrics_collection_interval": 60,
+        "run_as_user": "root"
+      },
+      "metrics": {
+        "namespace": "CWAgent",
+        "append_dimensions": {
+          "InstanceId": "$${aws:InstanceId}"
+        },
+        "aggregation_dimensions": [["InstanceId"]],
+        "metrics_collected": {
+          "mem": {
+            "measurement": ["mem_used_percent"]
+          },
+          "disk": {
+            "measurement": ["used_percent"],
+            "resources": ["/"],
+            "ignore_file_system_types": ["sysfs", "devtmpfs", "tmpfs", "squashfs", "overlay", "proc", "devfs"]
+          }
+        }
+      }
+    }
+    CWCONFIG
+    /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s || true
 
     # Docker Compose 설치
     DOCKER_COMPOSE_VERSION="v2.24.5"

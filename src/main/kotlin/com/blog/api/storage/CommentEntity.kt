@@ -11,7 +11,7 @@ import jakarta.persistence.Table
 @Table(
     name = "comments",
     indexes = [
-        Index(name = "idx_comment_post_deleted_created", columnList = "post_id,is_deleted,created_at")
+        Index(name = "idx_comment_post_deleted_created", columnList = "post_id,is_deleted,created_at"),
     ]
 )
 class CommentEntity(
@@ -38,13 +38,17 @@ class CommentEntity(
     @Column(nullable = false, columnDefinition = "TEXT")
     var content: String,
 
+    @Column(name = "content_html", columnDefinition = "TEXT")
+    var contentHtml: String? = null,
+
     @Column(name = "is_deleted", nullable = false)
     private var isDeleted: Boolean = false
 
 ) : BaseTimeEntity() {
 
-    fun updateContent(newContent: String) {
+    fun updateContent(newContent: String, newContentHtml: String) {
         this.content = newContent
+        this.contentHtml = newContentHtml
     }
 
     fun delete() {
