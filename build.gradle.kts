@@ -53,7 +53,6 @@ dependencies {
 
     // Resilience4j
     implementation("io.github.resilience4j:resilience4j-spring-boot3:2.2.0")
-    implementation("io.github.resilience4j:resilience4j-kotlin:2.2.0")
 
     // JWT
     implementation("io.jsonwebtoken:jjwt-api:0.12.3")
