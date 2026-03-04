@@ -1,8 +1,9 @@
 package com.blog.api.core.domain
 
 import com.blog.api.core.support.connector.RedisOps
-import org.junit.jupiter.api.Assertions.assertEquals
+import com.blog.api.storage.PostRepository
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentMatchers.anyLong
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
@@ -12,58 +13,45 @@ import java.util.concurrent.TimeUnit
 class PostViewServiceTest {
 
     @Test
-    fun `새로운 방문자 - 조회수 배치 키 증가 및 랭킹 업데이트`() {
-        val zincrbyKeys = mutableListOf<String>()
-        val (service, postRankingService) = fixture(
-            setIfAbsentResult = true,
-            zincrbyCapture = { key, _, _ -> zincrbyKeys.add(key) },
-        )
+    fun `새로운 방문자 - 조회수 증가`() {
+        val (service, postRepository, postRankingService) = fixture(setIfAbsentResult = true)
 
         service.incrementIfNeeded(1L, "127.0.0.1")
 
-        assertEquals(listOf(PostViewService.BATCH_KEY), zincrbyKeys)
+        verify(postRepository).incrementViewCount(1L)
         verify(postRankingService).incrementScore(1L)
     }
 
     @Test
-    fun `중복 방문자 - 아무것도 증가 안 함`() {
-        val zincrbyKeys = mutableListOf<String>()
-        val (service, postRankingService) = fixture(
-            setIfAbsentResult = false,
-            zincrbyCapture = { key, _, _ -> zincrbyKeys.add(key) },
-        )
+    fun `중복 방문자 - 조회수 증가 안 함`() {
+        val (service, postRepository, postRankingService) = fixture(setIfAbsentResult = false)
 
         service.incrementIfNeeded(1L, "127.0.0.1")
 
-        assertEquals(emptyList<String>(), zincrbyKeys)
-        verify(postRankingService, never()).incrementScore(1L)
+        verify(postRepository, never()).incrementViewCount(anyLong())
+        verify(postRankingService, never()).incrementScore(anyLong())
     }
 
     @Test
     fun `Redis 장애 - 조회수 skip (fail-open)`() {
-        val zincrbyKeys = mutableListOf<String>()
-        val (service, postRankingService) = fixture(
-            setIfAbsentResult = null,
-            zincrbyCapture = { key, _, _ -> zincrbyKeys.add(key) },
-        )
+        val (service, postRepository, postRankingService) = fixture(setIfAbsentResult = null)
 
         service.incrementIfNeeded(1L, "127.0.0.1")
 
-        assertEquals(emptyList<String>(), zincrbyKeys)
-        verify(postRankingService, never()).incrementScore(1L)
+        verify(postRepository, never()).incrementViewCount(anyLong())
+        verify(postRankingService, never()).incrementScore(anyLong())
     }
 
     @Suppress("UNCHECKED_CAST")
     private fun fixture(
         setIfAbsentResult: Boolean?,
-        zincrbyCapture: (String, Double, String) -> Unit = { _, _, _ -> },
-    ): Pair<PostViewService, PostRankingService> {
+    ): Triple<PostViewService, PostRepository, PostRankingService> {
         val redisOps = object : RedisOps(mock(RedisTemplate::class.java) as RedisTemplate<String, String>) {
             override fun setIfAbsent(key: String, value: String, timeout: Long, unit: TimeUnit) = setIfAbsentResult
-            override fun zincrby(key: String, delta: Double, member: String) = zincrbyCapture(key, delta, member)
         }
+        val postRepository = mock(PostRepository::class.java)
         val postRankingService = mock(PostRankingService::class.java)
-        val service = PostViewService(redisOps, postRankingService, ttlSeconds = 3600)
-        return service to postRankingService
+        val service = PostViewService(redisOps, postRepository, postRankingService, ttlSeconds = 3600)
+        return Triple(service, postRepository, postRankingService)
     }
 }

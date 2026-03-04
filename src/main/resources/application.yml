@@ -30,7 +30,6 @@ management:
 
 view-count:
   ttl-seconds: 3600
-  batch-flush-ms: 30000
 
 image-upload:
   presigned:
