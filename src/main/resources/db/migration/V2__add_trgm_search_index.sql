@@ -16,11 +16,20 @@ BEGIN
         RAISE NOTICE 'pg_trgm extension creation skipped (%). Pre-install manually: CREATE EXTENSION pg_trgm;', SQLERRM;
     END;
 
-    -- 2) extension 이 있을 때만 인덱스 생성
+    -- 2) extension + 대상 테이블이 있을 때만 인덱스 생성
     IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm') THEN
-        CREATE INDEX IF NOT EXISTS idx_posts_title_trgm   ON posts USING GIN (title   gin_trgm_ops);
-        CREATE INDEX IF NOT EXISTS idx_posts_content_trgm ON posts USING GIN (content gin_trgm_ops);
-        RAISE NOTICE 'pg_trgm indexes created.';
+        IF EXISTS (
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema = current_schema()
+              AND table_name = 'posts'
+        ) THEN
+            CREATE INDEX IF NOT EXISTS idx_posts_title_trgm   ON posts USING GIN (title   gin_trgm_ops);
+            CREATE INDEX IF NOT EXISTS idx_posts_content_trgm ON posts USING GIN (content gin_trgm_ops);
+            RAISE NOTICE 'pg_trgm indexes created.';
+        ELSE
+            RAISE NOTICE 'posts table not found in schema "%". Trigram indexes skipped.', current_schema();
+        END IF;
     ELSE
         RAISE NOTICE 'pg_trgm not available — trigram indexes skipped. Search fallback to seq scan.';
     END IF;
