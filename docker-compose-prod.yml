@@ -37,10 +37,10 @@ services:
     mem_limit: 256m
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
-      interval: 5s
-      timeout: 3s
-      retries: 12
-      start_period: 30s
+      interval: 10s
+      timeout: 10s
+      retries: 18
+      start_period: 90s
 
   app-green:
     image: ${ECR_IMAGE_GREEN:-scratch}
@@ -80,10 +80,10 @@ services:
     mem_limit: 256m
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
-      interval: 5s
-      timeout: 3s
-      retries: 12
-      start_period: 30s
+      interval: 10s
+      timeout: 10s
+      retries: 18
+      start_period: 90s
 
   postgres:
     image: postgres:16
