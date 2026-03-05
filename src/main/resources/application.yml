@@ -11,6 +11,8 @@ spring:
     baseline-version: 0
   lifecycle:
     timeout-per-shutdown-phase: 30s
+  jpa:
+    open-in-view: false
 
 server:
   port: ${PORT:8080}
@@ -27,6 +29,12 @@ management:
   metrics:
     tags:
       application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+
+blog:
+  slow-request-threshold-ms: ${SLOW_REQUEST_THRESHOLD_MS:700}
 
 view-count:
   ttl-seconds: 3600
@@ -149,8 +157,8 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     hikari:
-      maximum-pool-size: 3
-      minimum-idle: 1
+      maximum-pool-size: 6
+      minimum-idle: 2
       connection-timeout: 3000
       idle-timeout: 600000
       max-lifetime: 1800000
