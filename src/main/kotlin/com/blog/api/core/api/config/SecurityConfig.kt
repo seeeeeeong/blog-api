@@ -49,7 +49,7 @@ class SecurityConfig(
                     .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                     // Health check
-                    .requestMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus").permitAll()
+                    .requestMatchers("/actuator/health/**", "/actuator/info", "/actuator/prometheus").permitAll()
 
                     // Swagger UI
                     .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()

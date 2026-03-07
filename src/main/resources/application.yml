@@ -26,6 +26,9 @@ management:
   endpoint:
     health:
       show-details: never
+      group:
+        upstream:
+          include: ping,db
   metrics:
     tags:
       application: ${spring.application.name}
