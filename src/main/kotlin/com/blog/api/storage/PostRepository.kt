@@ -3,6 +3,7 @@ package com.blog.api.storage
 import com.blog.api.core.enum.PostStatus
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.Slice
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
@@ -18,13 +19,13 @@ interface PostRepository : JpaRepository<PostEntity, Long> {
 
     fun findAllByIdInAndStatus(ids: List<Long>, status: PostStatus): List<PostEntity>
 
-    fun findByStatus(status: PostStatus, pageable: Pageable): Page<PostEntity>
+    fun findByStatus(status: PostStatus, pageable: Pageable): Slice<PostEntity>
 
     fun findByCategoryIdAndStatus(
         categoryId: Long,
         status: PostStatus,
         pageable: Pageable
-    ): Page<PostEntity>
+    ): Slice<PostEntity>
 
     fun findAllByUserId(userId: Long, pageable: Pageable): Page<PostEntity>
 
@@ -32,10 +33,8 @@ interface PostRepository : JpaRepository<PostEntity, Long> {
         userId: Long,
         status: PostStatus,
         pageable: Pageable
-    ): Page<PostEntity>
-
-    // ILIKE + pg_trgm GIN 인덱스: 부분 문자열 검색 의미를 그대로 유지하면서 인덱스 사용
-    // (3자 미만 쿼리는 trigram 후보 없어 seq scan으로 fallback — 개인 블로그 규모에서는 무방)
+    ): Slice<PostEntity>
+    
     @Query(
         value = """
             SELECT p.*

@@ -17,11 +17,28 @@ class CacheConfig : CachingConfigurer {
     @Bean
     override fun cacheManager(): CacheManager {
         val jitterSeconds = Random.nextLong(0, 3600)
-        val caffeine = Caffeine.newBuilder()
-            .expireAfterWrite(Duration.ofHours(24).plusSeconds(jitterSeconds))
-            .maximumSize(500)
-        return CaffeineCacheManager("post-html").apply {
-            setCaffeine(caffeine)
+        return CaffeineCacheManager().apply {
+            registerCustomCache(
+                "post-html",
+                Caffeine.newBuilder()
+                    .expireAfterWrite(Duration.ofHours(24).plusSeconds(jitterSeconds))
+                    .maximumSize(500)
+                    .build(),
+            )
+            registerCustomCache(
+                "categories",
+                Caffeine.newBuilder()
+                    .expireAfterAccess(Duration.ofMinutes(10))
+                    .maximumSize(50)
+                    .build(),
+            )
+            registerCustomCache(
+                "popular-posts",
+                Caffeine.newBuilder()
+                    .expireAfterAccess(Duration.ofMinutes(2))
+                    .maximumSize(20)
+                    .build(),
+            )
         }
     }
 }

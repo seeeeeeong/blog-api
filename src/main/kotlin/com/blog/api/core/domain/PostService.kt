@@ -6,8 +6,9 @@ import com.blog.api.core.enum.PostStatus
 import com.blog.api.storage.PostEntity
 import com.blog.api.storage.PostRepository
 import com.blog.api.storage.toPost
-import org.springframework.data.domain.Page
+import org.springframework.cache.annotation.Cacheable
 import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.Slice
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
@@ -52,6 +53,7 @@ class PostService(
         return postHtmlCacheService.getHtml(postId, content)
     }
 
+    @Cacheable("popular-posts")
     fun getPopularPosts(limit: Int): List<Post> {
         val ids = postRankingService.getTopPostIds(limit)
         if (ids.isEmpty()) return emptyList()
@@ -59,15 +61,15 @@ class PostService(
         return ids.mapNotNull { postMap[it]?.toPost() }
     }
 
-    fun getAllPosts(pageable: Pageable): Page<Post> {
+    fun getAllPosts(pageable: Pageable): Slice<Post> {
         return postRepository.findByStatus(PostStatus.PUBLISHED, pageable).map { it.toPost() }
     }
 
-    fun getPostsByCategory(categoryId: Long, pageable: Pageable): Page<Post> {
+    fun getPostsByCategory(categoryId: Long, pageable: Pageable): Slice<Post> {
         return postRepository.findByCategoryIdAndStatus(categoryId, PostStatus.PUBLISHED, pageable).map { it.toPost() }
     }
 
-    fun getDraftPosts(userId: Long, pageable: Pageable): Page<Post> {
+    fun getDraftPosts(userId: Long, pageable: Pageable): Slice<Post> {
         return postRepository.findByUserIdAndStatus(userId, PostStatus.DRAFT, pageable).map { it.toPost() }
     }
 
