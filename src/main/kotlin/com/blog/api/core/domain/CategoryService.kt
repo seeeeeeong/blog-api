@@ -11,7 +11,7 @@ class CategoryService(
     private val categoryRepository: CategoryRepository,
 ) {
 
-    @Cacheable("categories")
+    @Cacheable("categories", sync = true)
     fun getAllCategories(): List<Category> {
         return categoryRepository.findAll()
             .map { category ->

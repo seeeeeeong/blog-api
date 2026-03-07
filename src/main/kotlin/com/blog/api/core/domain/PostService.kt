@@ -54,7 +54,7 @@ class PostService(
         return postHtmlCacheService.getHtml(postId, content)
     }
 
-    @Cacheable("popular-posts")
+    @Cacheable("popular-posts", sync = true)
     fun getPopularPosts(limit: Int): List<Post> {
         val ids = postRankingService.getTopPostIds(limit)
         if (ids.isEmpty()) return emptyList()
