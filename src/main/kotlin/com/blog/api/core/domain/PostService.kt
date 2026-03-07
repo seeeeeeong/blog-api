@@ -7,6 +7,7 @@ import com.blog.api.storage.PostEntity
 import com.blog.api.storage.PostRepository
 import com.blog.api.storage.toPost
 import org.springframework.cache.annotation.Cacheable
+import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Slice
 import org.springframework.stereotype.Service
