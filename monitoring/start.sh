@@ -9,6 +9,7 @@ EC2_KEY="$HOME/.ssh/blog-key.pem"
 echo "[1/4] 기존 SSH 터널 정리 중..."
 pkill -f "19090:localhost:8080" 2>/dev/null || true
 pkill -f "19092:localhost:9100" 2>/dev/null || true
+pkill -f "19121:localhost:9121" 2>/dev/null || true
 sleep 1
 
 # 2. SSH 터널 백그라운드 시작
@@ -16,6 +17,7 @@ echo "[2/4] SSH 터널 연결 중 (EC2: $EC2_IP)..."
 ssh -i "$EC2_KEY" \
     -L 19090:localhost:8080 \
     -L 19092:localhost:9100 \
+    -L 19121:localhost:9121 \
     -N -f \
     -o StrictHostKeyChecking=no \
     -o ExitOnForwardFailure=yes \

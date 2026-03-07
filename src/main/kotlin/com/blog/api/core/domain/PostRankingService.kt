@@ -91,19 +91,21 @@ class PostRankingService(
     }
 
     private fun getTopIdsFromDb(limit: Int, reseed: Boolean): List<Long> {
+        val reseedMinSize = properties.reseedMinSize.coerceAtLeast(1)
+        val fetchLimit = if (reseed) maxOf(limit, reseedMinSize) else limit
         val posts = postRepository.findByStatus(
             PostStatus.PUBLISHED,
-            PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "viewCount")),
+            PageRequest.of(0, fetchLimit, Sort.by(Sort.Direction.DESC, "viewCount")),
         ).content
         if (reseed) {
             try {
                 posts.forEach { post -> redisOps.zadd(RANKING_KEY, post.viewCount.toDouble(), post.id!!.toString()) }
-                logger.info("ranking: reseeded {} posts to Redis after key miss", posts.size)
+                logger.info("ranking: reseeded {} posts to Redis after key miss (requestedLimit={}, reseedMinSize={})", posts.size, limit, reseedMinSize)
             } catch (e: Exception) {
                 logger.warn("ranking: reseed to Redis failed: {}", e.message)
             }
         }
-        return posts.map { it.id!! }
+        return posts.take(limit).map { it.id!! }
     }
 
     private fun getTopIdsFromLocalOrDb(limit: Int, reseed: Boolean, reason: String): List<Long> {

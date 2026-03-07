@@ -8,5 +8,6 @@ docker compose -f "$SCRIPT_DIR/docker-compose.local.yml" down
 
 pkill -f "19090:localhost:8080" 2>/dev/null || true
 pkill -f "19092:localhost:9100" 2>/dev/null || true
+pkill -f "19121:localhost:9121" 2>/dev/null || true
 
 echo "완료"

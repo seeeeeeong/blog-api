@@ -52,7 +52,20 @@ services:
       - redis-data:/data
     networks:
       - blog-network
-    mem_limit: 140m
+    mem_limit: 320m
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.67.0
+    container_name: blog-redis-exporter
+    restart: always
+    command: ["--redis.addr=redis://redis:6379"]
+    ports:
+      - "127.0.0.1:9121:9121"
+    depends_on:
+      - redis
+    networks:
+      - blog-network
+    mem_limit: 32m
 
   caddy:
     image: caddy:2-alpine

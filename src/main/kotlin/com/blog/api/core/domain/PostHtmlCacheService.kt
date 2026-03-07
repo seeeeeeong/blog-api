@@ -17,17 +17,20 @@ class PostHtmlCacheService(
 
     private val cacheHit = Counter.builder("blog.cache.html")
         .tag("result", "hit")
-        .description("Redis HTML cache hit")
+        .tag("backend", "local-caffeine")
+        .description("Local(caffeine) HTML cache hit")
         .register(meterRegistry)
 
     private val cacheMiss = Counter.builder("blog.cache.html")
         .tag("result", "miss")
-        .description("Redis HTML cache miss — converted and stored")
+        .tag("backend", "local-caffeine")
+        .description("Local(caffeine) HTML cache miss - converted and stored")
         .register(meterRegistry)
 
     private val cacheError = Counter.builder("blog.cache.html")
         .tag("result", "error")
-        .description("Redis HTML cache error — fallback to convert")
+        .tag("backend", "local-caffeine")
+        .description("Local(caffeine) HTML cache error - fallback to convert")
         .register(meterRegistry)
 
     fun getHtml(postId: Long, markdown: String): String {
@@ -43,7 +46,7 @@ class PostHtmlCacheService(
                 }
         } catch (e: Exception) {
             cacheError.increment()
-            logger.warn("[Cache] Redis 실패 - postId={}: {}", postId, e.message)
+            logger.warn("[Cache] local(caffeine) cache failure - postId={}: {}", postId, e.message)
             postMarkdownConverter.convertToHtml(markdown)
         }
     }
@@ -52,7 +55,7 @@ class PostHtmlCacheService(
         try {
             cacheManager.getCache("post-html")?.evict(postId)
         } catch (e: Exception) {
-            logger.warn("[Cache] Redis EVICT 실패 - postId={}: {}", postId, e.message)
+            logger.warn("[Cache] local(caffeine) cache evict failure - postId={}: {}", postId, e.message)
         }
     }
 }

@@ -6,4 +6,5 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 data class PostRankingProperties(
     val localFallbackTtlSeconds: Long = 60,
     val localFallbackMaxSize: Long = 50,
+    val reseedMinSize: Int = 100,
 )

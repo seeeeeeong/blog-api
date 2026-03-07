@@ -23,6 +23,7 @@ enum class ErrorType(
     OAUTH_STATE_INVALID(HttpStatus.UNAUTHORIZED, "AUTH_007", "Invalid OAuth state", LogLevel.WARN),
     OAUTH_CODE_INVALID(HttpStatus.UNAUTHORIZED, "AUTH_008", "Invalid or expired OAuth code", LogLevel.WARN),
     LOGIN_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "AUTH_009", "Too many login attempts", LogLevel.WARN),
+    REDIS_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AUTH_010", "Authentication token store unavailable", LogLevel.ERROR),
 
     // ==================== Post ====================
     POST_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_001", "Post not found", LogLevel.WARN),

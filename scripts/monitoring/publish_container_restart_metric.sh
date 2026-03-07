@@ -5,7 +5,7 @@ AWS_REGION="${AWS_REGION:-ap-northeast-2}"
 STATE_FILE="/var/tmp/blog-container-restart-state"
 NAMESPACE="Blog/Infra"
 METRIC_NAME="ContainerRestartCount"
-CONTAINERS=(blog-api-blue blog-api-green blog-postgres blog-redis blog-caddy)
+CONTAINERS=(blog-api-blue blog-api-green blog-postgres blog-redis blog-redis-exporter blog-caddy)
 
 get_instance_id() {
   local token

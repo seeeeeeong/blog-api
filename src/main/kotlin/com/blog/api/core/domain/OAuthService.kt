@@ -66,7 +66,7 @@ class OAuthService(
 
     fun exchangeCode(code: String): OAuthLogin {
         if (code.isBlank()) throw CoreException(ErrorType.INVALID_INPUT)
-        val payloadJson = redisTemplate.opsForValue().getAndDelete(exchangeCodeKey(code))
+        val payloadJson = getAndDelete(exchangeCodeKey(code), "oauth.exchange.get-and-delete")
             ?: throw CoreException(ErrorType.OAUTH_CODE_INVALID)
         return objectMapper.readValue(payloadJson)
     }
@@ -75,22 +75,22 @@ class OAuthService(
 
     private fun generateState(): String {
         val state = generateRandomToken()
-        redisTemplate.opsForValue().set(stateKey(state), "1", STATE_TTL_SECONDS, TimeUnit.SECONDS)
+        set(stateKey(state), "1", STATE_TTL_SECONDS, "oauth.state.set")
         return state
     }
 
     private fun validateAndConsumeState(state: String) {
-        redisTemplate.opsForValue().getAndDelete(stateKey(state))
+        getAndDelete(stateKey(state), "oauth.state.get-and-delete")
             ?: throw CoreException(ErrorType.OAUTH_STATE_INVALID)
     }
 
     private fun storeExchangeCode(oauthLogin: OAuthLogin): String {
         val exchangeCode = generateRandomToken()
-        redisTemplate.opsForValue().set(
+        set(
             exchangeCodeKey(exchangeCode),
             objectMapper.writeValueAsString(oauthLogin),
             EXCHANGE_CODE_TTL_SECONDS,
-            TimeUnit.SECONDS,
+            "oauth.exchange.set",
         )
         return exchangeCode
     }
@@ -111,4 +111,28 @@ class OAuthService(
     private fun stateKey(state: String): String = "$STATE_KEY_PREFIX$state"
 
     private fun exchangeCodeKey(code: String): String = "$EXCHANGE_KEY_PREFIX$code"
+
+    private fun set(key: String, value: String, ttlSeconds: Long, action: String) {
+        try {
+            redisTemplate.opsForValue().set(key, value, ttlSeconds, TimeUnit.SECONDS)
+        } catch (e: Exception) {
+            throw redisUnavailable(action, e)
+        }
+    }
+
+    private fun getAndDelete(key: String, action: String): String? {
+        return try {
+            redisTemplate.opsForValue().getAndDelete(key)
+        } catch (e: Exception) {
+            throw redisUnavailable(action, e)
+        }
+    }
+
+    private fun redisUnavailable(action: String, cause: Exception): CoreException {
+        return CoreException(
+            errorType = ErrorType.REDIS_UNAVAILABLE,
+            message = "Redis unavailable during $action",
+            cause = cause,
+        )
+    }
 }

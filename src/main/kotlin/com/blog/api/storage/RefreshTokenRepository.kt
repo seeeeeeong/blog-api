@@ -1,5 +1,7 @@
 package com.blog.api.storage
 
+import com.blog.api.core.support.error.CoreException
+import com.blog.api.core.support.error.ErrorType
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Repository
 import java.util.concurrent.TimeUnit
@@ -13,14 +15,34 @@ class RefreshTokenRepository(
     }
 
     fun save(tokenId: String, userId: Long, ttlSeconds: Long) {
-        redisTemplate.opsForValue().set("$TOKEN_KEY$tokenId", userId.toString(), ttlSeconds, TimeUnit.SECONDS)
+        try {
+            redisTemplate.opsForValue().set("$TOKEN_KEY$tokenId", userId.toString(), ttlSeconds, TimeUnit.SECONDS)
+        } catch (e: Exception) {
+            throw redisUnavailable("refresh-token.save", e)
+        }
     }
 
     fun findUserIdByTokenId(tokenId: String): Long? {
-        return redisTemplate.opsForValue().get("$TOKEN_KEY$tokenId")?.toLongOrNull()
+        return try {
+            redisTemplate.opsForValue().get("$TOKEN_KEY$tokenId")?.toLongOrNull()
+        } catch (e: Exception) {
+            throw redisUnavailable("refresh-token.find", e)
+        }
     }
 
     fun delete(tokenId: String) {
-        redisTemplate.delete("$TOKEN_KEY$tokenId")
+        try {
+            redisTemplate.delete("$TOKEN_KEY$tokenId")
+        } catch (e: Exception) {
+            throw redisUnavailable("refresh-token.delete", e)
+        }
+    }
+
+    private fun redisUnavailable(action: String, cause: Exception): CoreException {
+        return CoreException(
+            errorType = ErrorType.REDIS_UNAVAILABLE,
+            message = "Redis unavailable during $action",
+            cause = cause,
+        )
     }
 }
