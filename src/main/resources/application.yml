@@ -27,6 +27,8 @@ management:
     health:
       show-details: never
       group:
+        liveness:
+          include: ping
         upstream:
           include: ping,db
   metrics:
