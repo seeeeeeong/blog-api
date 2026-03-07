@@ -109,3 +109,13 @@ output "ssm_parameter_prefix" {
   description = "배포 런타임 설정 SSM Parameter prefix"
   value       = var.ssm_parameter_prefix
 }
+
+output "rds_endpoint" {
+  description = "RDS PostgreSQL 엔드포인트 (SSM /blog/prod/DB_HOST 에 설정)"
+  value       = aws_db_instance.main.address
+}
+
+output "rds_port" {
+  description = "RDS PostgreSQL 포트"
+  value       = aws_db_instance.main.port
+}

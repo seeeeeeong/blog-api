@@ -1,13 +1,13 @@
 services:
-  app-blue:
-    image: ${ECR_IMAGE_BLUE:-scratch}
-    container_name: blog-api-blue
+  app:
+    image: ${ECR_IMAGE}
+    container_name: blog-api
     restart: always
     ports:
-      - "127.0.0.1:8081:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=prod
-      - DB_HOST=postgres
+      - DB_HOST=${DB_HOST}
       - DB_PORT=5432
       - DB_NAME=blog_db
       - DB_USERNAME=postgres
@@ -16,6 +16,7 @@ services:
       - REDIS_PORT=6379
       - REDIS_PASSWORD=
       - JWT_SECRET=${JWT_SECRET}
+      - JAVA_TOOL_OPTIONS=-Xms128m -Xmx400m -XX:MaxMetaspaceSize=80m
       - SPRING_JPA_HIBERNATE_DDL_AUTO=${SPRING_JPA_HIBERNATE_DDL_AUTO:-update}
       - JWT_ACCESS_EXPIRATION=${JWT_ACCESS_EXPIRATION:-3600000}
       - JWT_REFRESH_EXPIRATION=${JWT_REFRESH_EXPIRATION:-1209600000}
@@ -28,13 +29,11 @@ services:
       - AWS_REGION=${AWS_REGION:-ap-northeast-2}
       - AWS_CLOUDFRONT_DOMAIN=${AWS_CLOUDFRONT_DOMAIN}
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_started
     networks:
       - blog-network
-    mem_limit: 256m
+    mem_limit: 512m
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
       interval: 10s
@@ -42,81 +41,6 @@ services:
       retries: 18
       start_period: 90s
 
-  app-green:
-    image: ${ECR_IMAGE_GREEN:-scratch}
-    container_name: blog-api-green
-    restart: always
-    ports:
-      - "127.0.0.1:8082:8080"
-    environment:
-      - SPRING_PROFILES_ACTIVE=prod
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=blog_db
-      - DB_USERNAME=postgres
-      - DB_PASSWORD=${DB_PASSWORD}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=
-      - JWT_SECRET=${JWT_SECRET}
-      - SPRING_JPA_HIBERNATE_DDL_AUTO=${SPRING_JPA_HIBERNATE_DDL_AUTO:-update}
-      - JWT_ACCESS_EXPIRATION=${JWT_ACCESS_EXPIRATION:-3600000}
-      - JWT_REFRESH_EXPIRATION=${JWT_REFRESH_EXPIRATION:-1209600000}
-      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
-      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
-      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
-      - OAUTH_REDIRECT_URL=${OAUTH_REDIRECT_URL}
-      - OAUTH_CALLBACK_URL=${OAUTH_CALLBACK_URL}
-      - AWS_S3_BUCKET=${AWS_S3_BUCKET}
-      - AWS_REGION=${AWS_REGION:-ap-northeast-2}
-      - AWS_CLOUDFRONT_DOMAIN=${AWS_CLOUDFRONT_DOMAIN}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    networks:
-      - blog-network
-    mem_limit: 256m
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
-      interval: 10s
-      timeout: 10s
-      retries: 18
-      start_period: 90s
-
-  postgres:
-    image: postgres:16
-    container_name: blog-postgres
-    restart: always
-    command:
-      - "postgres"
-      - "-c"
-      - "max_connections=50"
-      - "-c"
-      - "shared_buffers=64MB"
-      - "-c"
-      - "work_mem=2MB"
-      - "-c"
-      - "maintenance_work_mem=32MB"
-      - "-c"
-      - "effective_cache_size=192MB"
-    ports:
-      - "127.0.0.1:5432:5432"
-    environment:
-      - POSTGRES_DB=blog_db
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - blog-network
-    mem_limit: 224m
 
   redis:
     image: redis:7-alpine
@@ -128,7 +52,7 @@ services:
       - redis-data:/data
     networks:
       - blog-network
-    mem_limit: 56m
+    mem_limit: 140m
 
   caddy:
     image: caddy:2-alpine
@@ -144,8 +68,7 @@ services:
       - caddy-data:/data
       - caddy-config:/config
     depends_on:
-      - app-blue
-      - app-green
+      - app
     networks:
       - blog-network
     mem_limit: 24m
@@ -172,7 +95,6 @@ networks:
     driver: bridge
 
 volumes:
-  postgres-data:
   redis-data:
   caddy-data:
   caddy-config:

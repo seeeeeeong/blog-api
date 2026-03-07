@@ -1,11 +1,10 @@
 #!/bin/bash
-# Blue/Green 무중단 배포 스크립트 (EC2에서 실행)
+# 배포 스크립트 (EC2에서 실행)
 # 사용법: bash /home/ec2-user/app/deploy.sh <ECR_IMAGE>
 set -euo pipefail
 
 NEW_IMAGE=$1
 APP_DIR=/home/ec2-user/app
-ACTIVE_FILE=$APP_DIR/.active_color
 COMPOSE_FILE=docker-compose-prod.yml
 ENV_FILE=$APP_DIR/.env.prod
 HEALTH_CHECK_RETRIES="${HEALTH_CHECK_RETRIES:-48}"
@@ -15,6 +14,7 @@ SSM_AWS_REGION="${SSM_AWS_REGION:-ap-northeast-2}"
 CW_AGENT_CONFIG_PATH="/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json"
 
 required_vars=(
+  DB_HOST
   DB_PASSWORD
   JWT_SECRET
   GITHUB_CLIENT_ID
@@ -111,6 +111,7 @@ load_runtime_env() {
 
 write_env_file() {
   cat > "$ENV_FILE" <<EOV
+DB_HOST=${DB_HOST}
 DB_PASSWORD=${DB_PASSWORD}
 JWT_SECRET=${JWT_SECRET}
 SPRING_JPA_HIBERNATE_DDL_AUTO=${SPRING_JPA_HIBERNATE_DDL_AUTO}
@@ -243,19 +244,12 @@ print_failure_diagnostics() {
   docker exec "$container_name" sh -lc 'test -f /app/logs/blog-api-error.log && tail -n 200 /app/logs/blog-api-error.log || echo "no /app/logs/blog-api-error.log"' 2>/dev/null || true
   echo "----- ${container_name} /app/logs/blog-api-prod.log (tail 200) -----"
   docker exec "$container_name" sh -lc 'test -f /app/logs/blog-api-prod.log && tail -n 200 /app/logs/blog-api-prod.log || echo "no /app/logs/blog-api-prod.log"' 2>/dev/null || true
-  echo "----- blog-postgres logs (tail 80) -----"
-  docker logs --tail 80 blog-postgres 2>/dev/null || true
   echo "----- blog-redis logs (tail 80) -----"
   docker logs --tail 80 blog-redis 2>/dev/null || true
 }
 
-ACTIVE=$(cat "$ACTIVE_FILE" 2>/dev/null || echo "blue")
-[ "$ACTIVE" = "blue" ] && NEXT="green" || NEXT="blue"
-
-echo "=== Blue/Green Deploy ==="
-echo "Active slot : $ACTIVE"
-echo "Next slot   : $NEXT"
-echo "New image   : $NEW_IMAGE"
+echo "=== Deploy ==="
+echo "New image: $NEW_IMAGE"
 
 # ECR 로그인
 aws ecr get-login-password --region ap-northeast-2 \
@@ -272,12 +266,10 @@ fi
 
 install_or_update_cron_jobs
 
-if [ ! -f "$ACTIVE_FILE" ] \
-  || ! is_container_running blog-postgres \
-  || ! is_container_running blog-redis \
+if ! is_container_running blog-redis \
   || ! is_container_running blog-caddy; then
-  echo "Bootstrap: ensuring postgres/redis/caddy are running..."
-  "${COMPOSE[@]}" up -d postgres redis >/tmp/deploy-bootstrap.log 2>&1 || {
+  echo "Bootstrap: ensuring redis/caddy are running..."
+  "${COMPOSE[@]}" up -d redis >/tmp/deploy-bootstrap.log 2>&1 || {
     tail -n 200 /tmp/deploy-bootstrap.log || true
     exit 1
   }
@@ -287,51 +279,37 @@ if [ ! -f "$ACTIVE_FILE" ] \
   }
 fi
 
-# 비활성 슬롯에 새 이미지 배포
+# 새 이미지로 앱 재시작
 APP_UP_LOG=/tmp/deploy-app-up.log
-if [ "$NEXT" = "blue" ]; then
-  set +e
-  ECR_IMAGE_BLUE="$NEW_IMAGE" ECR_IMAGE_GREEN="${ECR_IMAGE_GREEN:-scratch}" \
-    "${COMPOSE[@]}" up -d --no-deps app-blue >"$APP_UP_LOG" 2>&1
-  APP_UP_EXIT=$?
-  set -e
-else
-  set +e
-  ECR_IMAGE_GREEN="$NEW_IMAGE" ECR_IMAGE_BLUE="${ECR_IMAGE_BLUE:-scratch}" \
-    "${COMPOSE[@]}" up -d --no-deps app-green >"$APP_UP_LOG" 2>&1
-  APP_UP_EXIT=$?
-  set -e
-fi
+set +e
+ECR_IMAGE="$NEW_IMAGE" "${COMPOSE[@]}" up -d --no-deps app >"$APP_UP_LOG" 2>&1
+APP_UP_EXIT=$?
+set -e
 
 if [ "$APP_UP_EXIT" -ne 0 ]; then
-  echo "Failed to start app-$NEXT via docker compose."
+  echo "Failed to start app."
   tail -n 200 "$APP_UP_LOG" || true
   exit 1
 fi
 
-# Health check 대기 (기본 120초, 5초 간격 × 24회)
-echo "Waiting for app-$NEXT to be healthy..."
+# Health check 대기
+echo "Waiting for app to be healthy..."
 for i in $(seq 1 "$HEALTH_CHECK_RETRIES"); do
-  STATUS=$(docker inspect --format='{{.State.Health.Status}}' "blog-api-$NEXT" 2>/dev/null || echo "unknown")
+  STATUS=$(docker inspect --format='{{.State.Health.Status}}' "blog-api" 2>/dev/null || echo "unknown")
   echo "  [$i/$HEALTH_CHECK_RETRIES] status=$STATUS"
   if [ "$STATUS" = "healthy" ]; then
     echo "Health check passed."
     break
   fi
   if [ "$i" = "$HEALTH_CHECK_RETRIES" ]; then
-    echo "Health check timed out. Rolling back app-$NEXT."
-    print_failure_diagnostics "blog-api-$NEXT"
-    "${COMPOSE[@]}" stop "app-$NEXT" || true
+    echo "Health check timed out."
+    print_failure_diagnostics "blog-api"
     exit 1
   fi
   sleep "$HEALTH_CHECK_INTERVAL_SECONDS"
 done
 
-# 이전 슬롯 중지
-"${COMPOSE[@]}" stop "app-$ACTIVE" 2>/dev/null || true
-echo "$NEXT" > "$ACTIVE_FILE"
-
 # 오래된 이미지 정리
 docker image prune -f
 
-echo "=== Deployed to app-$NEXT successfully ==="
+echo "=== Deployed successfully ==="

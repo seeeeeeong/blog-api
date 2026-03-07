@@ -91,3 +91,16 @@ variable "ssm_parameter_prefix" {
   type        = string
   default     = "/blog/prod"
 }
+
+# --- RDS ---
+variable "rds_instance_class" {
+  description = "RDS 인스턴스 타입"
+  type        = string
+  default     = "db.t3.micro"
+}
+
+variable "db_password" {
+  description = "RDS PostgreSQL 마스터 비밀번호 (terraform.tfvars에 설정)"
+  type        = string
+  sensitive   = true
+}
