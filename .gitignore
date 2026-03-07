@@ -40,6 +40,7 @@ infra/terraform/*.tfstate
 infra/terraform/*.tfstate.backup
 infra/terraform/terraform.tfvars
 infra/terraform/backend.hcl
+infra/terraform/tfplan*
 
 # Test
 .http
@@ -52,3 +53,6 @@ scripts/eval/
 
 # Kotlin
 .kotlin/
+
+# Local run artifacts
+.bootrun*.log
