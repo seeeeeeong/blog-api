@@ -9,6 +9,7 @@ spring:
     enabled: true
     baseline-on-migrate: true
     baseline-version: 0
+    repair-on-migrate: true
   lifecycle:
     timeout-per-shutdown-phase: 30s
   jpa:

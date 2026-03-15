@@ -6,6 +6,7 @@ import com.blog.api.core.enum.PostStatus
 import com.blog.api.storage.PostEntity
 import com.blog.api.storage.PostRepository
 import com.blog.api.storage.toPost
+import org.springframework.cache.CacheManager
 import org.springframework.cache.annotation.Cacheable
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -23,6 +24,7 @@ class PostService(
     private val postHtmlCacheService: PostHtmlCacheService,
     private val postViewService: PostViewService,
     private val postRankingService: PostRankingService,
+    private val cacheManager: CacheManager,
 ) {
 
     @Transactional
@@ -111,6 +113,7 @@ class PostService(
                     oldStatus != PostStatus.PUBLISHED -> postRankingService.seed(postId, viewCount)
                 }
                 postHtmlCacheService.evict(postId)
+                cacheManager.getCache("popular-posts")?.clear()
             }
         })
 
@@ -126,6 +129,7 @@ class PostService(
             override fun afterCommit() {
                 postRankingService.remove(postId)
                 postHtmlCacheService.evict(postId)
+                cacheManager.getCache("popular-posts")?.clear()
             }
         })
     }

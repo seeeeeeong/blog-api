@@ -34,7 +34,7 @@ interface PostRepository : JpaRepository<PostEntity, Long> {
         status: PostStatus,
         pageable: Pageable
     ): Slice<PostEntity>
-    
+
     @Query(
         value = """
             SELECT p.*

@@ -44,12 +44,13 @@ class RedisOps(
         }
     }
 
+    /** 실패 시 throw — 호출부에서 중단 여부 결정 */
     fun delete(key: String) {
         try {
             redisTemplate.delete(key)
         } catch (e: Exception) {
             incrementError("delete")
-            logger.warn("Redis delete failed: key=$key, error=${e.message}")
+            throw e
         }
     }
 
