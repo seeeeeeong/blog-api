@@ -16,6 +16,7 @@ import jakarta.validation.constraints.Min
 import org.springframework.data.domain.Pageable
 import org.springframework.data.web.PageableDefault
 import org.springframework.http.HttpStatus
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -51,7 +52,10 @@ class PostController(
         request: HttpServletRequest,
     ): ApiResponse<PostResponse> {
         val clientIp = HttpServletRequestUtils.resolveClientIp(request)
-        val post = postService.getPost(postId, clientIp)
+        val authentication = SecurityContextHolder.getContext().authentication
+        val currentUserId = authentication?.principal as? Long
+        val isAdmin = authentication?.authorities?.any { it.authority == "ROLE_ADMIN" } == true
+        val post = postService.getPost(postId, clientIp, currentUserId, isAdmin)
         return ApiResponse.success(PostResponse.of(post, postService.getHtml(post.id, post.content)))
     }
 

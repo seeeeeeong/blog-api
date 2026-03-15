@@ -32,13 +32,21 @@ class PostService(
     }
 
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    fun getPost(postId: Long, clientIp: String): Post {
+    fun getPost(postId: Long, clientIp: String, userId: Long? = null, isAdmin: Boolean = false): Post {
         val post = findPostById(postId)
-        if (post.status == PostStatus.DELETED || post.status == PostStatus.DRAFT) {
-            throw CoreException(ErrorType.POST_NOT_FOUND)
+        when (post.status) {
+            PostStatus.DELETED -> throw CoreException(ErrorType.POST_NOT_FOUND)
+            PostStatus.DRAFT -> {
+                if (!canAccessDraft(post, userId, isAdmin)) {
+                    throw CoreException(ErrorType.POST_NOT_FOUND)
+                }
+                return post.toPost()
+            }
+            PostStatus.PUBLISHED -> {
+                postViewService.incrementIfNeeded(postId, clientIp)
+                return post.toPost()
+            }
         }
-        postViewService.incrementIfNeeded(postId, clientIp)
-        return post.toPost()
     }
 
     fun getPostForAdmin(postId: Long, userId: Long): Post {
@@ -145,5 +153,9 @@ class PostService(
 
     private fun checkOwnership(post: PostEntity, userId: Long) {
         if (post.userId != userId) throw CoreException(ErrorType.FORBIDDEN)
+    }
+
+    private fun canAccessDraft(post: PostEntity, userId: Long?, isAdmin: Boolean): Boolean {
+        return isAdmin && userId != null && post.userId == userId
     }
 }
