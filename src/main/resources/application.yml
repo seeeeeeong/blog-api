@@ -54,7 +54,6 @@ image-upload:
       - image/png
       - image/webp
       - image/gif
-      - image/tiff
     allowed-folders:
       - blog
       - profile

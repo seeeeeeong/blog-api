@@ -134,7 +134,17 @@ class ImageService(
     }
 
     private fun validateContentType(contentType: String) {
-        if (contentType !in imagePresignedProperties.allowedContentTypes) throw CoreException(ErrorType.INVALID_INPUT)
+        if (contentType !in imagePresignedProperties.allowedContentTypes) {
+            throw CoreException(
+                errorType = ErrorType.INVALID_INPUT,
+                data = mapOf(
+                    "field" to "contentType",
+                    "value" to contentType,
+                    "reason" to "Only browser-displayable image types are supported",
+                    "allowedContentTypes" to imagePresignedProperties.allowedContentTypes,
+                ),
+            )
+        }
     }
 
     private fun resolveFolder(folder: String?): String {

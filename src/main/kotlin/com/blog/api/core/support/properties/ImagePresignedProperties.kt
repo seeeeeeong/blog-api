@@ -6,6 +6,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 data class ImagePresignedProperties(
     val ttlSeconds: Long = 180,
     val oneTimeTokenTtlSeconds: Long = 300,
-    val allowedContentTypes: List<String> = listOf("image/jpeg", "image/png", "image/webp", "image/gif", "image/tiff"),
+    val allowedContentTypes: List<String> = listOf("image/jpeg", "image/png", "image/webp", "image/gif"),
     val allowedFolders: List<String> = listOf("blog"),
 )
