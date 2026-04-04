@@ -119,3 +119,21 @@ output "rds_port" {
   description = "RDS PostgreSQL 포트"
   value       = aws_db_instance.main.port
 }
+
+# =============================================
+# devlog-archive outputs
+# =============================================
+output "devlog_archive_ecr_registry_url" {
+  description = "devlog-archive ECR 리포지토리 URL"
+  value       = aws_ecr_repository.devlog_archive.repository_url
+}
+
+output "devlog_archive_github_actions_role_arn" {
+  description = "devlog-archive GitHub Actions OIDC Role ARN"
+  value       = aws_iam_role.devlog_archive_github_actions.arn
+}
+
+output "archive_domain" {
+  description = "devlog-archive 서비스 도메인 (DNS는 Namecheap에서 수동 관리)"
+  value       = "https://${var.archive_domain_name}"
+}

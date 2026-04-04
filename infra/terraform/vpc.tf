@@ -86,7 +86,14 @@ resource "aws_security_group" "ec2" {
     cidr_blocks = ["0.0.0.0/0"]
     # prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront.id]
   }
-  # 443은 origin이 http-only라 불필요 — origin secret header로 우회 방지
+
+  ingress {
+    description = "HTTPS for archive.seeeeeeong.com (Caddy TLS termination)"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
   egress {
     from_port   = 0

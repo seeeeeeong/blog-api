@@ -104,3 +104,22 @@ variable "db_password" {
   type        = string
   sensitive   = true
 }
+
+# --- devlog-archive integration ---
+variable "devlog_archive_github_repo" {
+  description = "devlog-archive GitHub 저장소 (owner/repo 형식)"
+  type        = string
+  default     = "seeeeeeong/devlog-archive"
+}
+
+variable "archive_domain_name" {
+  description = "devlog-archive 서비스 도메인 (e.g. archive.seeeeeeong.com)"
+  type        = string
+  default     = "archive.seeeeeeong.com"
+}
+
+variable "devlog_archive_ssm_parameter_prefix" {
+  description = "devlog-archive SSM Parameter 경로 prefix"
+  type        = string
+  default     = "/devlog-archive/prod"
+}

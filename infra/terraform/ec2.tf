@@ -79,7 +79,10 @@ resource "aws_iam_role_policy" "ec2_ecr" {
           "ecr:BatchGetImage",
           "ecr:GetDownloadUrlForLayer"
         ]
-        Resource = aws_ecr_repository.blog_api.arn
+        Resource = [
+          aws_ecr_repository.blog_api.arn,
+          aws_ecr_repository.devlog_archive.arn
+        ]
       }
     ]
   })
@@ -99,7 +102,10 @@ resource "aws_iam_role_policy" "ec2_ssm_parameter_read" {
           "ssm:GetParameters",
           "ssm:GetParametersByPath"
         ]
-        Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${trimprefix(var.ssm_parameter_prefix, "/")}/*"
+        Resource = [
+          "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${trimprefix(var.ssm_parameter_prefix, "/")}/*",
+          "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${trimprefix(var.devlog_archive_ssm_parameter_prefix, "/")}/*"
+        ]
       },
       {
         Effect = "Allow"
@@ -174,7 +180,7 @@ resource "aws_instance" "main" {
   iam_instance_profile   = aws_iam_instance_profile.ec2.name
 
   root_block_device {
-    volume_size = 30
+    volume_size = 40
     volume_type = "gp3"
     encrypted   = true
   }
@@ -190,9 +196,9 @@ resource "aws_instance" "main" {
     swapon /swapfile
     echo '/swapfile swap swap defaults 0 0' >> /etc/fstab
 
-    # Docker / CloudWatch Agent 설치
+    # Docker / CloudWatch Agent / PostgreSQL client 설치
     dnf update -y
-    dnf install -y docker git amazon-cloudwatch-agent cronie
+    dnf install -y docker git amazon-cloudwatch-agent cronie postgresql15
     systemctl start docker
     systemctl enable docker
     systemctl start crond
@@ -232,7 +238,12 @@ resource "aws_instance" "main" {
     curl -L "https://github.com/docker/compose/releases/download/$${DOCKER_COMPOSE_VERSION}/docker-compose-linux-aarch64" -o /usr/local/bin/docker-compose
     chmod +x /usr/local/bin/docker-compose
 
-    # 앱 디렉토리 생성
+    # 공용 런타임 디렉토리 생성
+    mkdir -p /opt/services/bin /opt/services/env
+    mkdir -p /opt/services/data/{redis,devlog-postgres,caddy}
+    mkdir -p /opt/services/config/caddy
+
+    # 레거시 호환 (기존 배포 경로)
     mkdir -p /home/ec2-user/app
     chown ec2-user:ec2-user /home/ec2-user/app
   EOF

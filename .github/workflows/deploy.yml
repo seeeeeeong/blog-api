@@ -3,6 +3,9 @@ name: Deploy Backend to EC2
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'infra/**'
+      - '*.md'
   workflow_dispatch:
 
 permissions:
@@ -47,9 +50,6 @@ jobs:
     needs: build
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -59,156 +59,61 @@ jobs:
       - name: Deploy via SSM
         env:
           ECR_IMAGE: ${{ secrets.ECR_REGISTRY }}/blog-api:${{ needs.build.outputs.image_tag }}
-          EC2_INSTANCE_ID_SECRET: ${{ secrets.EC2_INSTANCE_ID }}
-          EC2_NAME_TAG: ${{ vars.EC2_NAME_TAG }}
-          SSM_PARAMETER_PREFIX: ${{ vars.SSM_PARAMETER_PREFIX || '/blog/prod' }}
-          SSM_AWS_REGION: ${{ vars.AWS_REGION || 'ap-northeast-2' }}
+          EC2_INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
+          EC2_NAME_TAG: ${{ vars.EC2_NAME_TAG || 'blog-server' }}
         run: |
           set -euo pipefail
 
-          SSM_REGION="ap-northeast-2"
-          INSTANCE_ID="${EC2_INSTANCE_ID_SECRET:-}"
-          INSTANCE_TAG_NAME="${EC2_NAME_TAG:-blog-server}"
-          TARGET_INSTANCE_ID=""
-          TFSTATE_INSTANCE_ID=$(jq -r '.resources[] | select(.type=="aws_instance" and .name=="main") | .instances[0].attributes.id // empty' infra/terraform/terraform.tfstate 2>/dev/null || true)
-
-          ARCHIVE_B64=$(tar czf - deploy.sh docker-compose-prod.yml Caddyfile scripts/backup scripts/monitoring | base64 | tr -d '\n')
-          PARAMS_FILE=$(mktemp)
-          trap 'rm -f "$PARAMS_FILE"' EXIT
-          jq -n --arg archive "$ARCHIVE_B64" --arg image "$ECR_IMAGE" --arg ssmPrefix "$SSM_PARAMETER_PREFIX" --arg ssmRegion "$SSM_AWS_REGION" '{
-            commands: [
-              "set -euo pipefail",
-              "for i in $(seq 1 60); do docker info >/dev/null 2>&1 && break; echo \"Waiting for Docker... ($i/60)\"; sleep 5; done",
-              "mkdir -p /home/ec2-user/app",
-              "echo \"" + $archive + "\" | base64 -d | tar xzf - -C /home/ec2-user/app",
-              "chmod +x /home/ec2-user/app/deploy.sh",
-              "SSM_PARAMETER_PREFIX=\"" + $ssmPrefix + "\" SSM_AWS_REGION=\"" + $ssmRegion + "\" bash /home/ec2-user/app/deploy.sh \"" + $image + "\""
-            ]
-          }' > "$PARAMS_FILE"
-
-          COMMAND_ID=""
-
-          if [ -n "$INSTANCE_ID" ]; then
-            set +e
-            SEND_OUTPUT=$(aws ssm send-command \
-              --region "$SSM_REGION" \
-              --instance-ids "$INSTANCE_ID" \
-              --document-name "AWS-RunShellScript" \
-              --parameters "file://$PARAMS_FILE" \
-              --timeout-seconds 900 \
-              --query 'Command.CommandId' \
-              --output text 2>&1)
-            SEND_EXIT_CODE=$?
-            set -e
-
-            if [ "$SEND_EXIT_CODE" -eq 0 ]; then
-              COMMAND_ID="$SEND_OUTPUT"
-              TARGET_INSTANCE_ID="$INSTANCE_ID"
-              echo "Using EC2_INSTANCE_ID secret: $TARGET_INSTANCE_ID"
-            else
-              echo "::warning::send-command by EC2_INSTANCE_ID failed: $SEND_OUTPUT"
-              if ! printf '%s' "$SEND_OUTPUT" | grep -q "InvalidInstanceId"; then
-                echo "::error::send-command failed with non-recoverable error."
-                exit 1
-              fi
-            fi
-          fi
-
-          if [ -z "$COMMAND_ID" ] && [ -n "$TFSTATE_INSTANCE_ID" ] && [ "$TFSTATE_INSTANCE_ID" != "$INSTANCE_ID" ]; then
-            set +e
-            SEND_OUTPUT=$(aws ssm send-command \
-              --region "$SSM_REGION" \
-              --instance-ids "$TFSTATE_INSTANCE_ID" \
-              --document-name "AWS-RunShellScript" \
-              --parameters "file://$PARAMS_FILE" \
-              --timeout-seconds 900 \
-              --query 'Command.CommandId' \
-              --output text 2>&1)
-            SEND_EXIT_CODE=$?
-            set -e
-
-            if [ "$SEND_EXIT_CODE" -eq 0 ]; then
-              COMMAND_ID="$SEND_OUTPUT"
-              TARGET_INSTANCE_ID="$TFSTATE_INSTANCE_ID"
-              echo "Using terraform state instance id fallback: $TARGET_INSTANCE_ID"
-            else
-              echo "::warning::send-command by tfstate instance id failed: $SEND_OUTPUT"
-            fi
-          fi
-
-          if [ -z "$COMMAND_ID" ]; then
-            echo "Retrying send-command by tag target: $INSTANCE_TAG_NAME"
-            COMMAND_ID=$(aws ssm send-command \
-              --region "$SSM_REGION" \
-              --targets "Key=tag:Name,Values=$INSTANCE_TAG_NAME" \
-              --document-name "AWS-RunShellScript" \
-              --parameters "file://$PARAMS_FILE" \
-              --timeout-seconds 900 \
-              --query 'Command.CommandId' \
+          INSTANCE_ID="${EC2_INSTANCE_ID:-}"
+          if [ -z "$INSTANCE_ID" ]; then
+            INSTANCE_ID=$(aws ec2 describe-instances \
+              --filters \
+                "Name=tag:Name,Values=$EC2_NAME_TAG" \
+                "Name=instance-state-name,Values=running" \
+              --query "Reservations[0].Instances[0].InstanceId" \
               --output text)
-
-            for i in {1..30}; do
-              TARGET_INSTANCE_ID=$(aws ssm list-command-invocations \
-                --region "$SSM_REGION" \
-                --command-id "$COMMAND_ID" \
-                --details \
-                --query 'CommandInvocations[0].InstanceId' \
-                --output text 2>/dev/null || true)
-              if [ -n "$TARGET_INSTANCE_ID" ] && [ "$TARGET_INSTANCE_ID" != "None" ] && [ "$TARGET_INSTANCE_ID" != "null" ]; then
-                break
-              fi
-              sleep 2
-            done
-
-            if [ -z "$TARGET_INSTANCE_ID" ] || [ "$TARGET_INSTANCE_ID" = "None" ] || [ "$TARGET_INSTANCE_ID" = "null" ]; then
-              echo "::error::No managed/running instance matched tag [$INSTANCE_TAG_NAME]."
-              echo "Update secret EC2_INSTANCE_ID or repository variable EC2_NAME_TAG."
-              exit 1
-            fi
           fi
+
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --parameters "commands=[\"bash /opt/services/bin/deploy-service.sh blog-api $ECR_IMAGE\"]" \
+            --timeout-seconds 900 \
+            --query 'Command.CommandId' \
+            --output text)
 
           echo "SSM Command ID: $COMMAND_ID"
-          echo "Target EC2 instance: $TARGET_INSTANCE_ID"
+          echo "Target EC2: $INSTANCE_ID"
 
-          echo "Waiting for SSM command to complete (max 15min)..."
+          echo "Waiting for deployment to complete (max 15min)..."
           for i in $(seq 1 180); do
-            CURRENT_STATUS=$(aws ssm get-command-invocation \
-              --region "$SSM_REGION" \
+            STATUS=$(aws ssm get-command-invocation \
               --command-id "$COMMAND_ID" \
-              --instance-id "$TARGET_INSTANCE_ID" \
+              --instance-id "$INSTANCE_ID" \
               --query 'StatusDetails' \
               --output text 2>/dev/null || echo "Pending")
-            echo "  [$i/180] $CURRENT_STATUS"
-            case "$CURRENT_STATUS" in
+            echo "  [$i/180] $STATUS"
+            case "$STATUS" in
               Success|Failed|Cancelled|TimedOut) break ;;
             esac
             sleep 5
           done
 
-          STATUS=$(aws ssm get-command-invocation \
-            --region "$SSM_REGION" \
-            --command-id "$COMMAND_ID" \
-            --instance-id "$TARGET_INSTANCE_ID" \
-            --query 'StatusDetails' \
-            --output text)
-
           STDOUT=$(aws ssm get-command-invocation \
-            --region "$SSM_REGION" \
             --command-id "$COMMAND_ID" \
-            --instance-id "$TARGET_INSTANCE_ID" \
+            --instance-id "$INSTANCE_ID" \
             --query 'StandardOutputContent' \
             --output text || true)
 
           STDERR=$(aws ssm get-command-invocation \
-            --region "$SSM_REGION" \
             --command-id "$COMMAND_ID" \
-            --instance-id "$TARGET_INSTANCE_ID" \
+            --instance-id "$INSTANCE_ID" \
             --query 'StandardErrorContent' \
             --output text || true)
 
           echo "Deployment status: $STATUS"
-          echo "----- SSM StandardOutputContent -----"
+          echo "----- stdout -----"
           printf '%s\n' "$STDOUT"
-          echo "----- SSM StandardErrorContent -----"
+          echo "----- stderr -----"
           printf '%s\n' "$STDERR"
           [ "$STATUS" = "Success" ] || exit 1

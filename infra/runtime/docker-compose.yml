@@ -1,0 +1,129 @@
+services:
+  blog-api:
+    image: ${BLOG_API_IMAGE}
+    container_name: blog-api
+    restart: always
+    ports:
+      - "127.0.0.1:8080:8080"
+    env_file:
+      - /opt/services/env/blog-api.env
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - services
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health/liveness"]
+      interval: 10s
+      timeout: 10s
+      retries: 18
+      start_period: 90s
+
+  redis:
+    image: redis:7-alpine
+    container_name: blog-redis
+    restart: always
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    volumes:
+      - /opt/services/data/redis:/data
+      - /opt/services/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - services
+    mem_limit: 320m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  devlog-db:
+    image: pgvector/pgvector:pg15
+    container_name: devlog-postgres
+    restart: always
+    env_file:
+      - /opt/services/env/devlog-db.env
+    volumes:
+      - /opt/services/data/devlog-postgres:/var/lib/postgresql/data
+    networks:
+      - services
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devlog -d devlog_archive"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  devlog-archive:
+    image: ${DEVLOG_ARCHIVE_IMAGE}
+    container_name: devlog-archive
+    restart: always
+    ports:
+      - "127.0.0.1:8082:8082"
+    env_file:
+      - /opt/services/env/devlog-archive.env
+    depends_on:
+      devlog-db:
+        condition: service_healthy
+    networks:
+      - services
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8082/actuator/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 18
+      start_period: 90s
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: blog-caddy
+    restart: always
+    environment:
+      - CLOUDFRONT_SECRET=${CLOUDFRONT_SECRET}
+    volumes:
+      - /opt/services/Caddyfile:/etc/caddy/Caddyfile:ro
+      - /opt/services/data/caddy:/data
+      - /opt/services/config/caddy:/config
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - services
+    mem_limit: 32m
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: blog-node-exporter
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    mem_limit: 24m
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.67.0
+    container_name: blog-redis-exporter
+    restart: always
+    command: ["--redis.addr=redis://redis:6379"]
+    ports:
+      - "127.0.0.1:9121:9121"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - services
+    mem_limit: 32m
+
+networks:
+  services:
+    driver: bridge
