@@ -1,7 +1,5 @@
 package com.blog.api.core.api.controller.v1
 
-import com.blog.api.core.api.controller.v1.request.ImagePresignedUrlCompleteRequest
-import com.blog.api.core.api.controller.v1.response.ImagePresignedUrlCompleteResponse
 import com.blog.api.core.support.response.ApiResponse
 import com.blog.api.core.api.controller.v1.response.ImagePresignedUrlResponse
 import com.blog.api.core.api.controller.v1.response.ImageUploadResponse
@@ -11,7 +9,6 @@ import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
@@ -42,19 +39,6 @@ class ImageController(
     ): ApiResponse<ImagePresignedUrlResponse> {
         val presignedUrl = imageService.generatePresignedUrl(userId, contentType, folder)
         return ApiResponse.success(ImagePresignedUrlResponse.of(presignedUrl))
-    }
-
-    @PostMapping("/presigned-url/complete")
-    fun completePresignedUpload(
-        @Admin userId: Long,
-        @RequestBody request: ImagePresignedUrlCompleteRequest,
-    ): ApiResponse<ImagePresignedUrlCompleteResponse> {
-        val upload = imageService.completePresignedUpload(
-            adminUserId = userId,
-            uploadToken = request.uploadToken,
-            key = request.key
-        )
-        return ApiResponse.success(ImagePresignedUrlCompleteResponse.of(upload))
     }
 
     @DeleteMapping

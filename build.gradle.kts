@@ -49,10 +49,6 @@ dependencies {
 
     runtimeOnly("org.flywaydb:flyway-database-postgresql")
     runtimeOnly("org.postgresql:postgresql")
-    runtimeOnly("io.micrometer:micrometer-registry-prometheus")
-
-    // Resilience4j
-    implementation("io.github.resilience4j:resilience4j-spring-boot3:2.2.0")
 
     // JWT
     implementation("io.jsonwebtoken:jjwt-api:0.12.3")

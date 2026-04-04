@@ -23,7 +23,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus
+        include: health,info
   endpoint:
     health:
       show-details: never
@@ -32,12 +32,6 @@ management:
           include: ping
         upstream:
           include: ping,db
-  metrics:
-    tags:
-      application: ${spring.application.name}
-    distribution:
-      percentiles-histogram:
-        http.server.requests: true
 
 blog:
   slow-request-threshold-ms: ${SLOW_REQUEST_THRESHOLD_MS:700}
@@ -48,7 +42,6 @@ view-count:
 image-upload:
   presigned:
     ttl-seconds: 180
-    one-time-token-ttl-seconds: 300
     allowed-content-types:
       - image/jpeg
       - image/png
@@ -58,25 +51,7 @@ image-upload:
       - blog
       - profile
 
-login-rate-limit:
-  window-seconds: 600
-  max-failures: 10
 
-post-ranking:
-  local-fallback-ttl-seconds: 60
-  local-fallback-max-size: 50
-  reseed-min-size: 100
-
-resilience4j:
-  circuitbreaker:
-    instances:
-      post-ranking-redis:
-        sliding-window-size: 10
-        minimum-number-of-calls: 5
-        failure-rate-threshold: 50
-        wait-duration-in-open-state: 30s
-        permitted-number-of-calls-in-half-open-state: 2
-        automatic-transition-from-open-to-half-open-enabled: true
 
 ---
 spring:

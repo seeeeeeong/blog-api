@@ -4,7 +4,6 @@ import com.blog.api.core.support.error.CoreException
 import com.blog.api.core.support.error.ErrorType
 import com.blog.api.core.support.properties.ImagePresignedProperties
 import com.blog.api.core.support.properties.S3Properties
-import com.blog.api.storage.ImageUploadTokenRepository
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -12,7 +11,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.mock
-import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
@@ -25,12 +23,8 @@ class ImageServiceTest {
     @Test
     fun `gif content type 으로 presigned url 을 생성할 수 있다`() {
         val s3Presigner = mock(S3Presigner::class.java)
-        val imageUploadTokenRepository = mock(ImageUploadTokenRepository::class.java)
         val presignedPutObjectRequest = mock(PresignedPutObjectRequest::class.java)
-        val service = fixture(
-            s3Presigner = s3Presigner,
-            imageUploadTokenRepository = imageUploadTokenRepository,
-        )
+        val service = fixture(s3Presigner = s3Presigner)
         `when`(s3Presigner.presignPutObject(any(PutObjectPresignRequest::class.java))).thenReturn(presignedPutObjectRequest)
         `when`(presignedPutObjectRequest.url()).thenReturn(URL("https://upload.example.com/presigned"))
 
@@ -44,12 +38,6 @@ class ImageServiceTest {
         assertTrue(result.fileUrl.endsWith(".gif"))
         assertTrue(result.key.startsWith("admin/7/blog/"))
         assertEquals(180L, result.expiresInSeconds)
-        verify(imageUploadTokenRepository).save(
-            result.uploadToken,
-            7L,
-            result.key,
-            300L,
-        )
     }
 
     @Test
@@ -74,11 +62,7 @@ class ImageServiceTest {
     @Test
     fun `허용되지 않은 content type 은 presigner 호출 전에 차단된다`() {
         val s3Presigner = mock(S3Presigner::class.java)
-        val imageUploadTokenRepository = mock(ImageUploadTokenRepository::class.java)
-        val service = fixture(
-            s3Presigner = s3Presigner,
-            imageUploadTokenRepository = imageUploadTokenRepository,
-        )
+        val service = fixture(s3Presigner = s3Presigner)
 
         val exception = assertThrows<CoreException> {
             service.generatePresignedUrl(
@@ -94,7 +78,6 @@ class ImageServiceTest {
 
     private fun fixture(
         s3Presigner: S3Presigner = mock(S3Presigner::class.java),
-        imageUploadTokenRepository: ImageUploadTokenRepository = mock(ImageUploadTokenRepository::class.java),
     ): ImageService {
         return ImageService(
             s3Client = mock(S3Client::class.java),
@@ -107,11 +90,9 @@ class ImageServiceTest {
             ),
             imagePresignedProperties = ImagePresignedProperties(
                 ttlSeconds = 180,
-                oneTimeTokenTtlSeconds = 300,
                 allowedContentTypes = listOf("image/jpeg", "image/png", "image/webp", "image/gif"),
                 allowedFolders = listOf("blog", "profile"),
             ),
-            imageUploadTokenRepository = imageUploadTokenRepository,
         )
     }
 }

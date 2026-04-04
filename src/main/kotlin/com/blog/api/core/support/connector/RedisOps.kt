@@ -1,7 +1,5 @@
 package com.blog.api.core.support.connector
 
-import io.micrometer.core.instrument.MeterRegistry
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.slf4j.LoggerFactory
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
@@ -10,7 +8,6 @@ import java.util.concurrent.TimeUnit
 @Service
 class RedisOps(
     private val redisTemplate: RedisTemplate<String, String>,
-    private val meterRegistry: MeterRegistry = SimpleMeterRegistry(),
 ) {
     private val logger = LoggerFactory.getLogger(RedisOps::class.java)
 
@@ -19,7 +16,6 @@ class RedisOps(
         return try {
             redisTemplate.opsForValue().setIfAbsent(key, value, timeout, unit)
         } catch (e: Exception) {
-            incrementError("setIfAbsent")
             logger.warn("Redis setIfAbsent failed: key=$key, error=${e.message}")
             null
         }
@@ -29,7 +25,6 @@ class RedisOps(
         try {
             redisTemplate.opsForValue().set(key, value, timeout, unit)
         } catch (e: Exception) {
-            incrementError("set")
             logger.warn("Redis set failed: key=$key, error=${e.message}")
         }
     }
@@ -38,7 +33,6 @@ class RedisOps(
         return try {
             redisTemplate.opsForValue().get(key)
         } catch (e: Exception) {
-            incrementError("get")
             logger.warn("Redis get failed: key=$key, error=${e.message}")
             null
         }
@@ -46,12 +40,7 @@ class RedisOps(
 
     /** 실패 시 throw — 호출부에서 중단 여부 결정 */
     fun delete(key: String) {
-        try {
-            redisTemplate.delete(key)
-        } catch (e: Exception) {
-            incrementError("delete")
-            throw e
-        }
+        redisTemplate.delete(key)
     }
 
     /** 실패 시 throw — 호출부에서 catch 후 fallback 처리 */
@@ -59,7 +48,6 @@ class RedisOps(
         return try {
             redisTemplate.opsForZSet().reverseRange(key, start, end)?.toList() ?: emptyList()
         } catch (e: Exception) {
-            incrementError("zrevrange")
             throw e
         }
     }
@@ -68,7 +56,6 @@ class RedisOps(
         try {
             redisTemplate.opsForZSet().incrementScore(key, member, delta)
         } catch (e: Exception) {
-            incrementError("zincrby")
             logger.warn("Redis ZINCRBY failed: key=$key, error=${e.message}")
         }
     }
@@ -77,7 +64,6 @@ class RedisOps(
         try {
             redisTemplate.opsForZSet().add(key, member, score)
         } catch (e: Exception) {
-            incrementError("zadd")
             logger.warn("Redis ZADD failed: key=$key, error=${e.message}")
         }
     }
@@ -86,12 +72,7 @@ class RedisOps(
         try {
             redisTemplate.opsForZSet().remove(key, member)
         } catch (e: Exception) {
-            incrementError("zrem")
             logger.warn("Redis ZREM failed: key=$key, error=${e.message}")
         }
-    }
-
-    private fun incrementError(op: String) {
-        meterRegistry.counter("blog.redis.operation.errors", "op", op).increment()
     }
 }

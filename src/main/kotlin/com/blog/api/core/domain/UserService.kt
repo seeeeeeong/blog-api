@@ -16,24 +16,15 @@ class UserService(
     private val passwordEncoder: PasswordEncoder,
     private val jwtProvider: JwtProvider,
     private val userTokenService: UserTokenService,
-    private val userLoginRateLimitService: UserLoginRateLimitService,
 ) {
     @Transactional
     fun login(userLogin: UserLogin, clientIp: String): UserToken {
         val normalizedEmail = normalizeEmail(userLogin.email)
-        userLoginRateLimitService.checkOrThrow(clientIp, normalizedEmail)
-
-        return try {
-            val user = findUserByEmail(normalizedEmail)
-            validatePassword(userLogin.password, user.password)
-            val userId = user.id!!
-            val tokenId = userTokenService.create(userId)
-            userLoginRateLimitService.clearFailures(clientIp, normalizedEmail)
-            createUserToken(userId, user.role.name, tokenId)
-        } catch (e: CoreException) {
-            recordFailureIfNeeded(e.errorType, clientIp, normalizedEmail)
-            throw e
-        }
+        val user = findUserByEmail(normalizedEmail)
+        validatePassword(userLogin.password, user.password)
+        val userId = user.id!!
+        val tokenId = userTokenService.create(userId)
+        return createUserToken(userId, user.role.name, tokenId)
     }
 
     @Transactional
@@ -66,10 +57,4 @@ class UserService(
     }
 
     private fun normalizeEmail(email: String): String = email.trim().lowercase()
-
-    private fun recordFailureIfNeeded(errorType: ErrorType, clientIp: String, email: String) {
-        if (errorType == ErrorType.USER_NOT_FOUND || errorType == ErrorType.INVALID_PASSWORD) {
-            userLoginRateLimitService.recordFailure(clientIp, email)
-        }
-    }
 }

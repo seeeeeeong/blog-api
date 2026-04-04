@@ -4,7 +4,6 @@ import com.blog.api.core.support.error.CoreException
 import com.blog.api.core.support.error.ErrorType
 import com.blog.api.core.support.properties.ImagePresignedProperties
 import com.blog.api.core.support.properties.S3Properties
-import com.blog.api.storage.ImageUploadTokenRepository
 import org.springframework.stereotype.Service
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.s3.S3Client
@@ -21,7 +20,6 @@ class ImageService(
     private val s3Presigner: S3Presigner,
     private val s3Properties: S3Properties,
     private val imagePresignedProperties: ImagePresignedProperties,
-    private val imageUploadTokenRepository: ImageUploadTokenRepository,
 ) {
     companion object {
         private const val ROOT_FOLDER_PREFIX = "admin"
@@ -50,14 +48,6 @@ class ImageService(
         validateContentType(normalizedContentType)
         val targetFolder = resolveFolder(folder)
         val key = generateKey(adminUserId, targetFolder, normalizedContentType)
-        val uploadToken = UUID.randomUUID().toString()
-
-        imageUploadTokenRepository.save(
-            uploadToken = uploadToken,
-            userId = adminUserId,
-            key = key,
-            ttlSeconds = imagePresignedProperties.oneTimeTokenTtlSeconds
-        )
 
         val presignedUrl = s3Presigner.presignPutObject(
             createPutObjectPresignRequest(key, normalizedContentType, imagePresignedProperties.ttlSeconds)
@@ -67,19 +57,8 @@ class ImageService(
             uploadUrl = presignedUrl.url().toString(),
             fileUrl = buildFileUrl(key),
             key = key,
-            uploadToken = uploadToken,
             expiresInSeconds = imagePresignedProperties.ttlSeconds,
         )
-    }
-
-    fun completePresignedUpload(adminUserId: Long, uploadToken: String, key: String): ImageUploadComplete {
-        val normalizedUploadToken = uploadToken.trim()
-        val normalizedKey = key.trim()
-        if (normalizedUploadToken.isEmpty() || normalizedKey.isEmpty()) throw CoreException(ErrorType.INVALID_INPUT)
-        if (!isOwnedKey(adminUserId, normalizedKey)) throw CoreException(ErrorType.INVALID_INPUT)
-        val consumed = imageUploadTokenRepository.consume(uploadToken = normalizedUploadToken, userId = adminUserId, key = normalizedKey)
-        if (!consumed) throw CoreException(ErrorType.INVALID_INPUT)
-        return ImageUploadComplete(fileUrl = buildFileUrl(normalizedKey), key = normalizedKey)
     }
 
     fun deleteImage(adminUserId: Long, key: String) {
