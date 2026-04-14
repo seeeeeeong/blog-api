@@ -19,7 +19,7 @@ jobs:
       - name: Build image
         run: docker build -t blog-api:scan .
 
-      - uses: aquasecurity/trivy-action@0.28.0
+      - uses: aquasecurity/trivy-action@0.24.0
         with:
           image-ref: blog-api:scan
           ignore-unfixed: true
