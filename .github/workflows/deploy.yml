@@ -14,10 +14,8 @@ env:
   AWS_REGION: ap-northeast-2
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-24.04-arm
-    outputs:
-      image: ${{ steps.build.outputs.image }}
     steps:
       - uses: actions/checkout@v4
 
@@ -27,33 +25,19 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - uses: aws-actions/amazon-ecr-login@v2
-        id: ecr
 
       - name: Build & push
-        id: build
         env:
           IMAGE: ${{ secrets.ECR_REGISTRY }}/blog-api:${{ github.sha }}
         run: |
           docker build -t "$IMAGE" .
           docker push "$IMAGE"
-          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
 
       - name: Deploy via SSM
         env:
           INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
-          IMAGE: ${{ needs.build.outputs.image }}
+          IMAGE: ${{ secrets.ECR_REGISTRY }}/blog-api:${{ github.sha }}
         run: |
-          if [ -z "$IMAGE" ]; then echo "IMAGE is empty"; exit 1; fi
-
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
             --document-name AWS-RunShellScript \
