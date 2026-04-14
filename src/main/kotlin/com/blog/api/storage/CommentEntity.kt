@@ -1,4 +1,5 @@
 package com.blog.api.storage
+
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
@@ -23,14 +24,11 @@ class CommentEntity(
     @Column(name = "post_id", nullable = false)
     val postId: Long,
 
-    @Column(name = "github_id", nullable = false, length = 50)
-    val oauthId: String,
+    @Column(nullable = false, length = 50)
+    val nickname: String,
 
-    @Column(name = "github_username", nullable = false, length = 100)
-    val oauthUsername: String,
-
-    @Column(name = "github_avatar_url", length = 500)
-    val oauthAvatarUrl: String? = null,
+    @Column(nullable = false)
+    val password: String,
 
     @Column(name = "parent_id")
     val parentId: Long? = null,
@@ -42,7 +40,7 @@ class CommentEntity(
     var contentHtml: String? = null,
 
     @Column(name = "is_deleted", nullable = false)
-    private var isDeleted: Boolean = false
+    private var isDeleted: Boolean = false,
 
 ) : BaseTimeEntity() {
 

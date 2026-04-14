@@ -1,5 +1,6 @@
 package com.blog.api.core.domain
 
 data class CommentUpdate(
-    val content: String
+    val password: String,
+    val content: String,
 )

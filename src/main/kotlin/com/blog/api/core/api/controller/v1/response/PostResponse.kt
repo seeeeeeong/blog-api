@@ -11,12 +11,11 @@ data class PostResponse(
     val title: String,
     val content: String,
     val contentHtml: String,
-    val topicHints: List<String>,
     val thumbnailUrl: String?,
     val viewCount: Int,
     val status: PostStatus,
     val createdAt: LocalDateTime,
-    val updatedAt: LocalDateTime
+    val updatedAt: LocalDateTime,
 ) {
     companion object {
         fun of(post: Post, contentHtml: String): PostResponse {
@@ -27,12 +26,11 @@ data class PostResponse(
                 title = post.title,
                 content = post.content,
                 contentHtml = contentHtml,
-                topicHints = com.blog.api.core.domain.PostTopicHintExtractor.extract(post.title, post.content),
                 thumbnailUrl = post.thumbnailUrl,
                 viewCount = post.viewCount,
                 status = post.status,
                 createdAt = post.createdAt,
-                updatedAt = post.updatedAt
+                updatedAt = post.updatedAt,
             )
         }
     }

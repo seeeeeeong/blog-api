@@ -9,6 +9,7 @@ import com.blog.api.storage.CommentRepository
 import com.blog.api.storage.PostRepository
 import com.blog.api.storage.toComment
 import com.blog.api.storage.toCommentWithReplies
+import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -18,6 +19,7 @@ class CommentService(
     private val commentRepository: CommentRepository,
     private val postRepository: PostRepository,
     private val postMarkdownConverter: PostMarkdownConverter,
+    private val passwordEncoder: PasswordEncoder,
 ) {
     companion object {
         private const val ROOT_PARENT_ID = 0L
@@ -31,9 +33,8 @@ class CommentService(
         val saved = commentRepository.save(
             CommentEntity(
                 postId = commentCreate.postId,
-                oauthId = commentCreate.oauthId,
-                oauthUsername = commentCreate.oauthUsername,
-                oauthAvatarUrl = commentCreate.oauthAvatarUrl.takeIf { it.isNotBlank() },
+                nickname = commentCreate.nickname,
+                password = passwordEncoder.encode(commentCreate.password),
                 parentId = resolveParentId(commentCreate.parentId, commentCreate.postId),
                 content = commentCreate.content,
                 contentHtml = contentHtml,
@@ -53,19 +54,26 @@ class CommentService(
     }
 
     @Transactional
-    fun updateComment(postId: Long, commentId: Long, oauthId: String, commentUpdate: CommentUpdate): Comment {
+    fun updateComment(postId: Long, commentId: Long, commentUpdate: CommentUpdate): Comment {
         val comment = findActiveComment(commentId)
         validatePostId(comment, postId)
-        validateOwner(comment, oauthId)
+        validatePassword(commentUpdate.password, comment.password)
         comment.updateContent(commentUpdate.content, postMarkdownConverter.convertToHtml(commentUpdate.content))
         return comment.toComment(postMarkdownConverter)
     }
 
     @Transactional
-    fun deleteComment(postId: Long, commentId: Long, oauthId: String) {
+    fun deleteComment(postId: Long, commentId: Long, password: String) {
         val comment = findActiveComment(commentId)
         validatePostId(comment, postId)
-        validateOwner(comment, oauthId)
+        validatePassword(password, comment.password)
+        comment.delete()
+    }
+
+    @Transactional
+    fun deleteCommentByAdmin(postId: Long, commentId: Long) {
+        val comment = findActiveComment(commentId)
+        validatePostId(comment, postId)
         comment.delete()
     }
 
@@ -105,8 +113,9 @@ class CommentService(
         if (comment.postId != postId) throw CoreException(ErrorType.COMMENT_NOT_FOUND)
     }
 
-    private fun validateOwner(comment: CommentEntity, oauthId: String) {
-        if (comment.oauthId != oauthId) throw CoreException(ErrorType.FORBIDDEN)
+    private fun validatePassword(rawPassword: String, encodedPassword: String) {
+        if (!passwordEncoder.matches(rawPassword, encodedPassword)) {
+            throw CoreException(ErrorType.INVALID_PASSWORD)
+        }
     }
-
 }

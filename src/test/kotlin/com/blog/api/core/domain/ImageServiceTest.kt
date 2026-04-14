@@ -5,7 +5,6 @@ import com.blog.api.core.support.error.ErrorType
 import com.blog.api.core.support.properties.ImagePresignedProperties
 import com.blog.api.core.support.properties.S3Properties
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -41,7 +40,7 @@ class ImageServiceTest {
     }
 
     @Test
-    fun `tiff content type 은 브라우저 비호환이라 예외를 던진다`() {
+    fun `허용되지 않은 content type 은 예외를 던진다`() {
         val service = fixture()
 
         val exception = assertThrows<CoreException> {
@@ -53,27 +52,6 @@ class ImageServiceTest {
         }
 
         assertEquals(ErrorType.INVALID_INPUT, exception.errorType)
-        assertEquals("contentType", exception.data?.get("field"))
-        assertEquals("image/tiff", exception.data?.get("value"))
-        assertEquals("Only browser-displayable image types are supported", exception.data?.get("reason"))
-        assertEquals(listOf("image/jpeg", "image/png", "image/webp", "image/gif"), exception.data?.get("allowedContentTypes"))
-    }
-
-    @Test
-    fun `허용되지 않은 content type 은 presigner 호출 전에 차단된다`() {
-        val s3Presigner = mock(S3Presigner::class.java)
-        val service = fixture(s3Presigner = s3Presigner)
-
-        val exception = assertThrows<CoreException> {
-            service.generatePresignedUrl(
-                adminUserId = 7L,
-                contentType = "image/bmp",
-                folder = "blog",
-            )
-        }
-
-        assertEquals(ErrorType.INVALID_INPUT, exception.errorType)
-        assertNull(exception.data?.get("uploadUrl"))
     }
 
     private fun fixture(

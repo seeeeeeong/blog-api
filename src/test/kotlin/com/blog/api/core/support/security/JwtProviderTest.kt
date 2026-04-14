@@ -21,16 +21,11 @@ class JwtProviderTest {
         val accessToken = jwtProvider.generateAccessToken(userId = 1L, role = "ADMIN")
 
         assertTrue(jwtProvider.validateUserAccessToken(accessToken))
-        assertFalse(jwtProvider.validateOAuthCommentToken(accessToken))
     }
 
     @Test
     fun `USER_REFRESH 토큰만 refresh claim 파싱이 가능하다`() {
-        val refreshToken = jwtProvider.generateRefreshToken(
-            userId = 1L,
-            tokenId = "token-id-1",
-            role = "ADMIN",
-        )
+        val refreshToken = jwtProvider.generateRefreshToken(userId = 1L, role = "ADMIN")
         val accessToken = jwtProvider.generateAccessToken(userId = 1L, role = "ADMIN")
 
         val refreshClaims = jwtProvider.parseRefreshTokenClaims(refreshToken)
@@ -38,34 +33,17 @@ class JwtProviderTest {
             jwtProvider.parseRefreshTokenClaims(accessToken)
         }
 
-        assertEquals("token-id-1", refreshClaims.tokenId)
         assertEquals(1L, refreshClaims.userId)
         assertEquals("ADMIN", refreshClaims.roleName)
         assertEquals(ErrorType.INVALID_TOKEN, exception.errorType)
     }
 
     @Test
-    fun `OAUTH_COMMENT 토큰은 OAuth 검증만 통과한다`() {
-        val oauthToken = jwtProvider.generateOAuthAccessToken(
-            oauthId = 1001L,
-            oauthUsername = "octocat",
-            oauthAvatarUrl = "https://avatars.githubusercontent.com/u/1?v=4",
-        )
-
-        assertTrue(jwtProvider.validateOAuthCommentToken(oauthToken))
-        assertFalse(jwtProvider.validateUserAccessToken(oauthToken))
-    }
-
-    @Test
     fun `토큰 타입이 다르면 role 조회를 거부한다`() {
-        val oauthToken = jwtProvider.generateOAuthAccessToken(
-            oauthId = 1001L,
-            oauthUsername = "octocat",
-            oauthAvatarUrl = null,
-        )
+        val refreshToken = jwtProvider.generateRefreshToken(userId = 1L, role = "ADMIN")
 
         val exception = assertThrows(CoreException::class.java) {
-            jwtProvider.getRoleFromToken(oauthToken)
+            jwtProvider.getRoleFromToken(refreshToken)
         }
         assertEquals(ErrorType.INVALID_TOKEN, exception.errorType)
     }

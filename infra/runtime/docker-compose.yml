@@ -7,9 +7,6 @@ services:
       - "127.0.0.1:8080:8080"
     env_file:
       - /opt/services/env/blog-api.env
-    depends_on:
-      redis:
-        condition: service_healthy
     networks:
       - services
     mem_limit: 512m
@@ -19,23 +16,6 @@ services:
       timeout: 10s
       retries: 18
       start_period: 90s
-
-  redis:
-    image: redis:7-alpine
-    container_name: blog-redis
-    restart: always
-    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
-    volumes:
-      - /opt/services/data/redis:/data
-      - /opt/services/redis.conf:/usr/local/etc/redis/redis.conf:ro
-    networks:
-      - services
-    mem_limit: 320m
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
 
   devlog-db:
     image: pgvector/pgvector:pg15
@@ -109,20 +89,6 @@ services:
       - "--path.rootfs=/rootfs"
       - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
     mem_limit: 24m
-
-  redis-exporter:
-    image: oliver006/redis_exporter:v1.67.0
-    container_name: blog-redis-exporter
-    restart: always
-    command: ["--redis.addr=redis://redis:6379"]
-    ports:
-      - "127.0.0.1:9121:9121"
-    depends_on:
-      redis:
-        condition: service_healthy
-    networks:
-      - services
-    mem_limit: 32m
 
 networks:
   services:

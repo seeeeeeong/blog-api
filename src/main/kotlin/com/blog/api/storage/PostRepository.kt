@@ -17,22 +17,18 @@ interface PostRepository : JpaRepository<PostEntity, Long> {
     @Query("UPDATE PostEntity p SET p.viewCount = p.viewCount + 1 WHERE p.id = :postId")
     fun incrementViewCount(@Param("postId") postId: Long)
 
-    fun findAllByIdInAndStatus(ids: List<Long>, status: PostStatus): List<PostEntity>
-
     fun findByStatus(status: PostStatus, pageable: Pageable): Slice<PostEntity>
 
     fun findByCategoryIdAndStatus(
         categoryId: Long,
         status: PostStatus,
-        pageable: Pageable
+        pageable: Pageable,
     ): Slice<PostEntity>
-
-    fun findAllByUserId(userId: Long, pageable: Pageable): Page<PostEntity>
 
     fun findByUserIdAndStatus(
         userId: Long,
         status: PostStatus,
-        pageable: Pageable
+        pageable: Pageable,
     ): Slice<PostEntity>
 
     @Query(
@@ -55,11 +51,11 @@ interface PostRepository : JpaRepository<PostEntity, Long> {
                 OR p.content ILIKE CONCAT('%', :query, '%')
             )
         """,
-        nativeQuery = true
+        nativeQuery = true,
     )
     fun searchByKeyword(
         @Param("query") query: String,
-        pageable: Pageable
+        pageable: Pageable,
     ): Page<PostEntity>
 
     @Query(
@@ -84,11 +80,11 @@ interface PostRepository : JpaRepository<PostEntity, Long> {
                 OR p.content ILIKE CONCAT('%', :query, '%')
             )
         """,
-        nativeQuery = true
+        nativeQuery = true,
     )
     fun searchByKeywordWithCategory(
         @Param("query") query: String,
         @Param("categoryId") categoryId: Long,
-        pageable: Pageable
+        pageable: Pageable,
     ): Page<PostEntity>
 }

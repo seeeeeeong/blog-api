@@ -6,24 +6,20 @@ import java.time.LocalDateTime
 data class CommentResponse(
     val id: Long,
     val postId: Long,
-    val oauthId: String,
-    val oauthUsername: String,
-    val oauthAvatarUrl: String?,
+    val nickname: String,
     val parentId: Long?,
     val content: String,
     val contentHtml: String,
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime,
-    val replies: List<CommentResponse> = emptyList()
+    val replies: List<CommentResponse> = emptyList(),
 ) {
     companion object {
         fun of(commentWithReplies: CommentWithReplies): CommentResponse {
             return CommentResponse(
                 id = commentWithReplies.comment.id,
                 postId = commentWithReplies.comment.postId,
-                oauthId = commentWithReplies.comment.oauthId,
-                oauthUsername = commentWithReplies.comment.oauthUsername,
-                oauthAvatarUrl = commentWithReplies.comment.oauthAvatarUrl,
+                nickname = commentWithReplies.comment.nickname,
                 parentId = commentWithReplies.comment.parentId,
                 content = commentWithReplies.comment.content,
                 contentHtml = commentWithReplies.comment.contentHtml,
@@ -31,7 +27,7 @@ data class CommentResponse(
                 updatedAt = commentWithReplies.comment.updatedAt,
                 replies = commentWithReplies.replies.map { reply ->
                     of(CommentWithReplies(reply, emptyList()))
-                }
+                },
             )
         }
     }

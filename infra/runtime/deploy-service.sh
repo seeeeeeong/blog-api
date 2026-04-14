@@ -133,7 +133,6 @@ echo "Image: $NEW_IMAGE"
 # Ensure directories exist
 # =============================================
 mkdir -p "$RUNTIME_DIR/bin" "$ENV_DIR" \
-  "$RUNTIME_DIR/data/redis" \
   "$RUNTIME_DIR/data/devlog-postgres" \
   "$RUNTIME_DIR/data/caddy" \
   "$RUNTIME_DIR/config/caddy"
@@ -169,11 +168,7 @@ case "$SERVICE" in
     DB_HOST="$(fetch_ssm_parameter "$P/DB_HOST")"
     DB_PASSWORD="$(fetch_ssm_parameter "$P/DB_PASSWORD")"
     JWT_SECRET="$(fetch_ssm_parameter "$P/JWT_SECRET")"
-    GITHUB_CLIENT_ID="$(fetch_ssm_parameter "$P/GITHUB_CLIENT_ID")"
-    GITHUB_CLIENT_SECRET="$(fetch_ssm_parameter "$P/GITHUB_CLIENT_SECRET")"
     CORS_ALLOWED_ORIGINS="$(fetch_ssm_parameter "$P/CORS_ALLOWED_ORIGINS")"
-    OAUTH_REDIRECT_URL="$(fetch_ssm_parameter "$P/OAUTH_REDIRECT_URL")"
-    OAUTH_CALLBACK_URL="$(fetch_ssm_parameter "$P/OAUTH_CALLBACK_URL")"
     AWS_S3_BUCKET="$(fetch_ssm_parameter "$P/AWS_S3_BUCKET")"
     AWS_CLOUDFRONT_DOMAIN="$(fetch_ssm_parameter "$P/AWS_CLOUDFRONT_DOMAIN")"
 
@@ -182,7 +177,6 @@ case "$SERVICE" in
     SPRING_JPA_HIBERNATE_DDL_AUTO="$(fetch_ssm_or_default "$P/SPRING_JPA_HIBERNATE_DDL_AUTO" update)"
     JWT_ACCESS_EXPIRATION="$(fetch_ssm_or_default "$P/JWT_ACCESS_EXPIRATION" 3600000)"
     JWT_REFRESH_EXPIRATION="$(fetch_ssm_or_default "$P/JWT_REFRESH_EXPIRATION" 1209600000)"
-    BACKUP_S3_PREFIX="$(fetch_ssm_or_default "$P/BACKUP_S3_PREFIX" backups/postgres)"
 
     # Write service env file
     write_atomic "$ENV_DIR/blog-api.env" <<EOF
@@ -192,14 +186,8 @@ DB_PORT=5432
 DB_NAME=blog_db
 DB_USERNAME=postgres
 DB_PASSWORD=$DB_PASSWORD
-REDIS_HOST=redis
-REDIS_PORT=6379
 JWT_SECRET=$JWT_SECRET
-GITHUB_CLIENT_ID=$GITHUB_CLIENT_ID
-GITHUB_CLIENT_SECRET=$GITHUB_CLIENT_SECRET
 CORS_ALLOWED_ORIGINS=$CORS_ALLOWED_ORIGINS
-OAUTH_REDIRECT_URL=$OAUTH_REDIRECT_URL
-OAUTH_CALLBACK_URL=$OAUTH_CALLBACK_URL
 AWS_S3_BUCKET=$AWS_S3_BUCKET
 AWS_REGION=$AWS_REGION
 AWS_CLOUDFRONT_DOMAIN=$AWS_CLOUDFRONT_DOMAIN
@@ -207,16 +195,10 @@ SPRING_JPA_HIBERNATE_DDL_AUTO=$SPRING_JPA_HIBERNATE_DDL_AUTO
 JWT_ACCESS_EXPIRATION=$JWT_ACCESS_EXPIRATION
 JWT_REFRESH_EXPIRATION=$JWT_REFRESH_EXPIRATION
 JAVA_TOOL_OPTIONS=-Xms64m -Xmx300m -XX:MaxMetaspaceSize=150m
-BACKUP_S3_PREFIX=$BACKUP_S3_PREFIX
 EOF
 
     # Update compose.env with new blog-api image
     update_compose_env "$NEW_IMAGE" "$CURRENT_DEVLOG_ARCHIVE_IMAGE" "$CLOUDFRONT_SECRET"
-
-    # Ensure dependency is up
-    echo "Ensuring redis is running..."
-    "${COMPOSE[@]}" up -d redis
-    wait_for_health blog-redis 30 3
 
     # Deploy blog-api
     echo "Deploying blog-api..."
@@ -247,7 +229,6 @@ POSTGRES_PASSWORD=$DA_DB_PASSWORD
 EOF
 
     # Write service env file
-    # SPRING_DATASOURCE_URL overrides application-prod.yml hardcoded "db" hostname
     write_atomic "$ENV_DIR/devlog-archive.env" <<EOF
 SPRING_PROFILES_ACTIVE=prod
 SPRING_DATASOURCE_URL=jdbc:postgresql://devlog-db:5432/devlog_archive

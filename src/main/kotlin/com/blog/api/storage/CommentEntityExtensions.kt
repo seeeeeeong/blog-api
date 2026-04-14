@@ -9,9 +9,7 @@ import com.blog.api.core.support.error.ErrorType
 fun CommentEntity.toComment(converter: PostMarkdownConverter): Comment = Comment(
     id = id!!,
     postId = postId,
-    oauthId = oauthId,
-    oauthUsername = oauthUsername,
-    oauthAvatarUrl = oauthAvatarUrl,
+    nickname = nickname,
     parentId = parentId,
     content = content,
     contentHtml = contentHtml ?: converter.convertToHtml(content),

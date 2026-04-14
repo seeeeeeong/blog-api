@@ -7,7 +7,7 @@ enum class ErrorType(
     val status: HttpStatus,
     val code: String,
     val message: String,
-    val logLevel: LogLevel = LogLevel.INFO
+    val logLevel: LogLevel = LogLevel.INFO,
 ) {
     // ==================== User ====================
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_001", "User not found", LogLevel.WARN),
@@ -18,11 +18,6 @@ enum class ErrorType(
     EXPIRED_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_002", "Expired token"),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "AUTH_003", "Unauthorized"),
     FORBIDDEN(HttpStatus.FORBIDDEN, "AUTH_004", "Forbidden", LogLevel.WARN),
-    REFRESH_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "AUTH_005", "Refresh token not found"),
-    REFRESH_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "AUTH_006", "Refresh token expired"),
-    OAUTH_STATE_INVALID(HttpStatus.UNAUTHORIZED, "AUTH_007", "Invalid OAuth state", LogLevel.WARN),
-    OAUTH_CODE_INVALID(HttpStatus.UNAUTHORIZED, "AUTH_008", "Invalid or expired OAuth code", LogLevel.WARN),
-    REDIS_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AUTH_010", "Authentication token store unavailable", LogLevel.ERROR),
 
     // ==================== Post ====================
     POST_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_001", "Post not found", LogLevel.WARN),
@@ -36,5 +31,5 @@ enum class ErrorType(
     // ==================== Common ====================
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "COMMON_001", "Invalid input"),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON_002", "Internal server error", LogLevel.ERROR),
-    DEFAULT_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON_999", "An unexpected error occurred", LogLevel.ERROR)
+    DEFAULT_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON_999", "An unexpected error occurred", LogLevel.ERROR),
 }

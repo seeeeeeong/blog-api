@@ -1,31 +1,41 @@
 package com.blog.api.core.domain
 
+import com.blog.api.core.enum.PostStatus
+import com.blog.api.core.support.converter.PostMarkdownConverter
 import com.blog.api.core.support.error.CoreException
 import com.blog.api.core.support.error.ErrorType
-import com.blog.api.core.enum.PostStatus
 import com.blog.api.storage.PostEntity
 import com.blog.api.storage.PostRepository
 import com.blog.api.storage.toPost
+import com.github.benmanes.caffeine.cache.Caffeine
+import org.slf4j.LoggerFactory
 import org.springframework.cache.CacheManager
 import org.springframework.cache.annotation.Cacheable
 import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Slice
+import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
+import java.time.Duration
 
 @Service
 @Transactional(readOnly = true)
 class PostService(
     private val postRepository: PostRepository,
-    private val postHtmlCacheService: PostHtmlCacheService,
-    private val postViewService: PostViewService,
-    private val postRankingService: PostRankingService,
+    private val postMarkdownConverter: PostMarkdownConverter,
     private val cacheManager: CacheManager,
 ) {
+    private val logger = LoggerFactory.getLogger(javaClass)
+
+    private val recentViews = Caffeine.newBuilder()
+        .expireAfterWrite(Duration.ofHours(1))
+        .maximumSize(10_000)
+        .build<String, Boolean>()
 
     @Transactional
     fun createPost(postCreate: PostCreate): Post {
@@ -45,7 +55,7 @@ class PostService(
                 return post.toPost()
             }
             PostStatus.PUBLISHED -> {
-                postViewService.incrementIfNeeded(postId, clientIp)
+                incrementViewIfNeeded(postId, clientIp)
                 return post.toPost()
             }
         }
@@ -61,15 +71,24 @@ class PostService(
     }
 
     fun getHtml(postId: Long, content: String): String {
-        return postHtmlCacheService.getHtml(postId, content)
+        val cache = cacheManager.getCache("post-html")
+            ?: return postMarkdownConverter.convertToHtml(content)
+
+        return try {
+            cache.get(postId, String::class.java)
+                ?: postMarkdownConverter.convertToHtml(content).also {
+                    cache.put(postId, it)
+                }
+        } catch (e: Exception) {
+            logger.warn("[Cache] local(caffeine) cache failure - postId={}: {}", postId, e.message)
+            postMarkdownConverter.convertToHtml(content)
+        }
     }
 
     @Cacheable("popular-posts", sync = true)
     fun getPopularPosts(limit: Int): List<Post> {
-        val ids = postRankingService.getTopPostIds(limit)
-        if (ids.isEmpty()) return emptyList()
-        val postMap = postRepository.findAllByIdInAndStatus(ids, PostStatus.PUBLISHED).associateBy { it.id }
-        return ids.mapNotNull { postMap[it]?.toPost() }
+        val pageable = PageRequest.of(0, limit.coerceAtLeast(1), Sort.by(Sort.Direction.DESC, "viewCount"))
+        return postRepository.findByStatus(PostStatus.PUBLISHED, pageable).content.map { it.toPost() }
     }
 
     fun getAllPosts(pageable: Pageable): Slice<Post> {
@@ -95,7 +114,6 @@ class PostService(
     fun updatePost(postId: Long, userId: Long, postUpdate: PostUpdate): Post {
         val post = findPostById(postId)
         checkOwnership(post, userId)
-        val oldStatus = post.status
 
         post.updateContent(
             categoryId = postUpdate.categoryId,
@@ -105,14 +123,9 @@ class PostService(
             status = postUpdate.status,
         )
 
-        val viewCount = post.viewCount
         TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
             override fun afterCommit() {
-                when {
-                    postUpdate.status != PostStatus.PUBLISHED -> postRankingService.remove(postId)
-                    oldStatus != PostStatus.PUBLISHED -> postRankingService.seed(postId, viewCount)
-                }
-                postHtmlCacheService.evict(postId)
+                evictHtmlCache(postId)
                 cacheManager.getCache("popular-posts")?.clear()
             }
         })
@@ -127,11 +140,26 @@ class PostService(
         post.softDelete()
         TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
             override fun afterCommit() {
-                postRankingService.remove(postId)
-                postHtmlCacheService.evict(postId)
+                evictHtmlCache(postId)
                 cacheManager.getCache("popular-posts")?.clear()
             }
         })
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    fun incrementViewIfNeeded(postId: Long, clientIp: String) {
+        val key = "$postId:${clientIp.trim().ifBlank { "unknown" }}"
+        if (recentViews.getIfPresent(key) != null) return
+        recentViews.put(key, true)
+        postRepository.incrementViewCount(postId)
+    }
+
+    private fun evictHtmlCache(postId: Long) {
+        try {
+            cacheManager.getCache("post-html")?.evict(postId)
+        } catch (e: Exception) {
+            logger.warn("[Cache] local(caffeine) cache evict failure - postId={}: {}", postId, e.message)
+        }
     }
 
     private fun findPostById(postId: Long): PostEntity =

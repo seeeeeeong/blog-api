@@ -5,7 +5,6 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
@@ -21,7 +20,6 @@ import org.springframework.web.servlet.handler.HandlerMappingIntrospector
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity(prePostEnabled = true)
 class SecurityConfig(
     private val jwtAuthenticationFilter: JwtAuthenticationFilter,
     @param:Value("\${cors.allowed-origins}") private val corsAllowedOrigins: String,
@@ -45,17 +43,10 @@ class SecurityConfig(
             }
             .authorizeHttpRequests { authorize ->
                 authorize
-                    // CORS preflight
                     .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-                    // Health check
                     .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
 
-                    // Swagger UI
-                    .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-
                     // Auth APIs
-                    .requestMatchers("/api/auth/github/**").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/v1/users/login", "/api/v1/users/refresh").permitAll()
 
                     // Post write APIs (ADMIN only)
@@ -74,24 +65,25 @@ class SecurityConfig(
                         "/api/v1/posts",
                         "/api/v1/posts/popular",
                         "/api/v1/posts/search",
-                        "/api/v1/posts/categories/**"
+                        "/api/v1/posts/categories/**",
                     ).permitAll()
                     .requestMatchers(
                         mvc.pattern(HttpMethod.GET, "/api/v1/posts/{postId:[0-9]+}")
                     ).permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/v1/categories").permitAll()
 
-                    // Comment read APIs (public)
+                    // Comment APIs (public except admin delete)
                     .requestMatchers(HttpMethod.GET, "/api/v1/posts/*/comments/**").permitAll()
-                    // Comment write APIs (auth delegated to @OAuthUser ArgumentResolver)
                     .requestMatchers(HttpMethod.POST, "/api/v1/posts/*/comments/**").permitAll()
                     .requestMatchers(HttpMethod.PUT, "/api/v1/posts/*/comments/**").permitAll()
                     .requestMatchers(HttpMethod.DELETE, "/api/v1/posts/*/comments/**").permitAll()
 
+                    // Admin comment delete
+                    .requestMatchers(HttpMethod.DELETE, "/api/v1/posts/*/comments/*/admin").hasRole("ADMIN")
+
                     // Image APIs (Admin only)
                     .requestMatchers("/api/images/**").hasRole("ADMIN")
 
-                    // All other requests need authentication
                     .anyRequest().authenticated()
             }
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
@@ -105,7 +97,6 @@ class SecurityConfig(
             allowedOrigins = corsAllowedOrigins.split(",").map { it.trim() }.filter { it.isNotBlank() }
             allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "OPTIONS")
             allowedHeaders = listOf("Content-Type", "Authorization", "X-Requested-With")
-            exposedHeaders = listOf("Authorization", "GitHub-Username", "GitHub-Avatar-Url")
             allowCredentials = true
             maxAge = 3600
         }

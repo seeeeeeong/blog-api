@@ -18,13 +18,13 @@ class JwtAuthenticationFilter(
 
     override fun shouldNotFilter(request: HttpServletRequest): Boolean {
         val path = request.requestURI
-        return path.startsWith(AUTH_GITHUB_PATH_PREFIX) || COMMENT_PATH_REGEX.matches(path)
+        return COMMENT_PATH_REGEX.matches(path)
     }
 
     override fun doFilterInternal(
         request: HttpServletRequest,
         response: HttpServletResponse,
-        filterChain: FilterChain
+        filterChain: FilterChain,
     ) {
         val token = HttpServletRequestUtils.extractBearerToken(request)
         if (token != null && jwtProvider.validateUserAccessToken(token)) {
@@ -47,7 +47,6 @@ class JwtAuthenticationFilter(
     }
 
     companion object {
-        private const val AUTH_GITHUB_PATH_PREFIX = "/api/auth/github"
         private val COMMENT_PATH_REGEX = Regex("^/api/v1/posts/\\d+/comments(?:/.*)?$")
     }
 }

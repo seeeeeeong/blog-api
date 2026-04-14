@@ -115,22 +115,3 @@ resource "aws_cloudwatch_metric_alarm" "api_5xx_error_rate_high" {
   ok_actions    = local.cloudwatch_alarm_actions
 }
 
-resource "aws_cloudwatch_metric_alarm" "container_restarts_detected" {
-  alarm_name          = "${var.project_name}-container-restarts-detected"
-  comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods  = 1
-  metric_name         = "ContainerRestartCount"
-  namespace           = "Blog/Infra"
-  period              = 300
-  statistic           = "Sum"
-  threshold           = var.container_restart_alarm_threshold
-  alarm_description   = "최근 5분 동안 컨테이너 재시작이 감지되었습니다."
-  treat_missing_data  = "notBreaching"
-
-  dimensions = {
-    InstanceId = aws_instance.main.id
-  }
-
-  alarm_actions = local.cloudwatch_alarm_actions
-  ok_actions    = local.cloudwatch_alarm_actions
-}
