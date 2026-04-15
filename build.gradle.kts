@@ -7,6 +7,8 @@ plugins {
     kotlin("plugin.jpa") version "2.3.0"
     id("org.springframework.boot") version "3.5.9"
     id("io.spring.dependency-management") version "1.1.7"
+    id("org.jlleitschuh.gradle.ktlint") version "12.1.0"
+    id("io.gitlab.arturbosch.detekt") version "1.23.6"
     id("co.uzzu.dotenv.gradle") version "2.0.0"
 }
 
@@ -63,6 +65,8 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testImplementation("org.springframework.security:spring-security-test")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+    detektPlugins("io.gitlab.arturbosch.detekt:detekt-formatting:1.23.6")
 }
 
 tasks.withType<KotlinCompile>().configureEach {
@@ -75,10 +79,24 @@ tasks.withType<Test>().configureEach {
     useJUnitPlatform()
 }
 
+ktlint {
+    version.set("1.2.1")
+    ignoreFailures.set(false)
+}
+
+detekt {
+    config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
+    buildUponDefaultConfig = true
+}
+
 tasks.named<BootJar>("bootJar") {
     archiveBaseName.set("blog-api")
 }
 
 tasks.named<Jar>("jar") {
     enabled = false
+}
+
+tasks.named("check") {
+    dependsOn("ktlintCheck", "detekt")
 }
