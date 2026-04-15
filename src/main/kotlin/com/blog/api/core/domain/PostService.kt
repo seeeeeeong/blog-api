@@ -17,7 +17,6 @@ import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Slice
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
@@ -43,7 +42,6 @@ class PostService(
         return postRepository.save(entity).toPost()
     }
 
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     fun getPost(postId: Long, clientIp: String, userId: Long? = null, isAdmin: Boolean = false): Post {
         val post = findPostById(postId)
         when (post.status) {
@@ -146,8 +144,7 @@ class PostService(
         })
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    fun incrementViewIfNeeded(postId: Long, clientIp: String) {
+    private fun incrementViewIfNeeded(postId: Long, clientIp: String) {
         val key = "$postId:${clientIp.trim().ifBlank { "unknown" }}"
         if (recentViews.getIfPresent(key) != null) return
         recentViews.put(key, true)
