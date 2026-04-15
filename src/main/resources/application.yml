@@ -68,7 +68,6 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
-    baseline-version: 2
     locations: classpath:db/migration
 
   jpa:
@@ -128,7 +127,6 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
-    baseline-version: 2
     locations: classpath:db/migration
 
   jpa:
