@@ -14,11 +14,12 @@ data class PostResponse(
     val thumbnailUrl: String?,
     val viewCount: Int,
     val status: PostStatus,
+    val comments: List<CommentResponse>,
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime,
 ) {
     companion object {
-        fun of(post: Post, contentHtml: String): PostResponse {
+        fun of(post: Post, contentHtml: String, comments: List<CommentResponse> = emptyList()): PostResponse {
             return PostResponse(
                 id = post.id,
                 userId = post.userId,
@@ -29,6 +30,7 @@ data class PostResponse(
                 thumbnailUrl = post.thumbnailUrl,
                 viewCount = post.viewCount,
                 status = post.status,
+                comments = comments,
                 createdAt = post.createdAt,
                 updatedAt = post.updatedAt,
             )

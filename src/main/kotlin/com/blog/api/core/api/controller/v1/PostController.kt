@@ -7,7 +7,9 @@ import com.blog.api.core.api.controller.v1.request.PostCreateRequest
 import jakarta.servlet.http.HttpServletRequest
 import com.blog.api.core.api.controller.v1.request.PostUpdateRequest
 import com.blog.api.core.api.controller.v1.response.PostResponse
+import com.blog.api.core.api.controller.v1.response.CommentResponse
 import com.blog.api.core.api.controller.v1.response.PostSummaryResponse
+import com.blog.api.core.domain.CommentService
 import com.blog.api.core.domain.PostService
 import com.blog.api.core.support.web.HttpServletRequestUtils
 import jakarta.validation.Valid
@@ -33,7 +35,8 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api/v1/posts")
 class PostController(
-    private val postService: PostService
+    private val postService: PostService,
+    private val commentService: CommentService,
 ) {
 
     @PostMapping
@@ -56,7 +59,8 @@ class PostController(
         val currentUserId = authentication?.principal as? Long
         val isAdmin = authentication?.authorities?.any { it.authority == "ROLE_ADMIN" } == true
         val post = postService.getPost(postId, clientIp, currentUserId, isAdmin)
-        return ApiResponse.success(PostResponse.of(post, postService.getHtml(post.id, post.content)))
+        val comments = commentService.getCommentsByPost(postId).map(CommentResponse::of)
+        return ApiResponse.success(PostResponse.of(post, postService.getHtml(post.id, post.content), comments))
     }
 
     @GetMapping("/{postId}/admin")
@@ -65,7 +69,8 @@ class PostController(
         @Admin userId: Long,
     ): ApiResponse<PostResponse> {
         val post = postService.getPostForAdmin(postId, userId)
-        return ApiResponse.success(PostResponse.of(post, postService.getHtml(post.id, post.content)))
+        val comments = commentService.getCommentsByPost(postId).map(CommentResponse::of)
+        return ApiResponse.success(PostResponse.of(post, postService.getHtml(post.id, post.content), comments))
     }
 
     @GetMapping("/popular")
