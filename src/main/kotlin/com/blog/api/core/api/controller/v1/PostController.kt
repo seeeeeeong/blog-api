@@ -4,14 +4,16 @@ import com.blog.api.core.support.response.ApiResponse
 import com.blog.api.core.support.response.PageResponse
 import com.blog.api.core.support.auth.Admin
 import com.blog.api.core.api.controller.v1.request.PostCreateRequest
-import jakarta.servlet.http.HttpServletRequest
 import com.blog.api.core.api.controller.v1.request.PostUpdateRequest
 import com.blog.api.core.api.controller.v1.response.PostResponse
 import com.blog.api.core.api.controller.v1.response.CommentResponse
 import com.blog.api.core.api.controller.v1.response.PostSummaryResponse
 import com.blog.api.core.domain.CommentService
 import com.blog.api.core.domain.PostService
+import com.blog.api.core.domain.PostViewCommand
+import com.blog.api.core.enum.UserRole
 import com.blog.api.core.support.web.HttpServletRequestUtils
+import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
@@ -54,11 +56,8 @@ class PostController(
         @PathVariable postId: Long,
         request: HttpServletRequest,
     ): ApiResponse<PostResponse> {
-        val clientIp = HttpServletRequestUtils.resolveClientIp(request)
-        val authentication = SecurityContextHolder.getContext().authentication
-        val currentUserId = authentication?.principal as? Long
-        val isAdmin = authentication?.authorities?.any { it.authority == "ROLE_ADMIN" } == true
-        val post = postService.getPost(postId, clientIp, currentUserId, isAdmin)
+        val command = buildPostViewCommand(postId, request)
+        val post = postService.getPost(command)
         val comments = commentService.getCommentsByPost(postId).map(CommentResponse::of)
         return ApiResponse.success(PostResponse.of(post, postService.getHtml(post.id, post.content), comments))
     }
@@ -155,5 +154,21 @@ class PostController(
     ): ApiResponse<Any> {
         postService.deletePost(postId, userId)
         return ApiResponse.success()
+    }
+
+    private fun buildPostViewCommand(postId: Long, request: HttpServletRequest): PostViewCommand {
+        val authentication = SecurityContextHolder.getContext().authentication
+        return PostViewCommand(
+            postId = postId,
+            clientIp = HttpServletRequestUtils.resolveClientIp(request),
+            viewerUserId = authentication?.principal as? Long,
+            viewerRole = extractUserRole(authentication),
+        )
+    }
+
+    private fun extractUserRole(authentication: org.springframework.security.core.Authentication?): UserRole? {
+        if (authentication == null) return null
+        val hasAdmin = authentication.authorities.any { it.authority == "ROLE_ADMIN" }
+        return if (hasAdmin) UserRole.ADMIN else UserRole.USER
     }
 }

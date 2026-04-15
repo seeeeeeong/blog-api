@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Index
 import jakarta.persistence.Table
+import org.hibernate.Hibernate
 
 @Entity
 @Table(
@@ -33,16 +34,21 @@ class CommentEntity(
     @Column(name = "parent_id")
     val parentId: Long? = null,
 
-    @Column(nullable = false, columnDefinition = "TEXT")
-    var content: String,
-
-    @Column(name = "content_html", columnDefinition = "TEXT")
-    var contentHtml: String? = null,
+    content: String,
+    contentHtml: String? = null,
 
     @Column(name = "is_deleted", nullable = false)
     private var isDeleted: Boolean = false,
 
 ) : BaseTimeEntity() {
+
+    @Column(nullable = false, columnDefinition = "TEXT")
+    var content: String = content
+        protected set
+
+    @Column(name = "content_html", columnDefinition = "TEXT")
+    var contentHtml: String? = contentHtml
+        protected set
 
     fun updateContent(newContent: String, newContentHtml: String) {
         this.content = newContent
@@ -54,4 +60,13 @@ class CommentEntity(
     }
 
     fun isActive(): Boolean = !isDeleted
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || Hibernate.getClass(this) != Hibernate.getClass(other)) return false
+        other as CommentEntity
+        return id != null && id == other.id
+    }
+
+    override fun hashCode(): Int = Hibernate.getClass(this).hashCode()
 }

@@ -1,6 +1,7 @@
 package com.blog.api.core.domain
 
 import com.blog.api.core.enum.PostStatus
+import com.blog.api.core.enum.UserRole
 import com.blog.api.core.support.converter.PostMarkdownConverter
 import com.blog.api.core.support.error.CoreException
 import com.blog.api.core.support.error.ErrorType
@@ -8,7 +9,7 @@ import com.blog.api.storage.PostEntity
 import com.blog.api.storage.PostRepository
 import com.blog.api.storage.toPost
 import com.github.benmanes.caffeine.cache.Caffeine
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.cache.CacheManager
 import org.springframework.cache.annotation.Cacheable
 import org.springframework.data.domain.Page
@@ -30,11 +31,10 @@ class PostService(
     private val cacheManager: CacheManager,
 ) {
     companion object {
+        private val log = KotlinLogging.logger {}
         private const val RECENT_VIEW_TTL_HOURS = 1L
         private const val RECENT_VIEW_MAX_SIZE = 10_000L
     }
-
-    private val logger = LoggerFactory.getLogger(javaClass)
 
     private val recentViews = Caffeine.newBuilder()
         .expireAfterWrite(Duration.ofHours(RECENT_VIEW_TTL_HOURS))
@@ -47,19 +47,19 @@ class PostService(
         return postRepository.save(entity).toPost()
     }
 
-    fun getPost(postId: Long, clientIp: String, userId: Long? = null, isAdmin: Boolean = false): Post {
-        val post = findPostById(postId)
-        when (post.status) {
+    fun getPost(command: PostViewCommand): Post {
+        val post = findPostById(command.postId)
+        return when (post.status) {
             PostStatus.DELETED -> throw CoreException(ErrorType.POST_NOT_FOUND)
             PostStatus.DRAFT -> {
-                if (!canAccessDraft(post, userId, isAdmin)) {
+                if (!canAccessDraft(post, command)) {
                     throw CoreException(ErrorType.POST_NOT_FOUND)
                 }
-                return post.toPost()
+                post.toPost()
             }
             PostStatus.PUBLISHED -> {
-                incrementViewIfNeeded(postId, clientIp)
-                return post.toPost()
+                incrementViewIfNeeded(command.postId, command.clientIp)
+                post.toPost()
             }
         }
     }
@@ -83,7 +83,7 @@ class PostService(
                     cache.put(postId, it)
                 }
         } catch (e: Exception) {
-            logger.warn("[Cache] local(caffeine) cache failure - postId={}: {}", postId, e.message)
+            log.warn(e) { "Cache read failed: postId=$postId" }
             postMarkdownConverter.convertToHtml(content)
         }
     }
@@ -160,7 +160,7 @@ class PostService(
         try {
             cacheManager.getCache("post-html")?.evict(postId)
         } catch (e: Exception) {
-            logger.warn("[Cache] local(caffeine) cache evict failure - postId={}: {}", postId, e.message)
+            log.warn(e) { "Cache evict failed: postId=$postId" }
         }
     }
 
@@ -189,7 +189,9 @@ class PostService(
         if (post.userId != userId) throw CoreException(ErrorType.FORBIDDEN)
     }
 
-    private fun canAccessDraft(post: PostEntity, userId: Long?, isAdmin: Boolean): Boolean {
-        return isAdmin && userId != null && post.userId == userId
+    private fun canAccessDraft(post: PostEntity, command: PostViewCommand): Boolean {
+        return command.viewerRole == UserRole.ADMIN &&
+            command.viewerUserId != null &&
+            post.userId == command.viewerUserId
     }
 }

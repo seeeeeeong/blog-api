@@ -1,10 +1,10 @@
 package com.blog.api.core.support.web
 
 import com.blog.api.core.support.properties.BlogProperties
+import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import org.slf4j.LoggerFactory
 import org.slf4j.MDC
 import org.springframework.core.Ordered
 import org.springframework.core.annotation.Order
@@ -19,11 +19,10 @@ class MdcLoggingFilter(
 ) : OncePerRequestFilter() {
 
     companion object {
+        private val log = KotlinLogging.logger {}
         private const val REQUEST_ID_LENGTH = 8
         private const val NANOS_PER_MILLI = 1_000_000
     }
-
-    private val log = LoggerFactory.getLogger(javaClass)
 
     override fun doFilterInternal(
         request: HttpServletRequest,
@@ -38,13 +37,7 @@ class MdcLoggingFilter(
         } finally {
             val elapsedMs = (System.nanoTime() - startNs) / NANOS_PER_MILLI
             if (elapsedMs >= blogProperties.slowRequestThresholdMs) {
-                log.warn(
-                    "Slow request: method={}, uri={}, status={}, elapsedMs={}",
-                    request.method,
-                    request.requestURI,
-                    response.status,
-                    elapsedMs
-                )
+                log.warn { "Slow request: method=${request.method}, uri=${request.requestURI}, status=${response.status}, elapsedMs=$elapsedMs" }
             }
             MDC.clear()
         }

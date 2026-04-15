@@ -1,6 +1,7 @@
 package com.blog.api.core.domain
 
 import com.blog.api.core.enum.PostStatus
+import com.blog.api.core.enum.UserRole
 import com.blog.api.core.support.converter.PostMarkdownConverter
 import com.blog.api.core.support.error.CoreException
 import com.blog.api.core.support.error.ErrorType
@@ -24,7 +25,8 @@ class PostServiceTest {
         val post = post(id = 1L, userId = 10L, status = PostStatus.PUBLISHED)
         `when`(postRepository.findById(1L)).thenReturn(Optional.of(post))
 
-        val result = service.getPost(1L, "127.0.0.1")
+        val command = PostViewCommand(postId = 1L, clientIp = "127.0.0.1")
+        val result = service.getPost(command)
 
         assertEquals(1L, result.id)
         verify(postRepository).incrementViewCount(1L)
@@ -37,7 +39,13 @@ class PostServiceTest {
         val post = post(id = 2L, userId = 10L, status = PostStatus.DRAFT)
         `when`(postRepository.findById(2L)).thenReturn(Optional.of(post))
 
-        val result = service.getPost(2L, "127.0.0.1", userId = 10L, isAdmin = true)
+        val command = PostViewCommand(
+            postId = 2L,
+            clientIp = "127.0.0.1",
+            viewerUserId = 10L,
+            viewerRole = UserRole.ADMIN,
+        )
+        val result = service.getPost(command)
 
         assertEquals(PostStatus.DRAFT, result.status)
     }
@@ -49,8 +57,14 @@ class PostServiceTest {
         val post = post(id = 3L, userId = 10L, status = PostStatus.DRAFT)
         `when`(postRepository.findById(3L)).thenReturn(Optional.of(post))
 
+        val command = PostViewCommand(
+            postId = 3L,
+            clientIp = "127.0.0.1",
+            viewerUserId = 99L,
+            viewerRole = UserRole.ADMIN,
+        )
         val exception = assertThrows(CoreException::class.java) {
-            service.getPost(3L, "127.0.0.1", userId = 99L, isAdmin = true)
+            service.getPost(command)
         }
 
         assertEquals(ErrorType.POST_NOT_FOUND, exception.errorType)
