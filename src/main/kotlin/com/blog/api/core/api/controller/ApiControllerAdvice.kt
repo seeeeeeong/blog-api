@@ -49,6 +49,10 @@ class ApiControllerAdvice {
     @ExceptionHandler(Exception::class)
     fun handleException(e: Exception): ResponseEntity<ApiResponse<Any>> {
         log.error(e) { "Unexpected exception occurred" }
-        return ResponseEntity(ApiResponse.error(ErrorType.DEFAULT_ERROR), ErrorType.DEFAULT_ERROR.status)
+        val detail = "${e.javaClass.simpleName}: ${e.message}"
+        return ResponseEntity(
+            ApiResponse.error(ErrorType.DEFAULT_ERROR, message = detail),
+            ErrorType.DEFAULT_ERROR.status,
+        )
     }
 }
