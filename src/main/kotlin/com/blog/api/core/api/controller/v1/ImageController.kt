@@ -1,7 +1,7 @@
 package com.blog.api.core.api.controller.v1
 
 import com.blog.api.core.api.controller.v1.response.ImagePresignedUrlResponse
-import com.blog.api.core.domain.ImageService
+import com.blog.api.core.domain.image.ImageService
 import com.blog.api.core.support.auth.Admin
 import com.blog.api.core.support.response.ApiResponse
 import org.springframework.http.HttpStatus

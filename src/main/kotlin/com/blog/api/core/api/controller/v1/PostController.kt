@@ -8,9 +8,9 @@ import com.blog.api.core.api.controller.v1.request.PostUpdateRequest
 import com.blog.api.core.api.controller.v1.response.PostResponse
 import com.blog.api.core.api.controller.v1.response.CommentResponse
 import com.blog.api.core.api.controller.v1.response.PostSummaryResponse
-import com.blog.api.core.domain.CommentService
-import com.blog.api.core.domain.PostService
-import com.blog.api.core.domain.PostViewCommand
+import com.blog.api.core.domain.comment.CommentService
+import com.blog.api.core.domain.post.PostService
+import com.blog.api.core.domain.post.PostViewCommand
 import com.blog.api.core.enum.UserRole
 import com.blog.api.core.support.web.HttpServletRequestUtils
 import jakarta.servlet.http.HttpServletRequest

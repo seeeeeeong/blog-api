@@ -1,10 +1,10 @@
 package com.blog.api.core.api.controller.v1
 
 import com.blog.api.core.api.controller.v1.response.CommentResponse
-import com.blog.api.core.domain.CommentCreate
-import com.blog.api.core.domain.CommentService
-import com.blog.api.core.domain.CommentUpdate
-import com.blog.api.core.domain.CommentWithReplies
+import com.blog.api.core.domain.comment.CommentCreate
+import com.blog.api.core.domain.comment.CommentService
+import com.blog.api.core.domain.comment.CommentUpdate
+import com.blog.api.core.domain.comment.CommentWithReplies
 import com.blog.api.core.support.auth.Admin
 import com.blog.api.core.support.response.ApiResponse
 import jakarta.validation.Valid

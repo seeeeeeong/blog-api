@@ -1,6 +1,6 @@
 package com.blog.api.core.api.controller.v1.response
 
-import com.blog.api.core.domain.UserToken
+import com.blog.api.core.domain.user.UserToken
 
 data class UserTokenResponse(
     val accessToken: String,

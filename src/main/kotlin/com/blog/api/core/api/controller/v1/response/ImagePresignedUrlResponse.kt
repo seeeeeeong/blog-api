@@ -1,6 +1,6 @@
 package com.blog.api.core.api.controller.v1.response
 
-import com.blog.api.core.domain.ImagePresignedUrl
+import com.blog.api.core.domain.image.ImagePresignedUrl
 
 data class ImagePresignedUrlResponse(
     val uploadUrl: String,

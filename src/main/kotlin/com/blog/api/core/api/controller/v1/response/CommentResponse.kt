@@ -1,6 +1,6 @@
 package com.blog.api.core.api.controller.v1.response
 
-import com.blog.api.core.domain.CommentWithReplies
+import com.blog.api.core.domain.comment.CommentWithReplies
 import java.time.LocalDateTime
 
 data class CommentResponse(

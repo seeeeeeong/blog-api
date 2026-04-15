@@ -1,6 +1,6 @@
 package com.blog.api.core.api.controller.v1.request
 
-import com.blog.api.core.domain.UserLogin
+import com.blog.api.core.domain.user.UserLogin
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
 

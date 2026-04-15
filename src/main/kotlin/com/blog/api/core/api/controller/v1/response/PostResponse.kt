@@ -1,6 +1,6 @@
 package com.blog.api.core.api.controller.v1.response
 
-import com.blog.api.core.domain.Post
+import com.blog.api.core.domain.post.Post
 import com.blog.api.core.enum.PostStatus
 import java.time.LocalDateTime
 

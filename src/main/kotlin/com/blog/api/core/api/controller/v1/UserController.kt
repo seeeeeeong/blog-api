@@ -3,7 +3,7 @@ package com.blog.api.core.api.controller.v1
 import com.blog.api.core.api.controller.v1.request.UserLoginRequest
 import com.blog.api.core.api.controller.v1.request.UserTokenRequest
 import com.blog.api.core.api.controller.v1.response.UserTokenResponse
-import com.blog.api.core.domain.UserService
+import com.blog.api.core.domain.user.UserService
 import com.blog.api.core.support.response.ApiResponse
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.PostMapping

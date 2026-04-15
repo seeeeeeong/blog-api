@@ -1,6 +1,6 @@
 package com.blog.api.core.api.controller.v1.response
 
-import com.blog.api.core.domain.Category
+import com.blog.api.core.domain.category.Category
 import java.time.LocalDateTime
 
 data class CategoryResponse(

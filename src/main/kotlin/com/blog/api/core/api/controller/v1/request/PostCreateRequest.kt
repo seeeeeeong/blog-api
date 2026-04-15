@@ -1,6 +1,6 @@
 package com.blog.api.core.api.controller.v1.request
 
-import com.blog.api.core.domain.PostCreate
+import com.blog.api.core.domain.post.PostCreate
 import com.blog.api.core.enum.PostStatus
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
