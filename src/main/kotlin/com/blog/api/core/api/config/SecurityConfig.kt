@@ -58,6 +58,9 @@ class SecurityConfig(
                         mvc.pattern(HttpMethod.DELETE, "/api/v1/posts/{postId:[0-9]+}")
                     ).hasRole("ADMIN")
                     .requestMatchers(HttpMethod.GET, "/api/v1/posts/drafts").hasRole("ADMIN")
+                    .requestMatchers(
+                        mvc.pattern(HttpMethod.GET, "/api/v1/posts/{postId:[0-9]+}/admin")
+                    ).hasRole("ADMIN")
 
                     // Public Read APIs
                     .requestMatchers(
@@ -72,14 +75,14 @@ class SecurityConfig(
                     ).permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/v1/categories").permitAll()
 
-                    // Comment APIs (public except admin delete)
+                    // Admin comment delete (must come before general comment rules)
+                    .requestMatchers(HttpMethod.DELETE, "/api/v1/posts/*/comments/*/admin").hasRole("ADMIN")
+
+                    // Comment APIs (public)
                     .requestMatchers(HttpMethod.GET, "/api/v1/posts/*/comments/**").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/v1/posts/*/comments/**").permitAll()
                     .requestMatchers(HttpMethod.PUT, "/api/v1/posts/*/comments/**").permitAll()
                     .requestMatchers(HttpMethod.DELETE, "/api/v1/posts/*/comments/**").permitAll()
-
-                    // Admin comment delete
-                    .requestMatchers(HttpMethod.DELETE, "/api/v1/posts/*/comments/*/admin").hasRole("ADMIN")
 
                     // Image APIs (Admin only)
                     .requestMatchers("/api/images/**").hasRole("ADMIN")
