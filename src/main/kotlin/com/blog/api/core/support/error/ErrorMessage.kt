@@ -3,11 +3,11 @@ package com.blog.api.core.support.error
 data class ErrorMessage(
     val code: String,
     val message: String,
-    val data: Any? = null
+    val data: Any? = null,
 ) {
-    constructor(errorType: ErrorType, data: Any? = null) : this(
+    constructor(errorType: ErrorType, data: Any? = null, message: String? = null) : this(
         code = errorType.code,
-        message = errorType.message,
-        data = data
+        message = message ?: errorType.message,
+        data = data,
     )
 }

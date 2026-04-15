@@ -2,5 +2,5 @@ package com.blog.api.core.support.response
 
 data class PageResponse<T>(
     val content: List<T>,
-    val hasNext: Boolean
+    val hasNext: Boolean,
 )

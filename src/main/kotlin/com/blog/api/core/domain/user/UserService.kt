@@ -37,7 +37,9 @@ class UserService(
     }
 
     private fun validatePassword(rawPassword: String, encodedPassword: String) {
-        if (!passwordEncoder.matches(rawPassword, encodedPassword)) throw CoreException(ErrorType.INVALID_PASSWORD)
+        val isValid = passwordEncoder.matches(rawPassword, encodedPassword)
+        if (isValid) return
+        throw CoreException(ErrorType.INVALID_PASSWORD)
     }
 
     private fun normalizeEmail(email: String): String = email.trim().lowercase()

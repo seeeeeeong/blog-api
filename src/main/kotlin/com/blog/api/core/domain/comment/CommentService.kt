@@ -91,7 +91,8 @@ class CommentService(
 
     private fun ensurePostExists(postId: Long) {
         val exists = postRepository.existsByIdAndStatus(postId, PostStatus.PUBLISHED)
-        if (!exists) throw CoreException(ErrorType.POST_NOT_FOUND)
+        if (exists) return
+        throw CoreException(ErrorType.POST_NOT_FOUND)
     }
 
     private fun buildRepliesByParent(replies: List<CommentEntity>): Map<Long, List<Comment>> {
@@ -115,8 +116,8 @@ class CommentService(
     }
 
     private fun validatePassword(rawPassword: String, encodedPassword: String) {
-        if (!passwordEncoder.matches(rawPassword, encodedPassword)) {
-            throw CoreException(ErrorType.INVALID_PASSWORD)
-        }
+        val isValid = passwordEncoder.matches(rawPassword, encodedPassword)
+        if (isValid) return
+        throw CoreException(ErrorType.INVALID_PASSWORD)
     }
 }

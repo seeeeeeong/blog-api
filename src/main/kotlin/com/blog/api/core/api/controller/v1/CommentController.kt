@@ -1,15 +1,14 @@
 package com.blog.api.core.api.controller.v1
 
+import com.blog.api.core.api.controller.v1.request.CommentCreateRequest
+import com.blog.api.core.api.controller.v1.request.CommentDeleteRequest
+import com.blog.api.core.api.controller.v1.request.CommentUpdateRequest
 import com.blog.api.core.api.controller.v1.response.CommentResponse
-import com.blog.api.core.domain.comment.CommentCreate
 import com.blog.api.core.domain.comment.CommentService
-import com.blog.api.core.domain.comment.CommentUpdate
 import com.blog.api.core.domain.comment.CommentWithReplies
 import com.blog.api.core.support.auth.Admin
 import com.blog.api.core.support.response.ApiResponse
 import jakarta.validation.Valid
-import jakarta.validation.constraints.NotBlank
-import jakarta.validation.constraints.Size
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -27,37 +26,11 @@ class CommentController(
     private val commentService: CommentService,
 ) {
 
-    data class CreateCommentRequest(
-        @field:NotBlank @field:Size(max = 20) val nickname: String,
-        @field:NotBlank @field:Size(max = 50) val password: String,
-        @field:NotBlank @field:Size(max = 1000) val content: String,
-        val parentId: Long? = null,
-    ) {
-        fun toCommand(postId: Long) = CommentCreate(
-            postId = postId,
-            nickname = nickname,
-            password = password,
-            parentId = parentId ?: 0L,
-            content = content,
-        )
-    }
-
-    data class UpdateCommentRequest(
-        @field:NotBlank @field:Size(max = 50) val password: String,
-        @field:NotBlank @field:Size(max = 1000) val content: String,
-    ) {
-        fun toCommand() = CommentUpdate(password = password, content = content)
-    }
-
-    data class DeleteCommentRequest(
-        @field:NotBlank val password: String,
-    )
-
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun createComment(
         @PathVariable postId: Long,
-        @Valid @RequestBody request: CreateCommentRequest,
+        @Valid @RequestBody request: CommentCreateRequest,
     ): ApiResponse<CommentResponse> {
         val comment = commentService.createComment(request.toCommand(postId))
         return ApiResponse.success(CommentResponse.of(CommentWithReplies(comment, emptyList())))
@@ -75,7 +48,7 @@ class CommentController(
     fun updateComment(
         @PathVariable postId: Long,
         @PathVariable commentId: Long,
-        @Valid @RequestBody request: UpdateCommentRequest,
+        @Valid @RequestBody request: CommentUpdateRequest,
     ): ApiResponse<CommentResponse> {
         val comment = commentService.updateComment(postId, commentId, request.toCommand())
         return ApiResponse.success(CommentResponse.of(CommentWithReplies(comment, emptyList())))
@@ -86,7 +59,7 @@ class CommentController(
     fun deleteComment(
         @PathVariable postId: Long,
         @PathVariable commentId: Long,
-        @Valid @RequestBody request: DeleteCommentRequest,
+        @Valid @RequestBody request: CommentDeleteRequest,
     ): ApiResponse<Any> {
         commentService.deleteComment(postId, commentId, request.password)
         return ApiResponse.success()

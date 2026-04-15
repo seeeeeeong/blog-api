@@ -1,8 +1,8 @@
 package com.blog.api.core.api.controller
 
-import com.blog.api.core.support.response.ApiResponse
 import com.blog.api.core.support.error.CoreException
 import com.blog.api.core.support.error.ErrorType
+import com.blog.api.core.support.response.ApiResponse
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.validation.ConstraintViolationException
 import org.springframework.boot.logging.LogLevel
@@ -29,7 +29,7 @@ class ApiControllerAdvice {
             LogLevel.WARN -> log.warn { "CoreException: ${e.message}" }
             else -> log.info { "CoreException: ${e.message}" }
         }
-        return ResponseEntity(ApiResponse.error(e.errorType, e.data), e.errorType.status)
+        return ResponseEntity(ApiResponse.error(e.errorType, e.data, e.message), e.errorType.status)
     }
 
     @ExceptionHandler(

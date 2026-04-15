@@ -53,13 +53,17 @@ class ImageService(
 
     fun deleteImage(adminUserId: Long, key: String) {
         val normalizedKey = key.trim()
-        if (!isOwnedKey(adminUserId, normalizedKey)) throw CoreException(ErrorType.FORBIDDEN)
-        s3Client.deleteObject(
-            DeleteObjectRequest.builder()
-                .bucket(s3Properties.bucket)
-                .key(normalizedKey)
-                .build()
-        )
+        val owned = isOwnedKey(adminUserId, normalizedKey)
+        if (owned) {
+            s3Client.deleteObject(
+                DeleteObjectRequest.builder()
+                    .bucket(s3Properties.bucket)
+                    .key(normalizedKey)
+                    .build()
+            )
+            return
+        }
+        throw CoreException(ErrorType.FORBIDDEN)
     }
 
     private fun generateKey(adminUserId: Long, folder: String, contentType: String): String {

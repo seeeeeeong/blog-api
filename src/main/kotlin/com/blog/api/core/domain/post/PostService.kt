@@ -52,10 +52,9 @@ class PostService(
         return when (post.status) {
             PostStatus.DELETED -> throw CoreException(ErrorType.POST_NOT_FOUND)
             PostStatus.DRAFT -> {
-                if (!canAccessDraft(post, command)) {
-                    throw CoreException(ErrorType.POST_NOT_FOUND)
-                }
-                post.toPost()
+                val accessible = canAccessDraft(post, command)
+                if (accessible) return post.toPost()
+                throw CoreException(ErrorType.POST_NOT_FOUND)
             }
             PostStatus.PUBLISHED -> {
                 incrementViewIfNeeded(command.postId, command.clientIp)
@@ -151,7 +150,8 @@ class PostService(
 
     private fun incrementViewIfNeeded(postId: Long, clientIp: String) {
         val key = "$postId:${clientIp.trim().ifBlank { "unknown" }}"
-        if (recentViews.getIfPresent(key) != null) return
+        val alreadyViewed = recentViews.getIfPresent(key) != null
+        if (alreadyViewed) return
         recentViews.put(key, true)
         postRepository.incrementViewCount(postId)
     }

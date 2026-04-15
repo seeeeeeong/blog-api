@@ -6,7 +6,7 @@ import com.blog.api.core.support.error.ErrorType
 data class ApiResponse<T>(
     val result: ResultType,
     val data: T? = null,
-    val error: ErrorMessage? = null
+    val error: ErrorMessage? = null,
 ) {
     companion object {
         fun success(): ApiResponse<Any> {
@@ -17,8 +17,8 @@ data class ApiResponse<T>(
             return ApiResponse(ResultType.SUCCESS, data, null)
         }
 
-        fun <S> error(error: ErrorType, errorData: Any? = null): ApiResponse<S> {
-            return ApiResponse(ResultType.ERROR, null, ErrorMessage(error, errorData))
+        fun <S> error(errorType: ErrorType, data: Any? = null, message: String? = null): ApiResponse<S> {
+            return ApiResponse(ResultType.ERROR, null, ErrorMessage(errorType, data, message))
         }
     }
 }
