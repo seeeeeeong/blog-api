@@ -1,7 +1,7 @@
 package com.blog.api.core.api.config
 
+import com.blog.api.core.support.properties.CorsProperties
 import com.blog.api.core.support.security.JwtAuthenticationFilter
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
@@ -22,8 +22,12 @@ import org.springframework.web.servlet.handler.HandlerMappingIntrospector
 @EnableWebSecurity
 class SecurityConfig(
     private val jwtAuthenticationFilter: JwtAuthenticationFilter,
-    @param:Value("\${cors.allowed-origins}") private val corsAllowedOrigins: String,
+    private val corsProperties: CorsProperties,
 ) {
+
+    companion object {
+        private const val CORS_MAX_AGE_SECONDS = 3600L
+    }
 
     @Bean
     fun passwordEncoder(): PasswordEncoder {
@@ -97,11 +101,11 @@ class SecurityConfig(
     @Bean
     fun corsConfigurationSource(): CorsConfigurationSource {
         val config = CorsConfiguration().apply {
-            allowedOrigins = corsAllowedOrigins.split(",").map { it.trim() }.filter { it.isNotBlank() }
+            allowedOrigins = corsProperties.allowedOrigins.split(",").map { it.trim() }.filter { it.isNotBlank() }
             allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "OPTIONS")
             allowedHeaders = listOf("Content-Type", "Authorization", "X-Requested-With")
             allowCredentials = true
-            maxAge = 3600
+            maxAge = CORS_MAX_AGE_SECONDS
         }
         return UrlBasedCorsConfigurationSource().apply {
             registerCorsConfiguration("/**", config)

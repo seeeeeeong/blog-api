@@ -29,11 +29,16 @@ class PostService(
     private val postMarkdownConverter: PostMarkdownConverter,
     private val cacheManager: CacheManager,
 ) {
+    companion object {
+        private const val RECENT_VIEW_TTL_HOURS = 1L
+        private const val RECENT_VIEW_MAX_SIZE = 10_000L
+    }
+
     private val logger = LoggerFactory.getLogger(javaClass)
 
     private val recentViews = Caffeine.newBuilder()
-        .expireAfterWrite(Duration.ofHours(1))
-        .maximumSize(10_000)
+        .expireAfterWrite(Duration.ofHours(RECENT_VIEW_TTL_HOURS))
+        .maximumSize(RECENT_VIEW_MAX_SIZE)
         .build<String, Boolean>()
 
     @Transactional

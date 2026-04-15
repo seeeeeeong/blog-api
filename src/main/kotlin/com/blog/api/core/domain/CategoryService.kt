@@ -16,7 +16,7 @@ class CategoryService(
         return categoryRepository.findAll()
             .map { category ->
                 Category(
-                    id = category.id!!,
+                    id = requireNotNull(category.id) { "CategoryEntity.id must not be null after persistence" },
                     name = category.name,
                     slug = category.slug,
                     createdAt = category.createdAt,

@@ -7,7 +7,7 @@ import com.blog.api.core.support.error.CoreException
 import com.blog.api.core.support.error.ErrorType
 
 fun CommentEntity.toComment(converter: PostMarkdownConverter): Comment = Comment(
-    id = id!!,
+    id = requireNotNull(id) { "CommentEntity.id must not be null after persistence" },
     postId = postId,
     nickname = nickname,
     parentId = parentId,

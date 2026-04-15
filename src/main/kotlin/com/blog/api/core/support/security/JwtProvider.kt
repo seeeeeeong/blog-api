@@ -2,11 +2,11 @@ package com.blog.api.core.support.security
 
 import com.blog.api.core.support.error.CoreException
 import com.blog.api.core.support.error.ErrorType
+import com.blog.api.core.support.properties.JwtProperties
 import io.jsonwebtoken.Claims
 import io.jsonwebtoken.JwtBuilder
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.time.Instant
 import java.util.Date
@@ -14,12 +14,10 @@ import javax.crypto.SecretKey
 
 @Component
 class JwtProvider(
-    @Value("\${jwt.secret}") secret: String,
-    @param:Value("\${jwt.access-expiration}") private val accessExpiration: Long,
-    @param:Value("\${jwt.refresh-expiration}") private val refreshExpiration: Long,
+    private val jwtProperties: JwtProperties,
 ) {
 
-    private val secretKey: SecretKey = Keys.hmacShaKeyFor(secret.toByteArray(Charsets.UTF_8))
+    private val secretKey: SecretKey = Keys.hmacShaKeyFor(jwtProperties.secret.toByteArray(Charsets.UTF_8))
 
     companion object {
         private const val ROLE_CLAIM = "role"
@@ -29,13 +27,13 @@ class JwtProvider(
     }
 
     fun generateAccessToken(userId: Long, role: String): String =
-        generateToken(userId.toString(), accessExpiration) {
+        generateToken(userId.toString(), jwtProperties.accessExpiration) {
             it.claim(ROLE_CLAIM, role)
             it.claim(TOKEN_TYPE_CLAIM, TOKEN_TYPE_USER_ACCESS)
         }
 
     fun generateRefreshToken(userId: Long, role: String): String =
-        generateToken(userId.toString(), refreshExpiration) {
+        generateToken(userId.toString(), jwtProperties.refreshExpiration) {
             it.claim(ROLE_CLAIM, role)
             it.claim(TOKEN_TYPE_CLAIM, TOKEN_TYPE_USER_REFRESH)
         }

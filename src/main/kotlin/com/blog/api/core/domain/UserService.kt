@@ -20,7 +20,8 @@ class UserService(
         val user = userRepository.findByEmail(normalizedEmail)
             ?: throw CoreException(ErrorType.USER_NOT_FOUND)
         validatePassword(userLogin.password, user.password)
-        return createUserToken(user.id!!, user.role.name)
+        val userId = requireNotNull(user.id) { "UserEntity.id must not be null after persistence" }
+        return createUserToken(userId, user.role.name)
     }
 
     fun refreshAccessToken(refreshToken: String): UserToken {

@@ -16,6 +16,10 @@ class JwtAuthenticationFilter(
     private val jwtProvider: JwtProvider,
 ) : OncePerRequestFilter() {
 
+    companion object {
+        private val COMMENT_PATH_REGEX = Regex("^/api/v1/posts/\\d+/comments(?:/.*)?$")
+    }
+
     override fun shouldNotFilter(request: HttpServletRequest): Boolean {
         val path = request.requestURI
         return COMMENT_PATH_REGEX.matches(path)
@@ -44,9 +48,5 @@ class JwtAuthenticationFilter(
         } catch (e: CoreException) {
             // 타입/클레임 불일치 토큰은 SecurityContext를 비우고 요청 흐름을 유지한다.
         }
-    }
-
-    companion object {
-        private val COMMENT_PATH_REGEX = Regex("^/api/v1/posts/\\d+/comments(?:/.*)?$")
     }
 }

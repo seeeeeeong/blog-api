@@ -1,6 +1,9 @@
 package com.blog.api.core.api.config
 
+import com.blog.api.core.support.properties.BlogProperties
+import com.blog.api.core.support.properties.CorsProperties
 import com.blog.api.core.support.properties.ImagePresignedProperties
+import com.blog.api.core.support.properties.JwtProperties
 import com.blog.api.core.support.properties.S3Properties
 import com.fasterxml.jackson.module.kotlin.KotlinFeature
 import com.fasterxml.jackson.module.kotlin.KotlinModule
@@ -12,6 +15,9 @@ import org.springframework.context.annotation.Configuration
 @EnableConfigurationProperties(
     S3Properties::class,
     ImagePresignedProperties::class,
+    JwtProperties::class,
+    CorsProperties::class,
+    BlogProperties::class,
 )
 class AppConfig {
 

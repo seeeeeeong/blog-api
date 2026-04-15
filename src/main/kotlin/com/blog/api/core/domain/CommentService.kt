@@ -97,7 +97,8 @@ class CommentService(
     private fun buildRepliesByParent(replies: List<CommentEntity>): Map<Long, List<Comment>> {
         val result = mutableMapOf<Long, MutableList<Comment>>()
         for (reply in replies) {
-            result.getOrPut(reply.parentId!!) { mutableListOf() }
+            val parentId = requireNotNull(reply.parentId) { "Reply comment must have a parentId" }
+            result.getOrPut(parentId) { mutableListOf() }
                 .add(reply.toComment(postMarkdownConverter))
         }
         return result

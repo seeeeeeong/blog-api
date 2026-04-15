@@ -2,8 +2,8 @@ package com.blog.api.core.support.security
 
 import com.blog.api.core.support.error.CoreException
 import com.blog.api.core.support.error.ErrorType
+import com.blog.api.core.support.properties.JwtProperties
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -11,9 +11,11 @@ import org.junit.jupiter.api.Test
 class JwtProviderTest {
 
     private val jwtProvider = JwtProvider(
-        secret = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-        accessExpiration = 60_000L,
-        refreshExpiration = 120_000L,
+        jwtProperties = JwtProperties(
+            secret = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            accessExpiration = 60_000L,
+            refreshExpiration = 120_000L,
+        ),
     )
 
     @Test

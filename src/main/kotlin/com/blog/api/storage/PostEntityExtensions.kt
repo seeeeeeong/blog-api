@@ -3,7 +3,7 @@ package com.blog.api.storage
 import com.blog.api.core.domain.Post
 
 fun PostEntity.toPost(): Post = Post(
-    id = id!!,
+    id = requireNotNull(id) { "PostEntity.id must not be null after persistence" },
     userId = userId,
     categoryId = categoryId,
     title = title,
