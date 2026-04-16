@@ -50,6 +50,7 @@ class ApiControllerAdvice {
     @ExceptionHandler(Exception::class)
     fun handleException(e: Exception, request: HttpServletRequest): ResponseEntity<ApiResponse<Any>> {
         log.error(e) { "Unexpected exception occurred: ${request.method} ${request.requestURI}" }
-        return ResponseEntity(ApiResponse.error(ErrorType.DEFAULT_ERROR), ErrorType.DEFAULT_ERROR.status)
+        val debugMessage = "${e.javaClass.simpleName}: ${e.message}"
+        return ResponseEntity(ApiResponse.error(ErrorType.DEFAULT_ERROR, debugMessage), ErrorType.DEFAULT_ERROR.status)
     }
 }
