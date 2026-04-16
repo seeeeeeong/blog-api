@@ -1,7 +1,6 @@
 package com.blog.api.core.domain.post
 
 import com.blog.api.core.enum.PostStatus
-import com.blog.api.core.enum.UserRole
 import com.blog.api.core.support.converter.PostMarkdownConverter
 import com.blog.api.core.support.error.CoreException
 import com.blog.api.core.support.error.ErrorType
@@ -11,13 +10,10 @@ import com.blog.api.storage.post.toPost
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.cache.Cache
 import org.springframework.cache.CacheManager
-import org.springframework.cache.annotation.Cacheable
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.Page
-import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Slice
-import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.util.HtmlUtils
@@ -40,13 +36,15 @@ class PostService(
         return postRepository.save(entity).toPost()
     }
 
-    @Transactional
-    fun getPost(viewCommand: PostViewCommand): Post {
-        val post = getPostById(viewCommand.postId)
+    fun getPost(postId: Long, userId: Long? = null, isAdmin: Boolean = false): Post {
+        val post = getPostById(postId)
         return when (post.status) {
             PostStatus.DELETED -> throw CoreException(ErrorType.POST_NOT_FOUND)
-            PostStatus.DRAFT -> handleDraftAccess(post, viewCommand)
-            PostStatus.PUBLISHED -> handlePublishedAccess(post, viewCommand)
+            PostStatus.DRAFT -> {
+                if (isAdmin && userId != null && post.userId == userId) post.toPost()
+                else throw CoreException(ErrorType.POST_NOT_FOUND)
+            }
+            PostStatus.PUBLISHED -> post.toPost()
         }
     }
 
@@ -94,12 +92,6 @@ class PostService(
             log.warn(e) { "Markdown conversion failed: postId=$postId" }
             HtmlUtils.htmlEscape(content)
         }
-    }
-
-    @Cacheable("popular-posts", sync = true)
-    fun getPopularPosts(limit: Int): List<Post> {
-        val pageable = PageRequest.of(0, limit.coerceAtLeast(1), Sort.by(Sort.Direction.DESC, "viewCount"))
-        return postRepository.findByStatus(PostStatus.PUBLISHED, pageable).content.map { it.toPost() }
     }
 
     fun getAllPosts(pageable: Pageable): Slice<Post> {
@@ -163,23 +155,5 @@ class PostService(
 
     private fun requireOwner(post: PostEntity, userId: Long) {
         if (post.userId != userId) throw CoreException(ErrorType.FORBIDDEN)
-    }
-
-    private fun isDraftAuthor(post: PostEntity, viewCommand: PostViewCommand): Boolean {
-        return viewCommand.viewerRole == UserRole.ADMIN &&
-            viewCommand.viewerUserId != null &&
-            post.userId == viewCommand.viewerUserId
-    }
-
-    private fun handleDraftAccess(post: PostEntity, viewCommand: PostViewCommand): Post {
-        if (isDraftAuthor(post, viewCommand)) return post.toPost()
-        throw CoreException(ErrorType.POST_NOT_FOUND)
-    }
-
-    private fun handlePublishedAccess(post: PostEntity, viewCommand: PostViewCommand): Post {
-        if (!viewCommand.hasViewedCookie) {
-            eventPublisher.publishEvent(PostViewedEvent(viewCommand.postId))
-        }
-        return post.toPost()
     }
 }

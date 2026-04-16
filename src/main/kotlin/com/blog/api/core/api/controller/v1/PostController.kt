@@ -12,18 +12,11 @@ import com.blog.api.core.api.controller.v1.response.CommentResponse
 import com.blog.api.core.api.controller.v1.response.PostSummaryResponse
 import com.blog.api.core.domain.comment.CommentService
 import com.blog.api.core.domain.post.PostService
-import com.blog.api.core.domain.post.PostViewCommand
-import com.blog.api.core.enum.PostStatus
-import com.blog.api.core.support.web.HttpServletRequestUtils
-import jakarta.servlet.http.HttpServletRequest
-import jakarta.servlet.http.HttpServletResponse
+import com.blog.api.core.enum.UserRole
 import jakarta.validation.Valid
-import jakarta.validation.constraints.Max
-import jakarta.validation.constraints.Min
 import org.springframework.data.domain.Pageable
 import org.springframework.data.web.PageableDefault
 import org.springframework.http.HttpStatus
-import org.springframework.http.ResponseCookie
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -35,7 +28,6 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
-import java.time.Duration
 
 @Validated
 @RestController
@@ -44,10 +36,6 @@ class PostController(
     private val postService: PostService,
     private val commentService: CommentService,
 ) {
-
-    companion object {
-        private val VIEW_COOKIE_MAX_AGE = Duration.ofHours(1)
-    }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -63,20 +51,8 @@ class PostController(
     fun getPost(
         @PathVariable postId: Long,
         @ResolveCurrentUser currentUser: CurrentUser,
-        request: HttpServletRequest,
-        response: HttpServletResponse,
     ): ApiResponse<PostResponse> {
-        val cookieName = "viewed_post_$postId"
-        val viewCommand = PostViewCommand(
-            postId = postId,
-            hasViewedCookie = HttpServletRequestUtils.getCookieValue(request, cookieName) != null,
-            viewerUserId = currentUser.userId,
-            viewerRole = currentUser.role,
-        )
-        val post = postService.getPost(viewCommand)
-        if (!viewCommand.hasViewedCookie && post.status == PostStatus.PUBLISHED) {
-            addViewedCookie(response, postId)
-        }
+        val post = postService.getPost(postId, currentUser.userId, currentUser.role == UserRole.ADMIN)
         val comments = commentService.getCommentsByPost(postId).map(CommentResponse::of)
         return ApiResponse.success(PostResponse.of(post, postService.renderHtml(post.id, post.content), comments))
     }
@@ -89,14 +65,6 @@ class PostController(
         val post = postService.getPostForAdmin(postId, userId)
         val comments = commentService.getCommentsByPost(postId).map(CommentResponse::of)
         return ApiResponse.success(PostResponse.of(post, postService.renderHtml(post.id, post.content), comments))
-    }
-
-    @GetMapping("/popular")
-    fun getPopularPosts(
-        @RequestParam(defaultValue = "5") @Min(1) @Max(20) limit: Int,
-    ): ApiResponse<List<PostSummaryResponse>> {
-        val posts = postService.getPopularPosts(limit)
-        return ApiResponse.success(posts.map { PostSummaryResponse.of(it) })
     }
 
     @GetMapping
@@ -173,16 +141,5 @@ class PostController(
     ): ApiResponse<Any> {
         postService.deletePost(postId, userId)
         return ApiResponse.success()
-    }
-
-    private fun addViewedCookie(response: HttpServletResponse, postId: Long) {
-        val cookie = ResponseCookie.from("viewed_post_$postId", "1")
-            .httpOnly(true)
-            .path("/")
-            .maxAge(VIEW_COOKIE_MAX_AGE)
-            .sameSite("None")
-            .secure(true)
-            .build()
-        response.addHeader("Set-Cookie", cookie.toString())
     }
 }

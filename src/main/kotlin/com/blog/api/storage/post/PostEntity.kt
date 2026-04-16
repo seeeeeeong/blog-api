@@ -37,9 +37,6 @@ class PostEntity(
     content: String,
     thumbnailUrl: String? = null,
 
-    @Column(nullable = false)
-    val viewCount: Int = 0,
-
     status: PostStatus = PostStatus.PUBLISHED,
 ) : BaseTimeEntity() {
 

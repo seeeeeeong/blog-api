@@ -30,13 +30,6 @@ class CacheConfig : CachingConfigurer {
                     .maximumSize(50)
                     .build(),
             )
-            registerCustomCache(
-                "popular-posts",
-                Caffeine.newBuilder()
-                    .expireAfterAccess(Duration.ofMinutes(2))
-                    .maximumSize(20)
-                    .build(),
-            )
         }
     }
 }

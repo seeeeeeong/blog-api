@@ -9,7 +9,6 @@ fun PostEntity.toPost(): Post = Post(
     title = title,
     content = content,
     thumbnailUrl = thumbnailUrl,
-    viewCount = viewCount,
     status = status,
     createdAt = createdAt,
     updatedAt = updatedAt,

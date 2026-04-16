@@ -1,7 +1,6 @@
 package com.blog.api.core.domain.post
 
 import com.blog.api.core.enum.PostStatus
-import com.blog.api.core.enum.UserRole
 import com.blog.api.core.support.converter.PostMarkdownConverter
 import com.blog.api.core.support.error.CoreException
 import com.blog.api.core.support.error.ErrorType
@@ -21,33 +20,15 @@ import java.util.Optional
 class PostServiceTest {
 
     @Test
-    fun `published 글 조회 시 쿠키가 없으면 PostViewedEvent를 발행한다`() {
+    fun `published 글을 조회할 수 있다`() {
         val postRepository = mock(PostRepository::class.java)
-        val eventPublisher = mock(ApplicationEventPublisher::class.java)
-        val service = fixture(postRepository, eventPublisher = eventPublisher)
+        val service = fixture(postRepository)
         val post = post(id = 1L, userId = 10L, status = PostStatus.PUBLISHED)
         `when`(postRepository.findById(1L)).thenReturn(Optional.of(post))
 
-        val viewCommand = PostViewCommand(postId = 1L, hasViewedCookie = false)
-        val result = service.getPost(viewCommand)
+        val result = service.getPost(1L)
 
         assertEquals(1L, result.id)
-        verify(eventPublisher).publishEvent(PostViewedEvent(1L))
-    }
-
-    @Test
-    fun `published 글 조회 시 쿠키가 있으면 PostViewedEvent를 발행하지 않는다`() {
-        val postRepository = mock(PostRepository::class.java)
-        val eventPublisher = mock(ApplicationEventPublisher::class.java)
-        val service = fixture(postRepository, eventPublisher = eventPublisher)
-        val post = post(id = 1L, userId = 10L, status = PostStatus.PUBLISHED)
-        `when`(postRepository.findById(1L)).thenReturn(Optional.of(post))
-
-        val viewCommand = PostViewCommand(postId = 1L, hasViewedCookie = true)
-        val result = service.getPost(viewCommand)
-
-        assertEquals(1L, result.id)
-        verify(eventPublisher, never()).publishEvent(PostViewedEvent(1L))
     }
 
     @Test
@@ -57,13 +38,7 @@ class PostServiceTest {
         val post = post(id = 2L, userId = 10L, status = PostStatus.DRAFT)
         `when`(postRepository.findById(2L)).thenReturn(Optional.of(post))
 
-        val viewCommand = PostViewCommand(
-            postId = 2L,
-            hasViewedCookie = false,
-            viewerUserId = 10L,
-            viewerRole = UserRole.ADMIN,
-        )
-        val result = service.getPost(viewCommand)
+        val result = service.getPost(2L, userId = 10L, isAdmin = true)
 
         assertEquals(PostStatus.DRAFT, result.status)
     }
@@ -75,14 +50,8 @@ class PostServiceTest {
         val post = post(id = 3L, userId = 10L, status = PostStatus.DRAFT)
         `when`(postRepository.findById(3L)).thenReturn(Optional.of(post))
 
-        val viewCommand = PostViewCommand(
-            postId = 3L,
-            hasViewedCookie = false,
-            viewerUserId = 99L,
-            viewerRole = UserRole.ADMIN,
-        )
         val exception = assertThrows(CoreException::class.java) {
-            service.getPost(viewCommand)
+            service.getPost(3L, userId = 99L, isAdmin = true)
         }
 
         assertEquals(ErrorType.POST_NOT_FOUND, exception.errorType)

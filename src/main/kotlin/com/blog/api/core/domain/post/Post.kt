@@ -10,7 +10,6 @@ data class Post(
     val title: String,
     val content: String,
     val thumbnailUrl: String?,
-    val viewCount: Int,
     val status: PostStatus,
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime

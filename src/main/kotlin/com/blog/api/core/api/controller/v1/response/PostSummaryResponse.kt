@@ -10,8 +10,7 @@ data class PostSummaryResponse(
     val categoryId: Long,
     val title: String,
     val excerpt: String,
-    val thumbnailUrl: String,
-    val viewCount: Int,
+    val thumbnailUrl: String?,
     val status: PostStatus,
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime
@@ -26,8 +25,7 @@ data class PostSummaryResponse(
                 categoryId = post.categoryId,
                 title = post.title,
                 excerpt = post.content.take(EXCERPT_MAX_LENGTH),
-                thumbnailUrl = post.thumbnailUrl.orEmpty(),
-                viewCount = post.viewCount,
+                thumbnailUrl = post.thumbnailUrl,
                 status = post.status,
                 createdAt = post.createdAt,
                 updatedAt = post.updatedAt
