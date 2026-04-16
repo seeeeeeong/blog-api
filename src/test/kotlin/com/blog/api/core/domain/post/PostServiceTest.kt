@@ -16,6 +16,7 @@ import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.springframework.cache.CacheManager
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.util.Optional
 
 class PostServiceTest {
@@ -29,11 +30,16 @@ class PostServiceTest {
         val post = post(id = 1L, userId = 10L, status = PostStatus.PUBLISHED)
         `when`(postRepository.findById(1L)).thenReturn(Optional.of(post))
 
-        val command = PostViewCommand(postId = 1L, hasViewedCookie = false, response = response)
-        val result = service.getPost(command)
+        withTransactionSynchronization {
+            val command = PostViewCommand(postId = 1L, hasViewedCookie = false, response = response)
+            val result = service.getPost(command)
 
-        assertEquals(1L, result.id)
-        verify(postViewCountUpdater).increment(1L)
+            assertEquals(1L, result.id)
+            verify(postViewCountUpdater, never()).increment(1L)
+
+            simulateCommit()
+            verify(postViewCountUpdater).increment(1L)
+        }
     }
 
     @Test
@@ -45,11 +51,14 @@ class PostServiceTest {
         val post = post(id = 1L, userId = 10L, status = PostStatus.PUBLISHED)
         `when`(postRepository.findById(1L)).thenReturn(Optional.of(post))
 
-        val command = PostViewCommand(postId = 1L, hasViewedCookie = true, response = response)
-        val result = service.getPost(command)
+        withTransactionSynchronization {
+            val command = PostViewCommand(postId = 1L, hasViewedCookie = true, response = response)
+            val result = service.getPost(command)
 
-        assertEquals(1L, result.id)
-        verify(postViewCountUpdater, never()).increment(1L)
+            assertEquals(1L, result.id)
+            simulateCommit()
+            verify(postViewCountUpdater, never()).increment(1L)
+        }
     }
 
     @Test
@@ -115,5 +124,18 @@ class PostServiceTest {
             content = "content-$id",
             status = status,
         )
+    }
+
+    private fun withTransactionSynchronization(block: () -> Unit) {
+        TransactionSynchronizationManager.initSynchronization()
+        try {
+            block()
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization()
+        }
+    }
+
+    private fun simulateCommit() {
+        TransactionSynchronizationManager.getSynchronizations().forEach { it.afterCommit() }
     }
 }
