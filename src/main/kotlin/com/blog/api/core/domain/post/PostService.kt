@@ -8,9 +8,8 @@ import com.blog.api.core.support.error.ErrorType
 import com.blog.api.storage.post.PostEntity
 import com.blog.api.storage.post.PostRepository
 import com.blog.api.storage.post.toPost
-import com.github.benmanes.caffeine.cache.Caffeine
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.springframework.dao.DataAccessException
+import jakarta.servlet.http.HttpServletResponse
 import org.springframework.cache.CacheManager
 import org.springframework.cache.annotation.Cacheable
 import org.springframework.data.domain.Page
@@ -22,7 +21,6 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
-import java.time.Duration
 
 @Service
 @Transactional(readOnly = true)
@@ -30,17 +28,12 @@ class PostService(
     private val postRepository: PostRepository,
     private val postMarkdownConverter: PostMarkdownConverter,
     private val cacheManager: CacheManager,
+    private val postViewCountUpdater: PostViewCountUpdater,
 ) {
     companion object {
         private val log = KotlinLogging.logger {}
-        private const val RECENT_VIEW_TTL_HOURS = 1L
-        private const val RECENT_VIEW_MAX_SIZE = 10_000L
+        private const val VIEW_COOKIE_MAX_AGE = 3600
     }
-
-    private val recentViews = Caffeine.newBuilder()
-        .expireAfterWrite(Duration.ofHours(RECENT_VIEW_TTL_HOURS))
-        .maximumSize(RECENT_VIEW_MAX_SIZE)
-        .build<String, Boolean>()
 
     @Transactional
     fun createPost(postCreate: PostCreate): Post {
@@ -59,7 +52,7 @@ class PostService(
                 throw CoreException(ErrorType.POST_NOT_FOUND)
             }
             PostStatus.PUBLISHED -> {
-                incrementViewIfNeeded(command.postId, command.clientIp)
+                incrementViewIfNeeded(command)
                 post.toPost()
             }
         }
@@ -150,16 +143,21 @@ class PostService(
         })
     }
 
-    private fun incrementViewIfNeeded(postId: Long, clientIp: String) {
-        val key = "$postId:${clientIp.trim().ifBlank { "unknown" }}"
-        val alreadyViewed = recentViews.getIfPresent(key) != null
-        if (alreadyViewed) return
-        try {
-            postRepository.incrementViewCount(postId)
-            recentViews.put(key, true)
-        } catch (e: DataAccessException) {
-            log.warn(e) { "Failed to increment view count: postId=$postId" }
-        }
+    private fun incrementViewIfNeeded(command: PostViewCommand) {
+        if (command.hasViewedCookie) return
+        postViewCountUpdater.increment(command.postId)
+        addViewedCookie(command.response, command.postId)
+    }
+
+    private fun addViewedCookie(response: HttpServletResponse, postId: Long) {
+        val header = org.springframework.http.ResponseCookie.from("viewed_post_$postId", "1")
+            .httpOnly(true)
+            .path("/")
+            .maxAge(VIEW_COOKIE_MAX_AGE.toLong())
+            .sameSite("None")
+            .secure(true)
+            .build()
+        response.addHeader("Set-Cookie", header.toString())
     }
 
     private fun evictHtmlCache(postId: Long) {
