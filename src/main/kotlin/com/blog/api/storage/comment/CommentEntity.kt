@@ -39,7 +39,7 @@ class CommentEntity(
     contentHtml: String? = null,
 
     @Column(name = "is_deleted", nullable = false)
-    private var isDeleted: Boolean = false,
+    private var deleted: Boolean = false,
 
 ) : BaseTimeEntity() {
 
@@ -57,10 +57,10 @@ class CommentEntity(
     }
 
     fun delete() {
-        this.isDeleted = true
+        this.deleted = true
     }
 
-    fun isActive(): Boolean = !isDeleted
+    fun isActive(): Boolean = !deleted
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
