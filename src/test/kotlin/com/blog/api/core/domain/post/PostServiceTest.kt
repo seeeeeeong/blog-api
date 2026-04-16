@@ -121,13 +121,57 @@ class PostServiceTest {
         verify(eventPublisher).publishEvent(PostCacheEvictEvent(1L))
     }
 
+    @Test
+    fun `getHtml 마크다운 변환 실패 시 HTML 이스케이프된 content를 반환한다`() {
+        val converter = mock(PostMarkdownConverter::class.java)
+        val input = "<script>alert('xss')</script>"
+        `when`(converter.convertToHtml(input)).thenThrow(RuntimeException("parse error"))
+        val service = fixture(postMarkdownConverter = converter)
+
+        val result = service.getHtml(1L, input)
+
+        assertEquals("&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;", result)
+    }
+
+    @Test
+    fun `getHtml 변환 실패 시 캐시에 저장하지 않는다`() {
+        val converter = mock(PostMarkdownConverter::class.java)
+        val mockCache = mock(org.springframework.cache.Cache::class.java)
+        val cacheManager = mock(CacheManager::class.java)
+        `when`(cacheManager.getCache("post-html")).thenReturn(mockCache)
+        `when`(mockCache.get(1L, String::class.java)).thenReturn(null)
+        `when`(converter.convertToHtml("bad")).thenThrow(RuntimeException("parse error"))
+        val service = PostService(
+            postRepository = mock(PostRepository::class.java),
+            postMarkdownConverter = converter,
+            cacheManager = cacheManager,
+            eventPublisher = mock(ApplicationEventPublisher::class.java),
+        )
+
+        service.getHtml(1L, "bad")
+
+        verify(mockCache, never()).put(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString())
+    }
+
+    @Test
+    fun `getHtml 캐시가 없으면 변환 결과를 반환한다`() {
+        val converter = mock(PostMarkdownConverter::class.java)
+        `when`(converter.convertToHtml("# hello")).thenReturn("<h1>hello</h1>")
+        val service = fixture(postMarkdownConverter = converter)
+
+        val result = service.getHtml(1L, "# hello")
+
+        assertEquals("<h1>hello</h1>", result)
+    }
+
     private fun fixture(
         postRepository: PostRepository = mock(PostRepository::class.java),
         eventPublisher: ApplicationEventPublisher = mock(ApplicationEventPublisher::class.java),
+        postMarkdownConverter: PostMarkdownConverter = mock(PostMarkdownConverter::class.java),
     ): PostService {
         return PostService(
             postRepository = postRepository,
-            postMarkdownConverter = mock(PostMarkdownConverter::class.java),
+            postMarkdownConverter = postMarkdownConverter,
             cacheManager = mock(CacheManager::class.java),
             eventPublisher = eventPublisher,
         )

@@ -9,6 +9,7 @@ import com.blog.api.storage.post.PostEntity
 import com.blog.api.storage.post.PostRepository
 import com.blog.api.storage.post.toPost
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.cache.Cache
 import org.springframework.cache.CacheManager
 import org.springframework.cache.annotation.Cacheable
 import org.springframework.context.ApplicationEventPublisher
@@ -19,6 +20,7 @@ import org.springframework.data.domain.Slice
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.web.util.HtmlUtils
 
 @Service
 @Transactional(readOnly = true)
@@ -68,16 +70,38 @@ class PostService(
 
     fun getHtml(postId: Long, content: String): String {
         val cache = cacheManager.getCache("post-html")
-            ?: return postMarkdownConverter.convertToHtml(content)
+            ?: return convertToHtmlSafely(postId, content)
 
         return try {
             cache.get(postId, String::class.java)
-                ?: postMarkdownConverter.convertToHtml(content).also {
-                    cache.put(postId, it)
-                }
+                ?: convertAndCache(cache, postId, content)
         } catch (e: Exception) {
             log.warn(e) { "Cache read failed: postId=$postId" }
+            convertToHtmlSafely(postId, content)
+        }
+    }
+
+    private fun convertAndCache(cache: Cache, postId: Long, content: String): String {
+        val html = try {
             postMarkdownConverter.convertToHtml(content)
+        } catch (e: Exception) {
+            log.warn(e) { "Markdown conversion failed: postId=$postId" }
+            return HtmlUtils.htmlEscape(content)
+        }
+        try {
+            cache.put(postId, html)
+        } catch (e: Exception) {
+            log.warn(e) { "Cache write failed: postId=$postId" }
+        }
+        return html
+    }
+
+    private fun convertToHtmlSafely(postId: Long, content: String): String {
+        return try {
+            postMarkdownConverter.convertToHtml(content)
+        } catch (e: Exception) {
+            log.warn(e) { "Markdown conversion failed: postId=$postId" }
+            HtmlUtils.htmlEscape(content)
         }
     }
 

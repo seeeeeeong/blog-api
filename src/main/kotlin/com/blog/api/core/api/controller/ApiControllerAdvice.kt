@@ -4,6 +4,7 @@ import com.blog.api.core.support.error.CoreException
 import com.blog.api.core.support.error.ErrorType
 import com.blog.api.core.support.response.ApiResponse
 import io.github.oshai.kotlinlogging.KotlinLogging
+import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.ConstraintViolationException
 import org.springframework.boot.logging.LogLevel
 import org.springframework.http.ResponseEntity
@@ -47,8 +48,8 @@ class ApiControllerAdvice {
     }
 
     @ExceptionHandler(Exception::class)
-    fun handleException(e: Exception): ResponseEntity<ApiResponse<Any>> {
-        log.error(e) { "Unexpected exception occurred" }
+    fun handleException(e: Exception, request: HttpServletRequest): ResponseEntity<ApiResponse<Any>> {
+        log.error(e) { "Unexpected exception occurred: ${request.method} ${request.requestURI}" }
         return ResponseEntity(ApiResponse.error(ErrorType.DEFAULT_ERROR), ErrorType.DEFAULT_ERROR.status)
     }
 }
