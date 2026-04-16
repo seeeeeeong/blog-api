@@ -15,7 +15,7 @@ data class PostUpdateRequest(
     val thumbnailUrl: String? = null,
     val isDraft: Boolean = false
 ) {
-    fun toPostUpdate(): PostUpdate {
+    fun toCommand(): PostUpdate {
         return PostUpdate(
             categoryId = categoryId,
             title = title,

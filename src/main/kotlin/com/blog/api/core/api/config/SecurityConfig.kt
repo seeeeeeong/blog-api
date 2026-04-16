@@ -46,56 +46,70 @@ class SecurityConfig(
                 it.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             }
             .authorizeHttpRequests { authorize ->
-                authorize
-                    .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                    .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
-
-                    // Auth APIs
-                    .requestMatchers(HttpMethod.POST, "/api/v1/users/login", "/api/v1/users/refresh").permitAll()
-
-                    // Post write APIs (ADMIN only)
-                    .requestMatchers(HttpMethod.POST, "/api/v1/posts").hasRole("ADMIN")
-                    .requestMatchers(
-                        mvc.pattern(HttpMethod.PUT, "/api/v1/posts/{postId:[0-9]+}")
-                    ).hasRole("ADMIN")
-                    .requestMatchers(
-                        mvc.pattern(HttpMethod.DELETE, "/api/v1/posts/{postId:[0-9]+}")
-                    ).hasRole("ADMIN")
-                    .requestMatchers(HttpMethod.GET, "/api/v1/posts/drafts").hasRole("ADMIN")
-                    .requestMatchers(
-                        mvc.pattern(HttpMethod.GET, "/api/v1/posts/{postId:[0-9]+}/admin")
-                    ).hasRole("ADMIN")
-
-                    // Public Read APIs
-                    .requestMatchers(
-                        HttpMethod.GET,
-                        "/api/v1/posts",
-                        "/api/v1/posts/popular",
-                        "/api/v1/posts/search",
-                        "/api/v1/posts/categories/**",
-                    ).permitAll()
-                    .requestMatchers(
-                        mvc.pattern(HttpMethod.GET, "/api/v1/posts/{postId:[0-9]+}")
-                    ).permitAll()
-                    .requestMatchers(HttpMethod.GET, "/api/v1/categories").permitAll()
-
-                    // Admin comment delete (must come before general comment rules)
-                    .requestMatchers(HttpMethod.DELETE, "/api/v1/posts/*/comments/*/admin").hasRole("ADMIN")
-
-                    // Comment APIs (public)
-                    .requestMatchers(HttpMethod.GET, "/api/v1/posts/*/comments/**").permitAll()
-                    .requestMatchers(HttpMethod.POST, "/api/v1/posts/*/comments/**").permitAll()
-                    .requestMatchers(HttpMethod.PUT, "/api/v1/posts/*/comments/**").permitAll()
-                    .requestMatchers(HttpMethod.DELETE, "/api/v1/posts/*/comments/**").permitAll()
-
-                    // Image APIs (Admin only)
-                    .requestMatchers("/api/images/**").hasRole("ADMIN")
-
-                    .anyRequest().authenticated()
+                authorizeAuth(authorize)
+                authorizePosts(authorize, mvc)
+                authorizeComments(authorize)
+                authorizeImages(authorize)
+                authorize.anyRequest().authenticated()
             }
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
 
         return http.build()
+    }
+
+    private fun authorizeAuth(
+        authorize: org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry,
+    ) {
+        authorize
+            .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+            .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
+            .requestMatchers(HttpMethod.POST, "/api/v1/users/login", "/api/v1/users/refresh").permitAll()
+    }
+
+    private fun authorizePosts(
+        authorize: org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry,
+        mvc: MvcRequestMatcher.Builder,
+    ) {
+        authorize
+            .requestMatchers(HttpMethod.POST, "/api/v1/posts").hasRole("ADMIN")
+            .requestMatchers(
+                mvc.pattern(HttpMethod.PUT, "/api/v1/posts/{postId:[0-9]+}")
+            ).hasRole("ADMIN")
+            .requestMatchers(
+                mvc.pattern(HttpMethod.DELETE, "/api/v1/posts/{postId:[0-9]+}")
+            ).hasRole("ADMIN")
+            .requestMatchers(HttpMethod.GET, "/api/v1/posts/drafts").hasRole("ADMIN")
+            .requestMatchers(
+                mvc.pattern(HttpMethod.GET, "/api/v1/posts/{postId:[0-9]+}/admin")
+            ).hasRole("ADMIN")
+            .requestMatchers(
+                HttpMethod.GET,
+                "/api/v1/posts",
+                "/api/v1/posts/popular",
+                "/api/v1/posts/search",
+                "/api/v1/posts/categories/**",
+            ).permitAll()
+            .requestMatchers(
+                mvc.pattern(HttpMethod.GET, "/api/v1/posts/{postId:[0-9]+}")
+            ).permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/v1/categories").permitAll()
+    }
+
+    private fun authorizeComments(
+        authorize: org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry,
+    ) {
+        authorize
+            .requestMatchers(HttpMethod.DELETE, "/api/v1/posts/*/comments/*/admin").hasRole("ADMIN")
+            .requestMatchers(HttpMethod.GET, "/api/v1/posts/*/comments/**").permitAll()
+            .requestMatchers(HttpMethod.POST, "/api/v1/posts/*/comments/**").permitAll()
+            .requestMatchers(HttpMethod.PUT, "/api/v1/posts/*/comments/**").permitAll()
+            .requestMatchers(HttpMethod.DELETE, "/api/v1/posts/*/comments/**").permitAll()
+    }
+
+    private fun authorizeImages(
+        authorize: org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry,
+    ) {
+        authorize.requestMatchers("/api/images/**").hasRole("ADMIN")
     }
 
     @Bean
