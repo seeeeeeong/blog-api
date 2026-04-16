@@ -5,6 +5,10 @@ import com.blog.api.core.domain.comment.CommentWithReplies
 import com.blog.api.core.support.converter.PostMarkdownConverter
 import com.blog.api.core.support.error.CoreException
 import com.blog.api.core.support.error.ErrorType
+import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.web.util.HtmlUtils
+
+private val log = KotlinLogging.logger {}
 
 fun CommentEntity.toComment(converter: PostMarkdownConverter): Comment = Comment(
     id = requireNotNull(id) { "CommentEntity.id must not be null after persistence" },
@@ -12,10 +16,19 @@ fun CommentEntity.toComment(converter: PostMarkdownConverter): Comment = Comment
     nickname = nickname,
     parentId = parentId,
     content = content,
-    contentHtml = contentHtml ?: converter.convertToHtml(content),
+    contentHtml = contentHtml ?: convertToHtmlSafely(converter, id, content),
     createdAt = createdAt,
     updatedAt = updatedAt,
 )
+
+private fun convertToHtmlSafely(converter: PostMarkdownConverter, commentId: Long?, content: String): String {
+    return try {
+        converter.convertToHtml(content)
+    } catch (e: Exception) {
+        log.warn(e) { "Comment markdown conversion failed: commentId=$commentId" }
+        HtmlUtils.htmlEscape(content)
+    }
+}
 
 fun CommentEntity.toCommentWithReplies(
     repliesByParent: Map<Long, List<Comment>>,
