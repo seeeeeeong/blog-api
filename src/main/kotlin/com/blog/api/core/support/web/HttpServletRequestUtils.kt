@@ -11,6 +11,10 @@ object HttpServletRequestUtils {
     private const val X_REAL_IP_HEADER = "X-Real-IP"
     private const val UNKNOWN_IP = "unknown"
 
+    fun getCookieValue(request: HttpServletRequest, name: String): String? {
+        return request.cookies?.firstOrNull { it.name == name }?.value
+    }
+
     fun extractBearerToken(request: HttpServletRequest): String? {
         val authorization = request.getHeader(AUTHORIZATION_HEADER) ?: return null
         if (authorization.startsWith(BEARER_PREFIX, ignoreCase = true)) {

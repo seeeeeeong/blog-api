@@ -14,6 +14,7 @@ import com.blog.api.core.domain.post.PostViewCommand
 import com.blog.api.core.enum.UserRole
 import com.blog.api.core.support.web.HttpServletRequestUtils
 import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
@@ -55,8 +56,9 @@ class PostController(
     fun getPost(
         @PathVariable postId: Long,
         request: HttpServletRequest,
+        response: HttpServletResponse,
     ): ApiResponse<PostResponse> {
-        val command = buildPostViewCommand(postId, request)
+        val command = buildPostViewCommand(postId, request, response)
         val post = postService.getPost(command)
         val comments = commentService.getCommentsByPost(postId).map(CommentResponse::of)
         return ApiResponse.success(PostResponse.of(post, postService.getHtml(post.id, post.content), comments))
@@ -156,11 +158,17 @@ class PostController(
         return ApiResponse.success()
     }
 
-    private fun buildPostViewCommand(postId: Long, request: HttpServletRequest): PostViewCommand {
+    private fun buildPostViewCommand(
+        postId: Long,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+    ): PostViewCommand {
         val authentication = SecurityContextHolder.getContext().authentication
+        val cookieName = "viewed_post_$postId"
         return PostViewCommand(
             postId = postId,
-            clientIp = HttpServletRequestUtils.resolveClientIp(request),
+            hasViewedCookie = HttpServletRequestUtils.getCookieValue(request, cookieName) != null,
+            response = response,
             viewerUserId = authentication?.principal as? Long,
             viewerRole = extractUserRole(authentication),
         )

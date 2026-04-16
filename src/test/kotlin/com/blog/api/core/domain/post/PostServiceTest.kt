@@ -7,10 +7,12 @@ import com.blog.api.core.support.error.CoreException
 import com.blog.api.core.support.error.ErrorType
 import com.blog.api.storage.post.PostEntity
 import com.blog.api.storage.post.PostRepository
+import jakarta.servlet.http.HttpServletResponse
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.springframework.cache.CacheManager
@@ -19,29 +21,49 @@ import java.util.Optional
 class PostServiceTest {
 
     @Test
-    fun `published 글 조회 시 조회수를 증가시킨다`() {
+    fun `published 글 조회 시 쿠키가 없으면 조회수를 증가시킨다`() {
         val postRepository = mock(PostRepository::class.java)
-        val service = fixture(postRepository)
+        val postViewCountUpdater = mock(PostViewCountUpdater::class.java)
+        val response = mock(HttpServletResponse::class.java)
+        val service = fixture(postRepository, postViewCountUpdater = postViewCountUpdater)
         val post = post(id = 1L, userId = 10L, status = PostStatus.PUBLISHED)
         `when`(postRepository.findById(1L)).thenReturn(Optional.of(post))
 
-        val command = PostViewCommand(postId = 1L, clientIp = "127.0.0.1")
+        val command = PostViewCommand(postId = 1L, hasViewedCookie = false, response = response)
         val result = service.getPost(command)
 
         assertEquals(1L, result.id)
-        verify(postRepository).incrementViewCount(1L)
+        verify(postViewCountUpdater).increment(1L)
+    }
+
+    @Test
+    fun `published 글 조회 시 쿠키가 있으면 조회수를 증가시키지 않는다`() {
+        val postRepository = mock(PostRepository::class.java)
+        val postViewCountUpdater = mock(PostViewCountUpdater::class.java)
+        val response = mock(HttpServletResponse::class.java)
+        val service = fixture(postRepository, postViewCountUpdater = postViewCountUpdater)
+        val post = post(id = 1L, userId = 10L, status = PostStatus.PUBLISHED)
+        `when`(postRepository.findById(1L)).thenReturn(Optional.of(post))
+
+        val command = PostViewCommand(postId = 1L, hasViewedCookie = true, response = response)
+        val result = service.getPost(command)
+
+        assertEquals(1L, result.id)
+        verify(postViewCountUpdater, never()).increment(1L)
     }
 
     @Test
     fun `draft 글은 작성자 본인 admin 이면 조회 가능하다`() {
         val postRepository = mock(PostRepository::class.java)
+        val response = mock(HttpServletResponse::class.java)
         val service = fixture(postRepository)
         val post = post(id = 2L, userId = 10L, status = PostStatus.DRAFT)
         `when`(postRepository.findById(2L)).thenReturn(Optional.of(post))
 
         val command = PostViewCommand(
             postId = 2L,
-            clientIp = "127.0.0.1",
+            hasViewedCookie = false,
+            response = response,
             viewerUserId = 10L,
             viewerRole = UserRole.ADMIN,
         )
@@ -53,13 +75,15 @@ class PostServiceTest {
     @Test
     fun `draft 글은 비공개로 유지된다`() {
         val postRepository = mock(PostRepository::class.java)
+        val response = mock(HttpServletResponse::class.java)
         val service = fixture(postRepository)
         val post = post(id = 3L, userId = 10L, status = PostStatus.DRAFT)
         `when`(postRepository.findById(3L)).thenReturn(Optional.of(post))
 
         val command = PostViewCommand(
             postId = 3L,
-            clientIp = "127.0.0.1",
+            hasViewedCookie = false,
+            response = response,
             viewerUserId = 99L,
             viewerRole = UserRole.ADMIN,
         )
@@ -72,11 +96,13 @@ class PostServiceTest {
 
     private fun fixture(
         postRepository: PostRepository = mock(PostRepository::class.java),
+        postViewCountUpdater: PostViewCountUpdater = mock(PostViewCountUpdater::class.java),
     ): PostService {
         return PostService(
             postRepository = postRepository,
             postMarkdownConverter = mock(PostMarkdownConverter::class.java),
             cacheManager = mock(CacheManager::class.java),
+            postViewCountUpdater = postViewCountUpdater,
         )
     }
 
