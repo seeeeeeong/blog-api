@@ -145,8 +145,12 @@ class PostService(
 
     private fun incrementViewIfNeeded(command: PostViewCommand) {
         if (command.hasViewedCookie) return
-        postViewCountUpdater.increment(command.postId)
-        addViewedCookie(command.response, command.postId)
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() {
+                postViewCountUpdater.increment(command.postId)
+                addViewedCookie(command.response, command.postId)
+            }
+        })
     }
 
     private fun addViewedCookie(response: HttpServletResponse, postId: Long) {
