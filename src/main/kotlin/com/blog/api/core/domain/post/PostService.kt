@@ -9,9 +9,9 @@ import com.blog.api.storage.post.PostEntity
 import com.blog.api.storage.post.PostRepository
 import com.blog.api.storage.post.toPost
 import io.github.oshai.kotlinlogging.KotlinLogging
-import jakarta.servlet.http.HttpServletResponse
 import org.springframework.cache.CacheManager
 import org.springframework.cache.annotation.Cacheable
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
@@ -19,8 +19,6 @@ import org.springframework.data.domain.Slice
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import org.springframework.transaction.support.TransactionSynchronization
-import org.springframework.transaction.support.TransactionSynchronizationManager
 
 @Service
 @Transactional(readOnly = true)
@@ -28,11 +26,10 @@ class PostService(
     private val postRepository: PostRepository,
     private val postMarkdownConverter: PostMarkdownConverter,
     private val cacheManager: CacheManager,
-    private val postViewCountUpdater: PostViewCountUpdater,
+    private val eventPublisher: ApplicationEventPublisher,
 ) {
     companion object {
         private val log = KotlinLogging.logger {}
-        private const val VIEW_COOKIE_MAX_AGE = 3600
     }
 
     @Transactional
@@ -52,7 +49,9 @@ class PostService(
                 throw CoreException(ErrorType.POST_NOT_FOUND)
             }
             PostStatus.PUBLISHED -> {
-                incrementViewIfNeeded(command)
+                if (!command.hasViewedCookie) {
+                    eventPublisher.publishEvent(PostViewedEvent(command.postId))
+                }
                 post.toPost()
             }
         }
@@ -120,12 +119,7 @@ class PostService(
             status = postUpdate.status,
         )
 
-        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
-            override fun afterCommit() {
-                evictHtmlCache(postId)
-                cacheManager.getCache("popular-posts")?.clear()
-            }
-        })
+        eventPublisher.publishEvent(PostCacheEvictEvent(postId))
 
         return post.toPost()
     }
@@ -135,41 +129,7 @@ class PostService(
         val post = findPostById(postId)
         checkOwnership(post, userId)
         post.softDelete()
-        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
-            override fun afterCommit() {
-                evictHtmlCache(postId)
-                cacheManager.getCache("popular-posts")?.clear()
-            }
-        })
-    }
-
-    private fun incrementViewIfNeeded(command: PostViewCommand) {
-        if (command.hasViewedCookie) return
-        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
-            override fun afterCommit() {
-                postViewCountUpdater.increment(command.postId)
-                addViewedCookie(command.response, command.postId)
-            }
-        })
-    }
-
-    private fun addViewedCookie(response: HttpServletResponse, postId: Long) {
-        val header = org.springframework.http.ResponseCookie.from("viewed_post_$postId", "1")
-            .httpOnly(true)
-            .path("/")
-            .maxAge(VIEW_COOKIE_MAX_AGE.toLong())
-            .sameSite("None")
-            .secure(true)
-            .build()
-        response.addHeader("Set-Cookie", header.toString())
-    }
-
-    private fun evictHtmlCache(postId: Long) {
-        try {
-            cacheManager.getCache("post-html")?.evict(postId)
-        } catch (e: Exception) {
-            log.warn(e) { "Cache evict failed: postId=$postId" }
-        }
+        eventPublisher.publishEvent(PostCacheEvictEvent(postId))
     }
 
     private fun findPostById(postId: Long): PostEntity =

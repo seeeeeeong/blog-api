@@ -11,6 +11,7 @@ import com.blog.api.core.api.controller.v1.response.PostSummaryResponse
 import com.blog.api.core.domain.comment.CommentService
 import com.blog.api.core.domain.post.PostService
 import com.blog.api.core.domain.post.PostViewCommand
+import com.blog.api.core.enum.PostStatus
 import com.blog.api.core.enum.UserRole
 import com.blog.api.core.support.web.HttpServletRequestUtils
 import jakarta.servlet.http.HttpServletRequest
@@ -21,6 +22,7 @@ import jakarta.validation.constraints.Min
 import org.springframework.data.domain.Pageable
 import org.springframework.data.web.PageableDefault
 import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseCookie
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -42,6 +44,10 @@ class PostController(
     private val commentService: CommentService,
 ) {
 
+    companion object {
+        private const val VIEW_COOKIE_MAX_AGE = 3600L
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun createPost(
@@ -58,8 +64,11 @@ class PostController(
         request: HttpServletRequest,
         response: HttpServletResponse,
     ): ApiResponse<PostResponse> {
-        val command = buildPostViewCommand(postId, request, response)
+        val command = buildPostViewCommand(postId, request)
         val post = postService.getPost(command)
+        if (!command.hasViewedCookie && post.status == PostStatus.PUBLISHED) {
+            addViewedCookie(response, postId)
+        }
         val comments = commentService.getCommentsByPost(postId).map(CommentResponse::of)
         return ApiResponse.success(PostResponse.of(post, postService.getHtml(post.id, post.content), comments))
     }
@@ -161,17 +170,26 @@ class PostController(
     private fun buildPostViewCommand(
         postId: Long,
         request: HttpServletRequest,
-        response: HttpServletResponse,
     ): PostViewCommand {
         val authentication = SecurityContextHolder.getContext().authentication
         val cookieName = "viewed_post_$postId"
         return PostViewCommand(
             postId = postId,
             hasViewedCookie = HttpServletRequestUtils.getCookieValue(request, cookieName) != null,
-            response = response,
             viewerUserId = authentication?.principal as? Long,
             viewerRole = extractUserRole(authentication),
         )
+    }
+
+    private fun addViewedCookie(response: HttpServletResponse, postId: Long) {
+        val cookie = ResponseCookie.from("viewed_post_$postId", "1")
+            .httpOnly(true)
+            .path("/")
+            .maxAge(VIEW_COOKIE_MAX_AGE)
+            .sameSite("None")
+            .secure(true)
+            .build()
+        response.addHeader("Set-Cookie", cookie.toString())
     }
 
     private fun extractUserRole(authentication: org.springframework.security.core.Authentication?): UserRole? {
