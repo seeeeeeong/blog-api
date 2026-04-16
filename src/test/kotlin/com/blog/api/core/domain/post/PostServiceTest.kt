@@ -10,6 +10,8 @@ import com.blog.api.storage.post.PostRepository
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import org.mockito.Mockito.doThrow
+import org.springframework.dao.QueryTimeoutException
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
@@ -68,6 +70,21 @@ class PostServiceTest {
         }
 
         assertEquals(ErrorType.POST_NOT_FOUND, exception.errorType)
+    }
+
+    @Test
+    fun `조회수 증가 실패 시에도 게시글을 정상 반환한다`() {
+        val postRepository = mock(PostRepository::class.java)
+        val service = fixture(postRepository)
+        val post = post(id = 4L, userId = 10L, status = PostStatus.PUBLISHED)
+        `when`(postRepository.findById(4L)).thenReturn(Optional.of(post))
+        doThrow(QueryTimeoutException("connection timeout")).`when`(postRepository).incrementViewCount(4L)
+
+        val command = PostViewCommand(postId = 4L, clientIp = "127.0.0.1")
+        val result = service.getPost(command)
+
+        assertEquals(4L, result.id)
+        assertEquals("title-4", result.title)
     }
 
     private fun fixture(
