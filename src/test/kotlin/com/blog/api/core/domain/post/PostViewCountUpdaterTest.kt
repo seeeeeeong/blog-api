@@ -12,7 +12,7 @@ class PostViewCountUpdaterTest {
         val postRepository = mock(PostRepository::class.java)
         val updater = PostViewCountUpdater(postRepository)
 
-        updater.handle(PostViewedEvent(postId = 1L))
+        updater.onPostViewed(PostViewedEvent(postId = 1L))
 
         verify(postRepository).incrementViewCount(1L)
     }

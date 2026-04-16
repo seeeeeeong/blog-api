@@ -15,7 +15,7 @@ data class PostCreateRequest(
     val thumbnailUrl: String? = null,
     val isDraft: Boolean = false
 ) {
-    fun toPostCreate(userId: Long): PostCreate {
+    fun toCommand(userId: Long): PostCreate {
         return PostCreate(
             userId = userId,
             categoryId = categoryId,

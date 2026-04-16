@@ -18,7 +18,7 @@ class PostCacheEvictListenerTest {
         `when`(cacheManager.getCache("popular-posts")).thenReturn(popularCache)
         val listener = PostCacheEvictListener(cacheManager)
 
-        listener.handle(PostCacheEvictEvent(postId = 1L))
+        listener.onPostChanged(PostCacheEvictEvent(postId = 1L))
 
         verify(htmlCache).evict(1L)
         verify(popularCache).clear()

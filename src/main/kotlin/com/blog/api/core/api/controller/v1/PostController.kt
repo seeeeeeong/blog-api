@@ -3,6 +3,8 @@ package com.blog.api.core.api.controller.v1
 import com.blog.api.core.support.response.ApiResponse
 import com.blog.api.core.support.response.PageResponse
 import com.blog.api.core.support.auth.Admin
+import com.blog.api.core.support.auth.CurrentUser
+import com.blog.api.core.support.auth.ResolveCurrentUser
 import com.blog.api.core.api.controller.v1.request.PostCreateRequest
 import com.blog.api.core.api.controller.v1.request.PostUpdateRequest
 import com.blog.api.core.api.controller.v1.response.PostResponse
@@ -12,7 +14,6 @@ import com.blog.api.core.domain.comment.CommentService
 import com.blog.api.core.domain.post.PostService
 import com.blog.api.core.domain.post.PostViewCommand
 import com.blog.api.core.enum.PostStatus
-import com.blog.api.core.enum.UserRole
 import com.blog.api.core.support.web.HttpServletRequestUtils
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -23,7 +24,6 @@ import org.springframework.data.domain.Pageable
 import org.springframework.data.web.PageableDefault
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseCookie
-import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -35,6 +35,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
+import java.time.Duration
 
 @Validated
 @RestController
@@ -45,7 +46,7 @@ class PostController(
 ) {
 
     companion object {
-        private const val VIEW_COOKIE_MAX_AGE = 3600L
+        private val VIEW_COOKIE_MAX_AGE = Duration.ofHours(1)
     }
 
     @PostMapping
@@ -54,23 +55,30 @@ class PostController(
         @Admin userId: Long,
         @Valid @RequestBody request: PostCreateRequest
     ): ApiResponse<PostResponse> {
-        val post = postService.createPost(request.toPostCreate(userId))
-        return ApiResponse.success(PostResponse.of(post, postService.getHtml(post.id, post.content)))
+        val post = postService.createPost(request.toCommand(userId))
+        return ApiResponse.success(PostResponse.of(post, postService.renderHtml(post.id, post.content)))
     }
 
     @GetMapping("/{postId}")
     fun getPost(
         @PathVariable postId: Long,
+        @ResolveCurrentUser currentUser: CurrentUser,
         request: HttpServletRequest,
         response: HttpServletResponse,
     ): ApiResponse<PostResponse> {
-        val command = buildPostViewCommand(postId, request)
-        val post = postService.getPost(command)
-        if (!command.hasViewedCookie && post.status == PostStatus.PUBLISHED) {
+        val cookieName = "viewed_post_$postId"
+        val viewCommand = PostViewCommand(
+            postId = postId,
+            hasViewedCookie = HttpServletRequestUtils.getCookieValue(request, cookieName) != null,
+            viewerUserId = currentUser.userId,
+            viewerRole = currentUser.role,
+        )
+        val post = postService.getPost(viewCommand)
+        if (!viewCommand.hasViewedCookie && post.status == PostStatus.PUBLISHED) {
             addViewedCookie(response, postId)
         }
         val comments = commentService.getCommentsByPost(postId).map(CommentResponse::of)
-        return ApiResponse.success(PostResponse.of(post, postService.getHtml(post.id, post.content), comments))
+        return ApiResponse.success(PostResponse.of(post, postService.renderHtml(post.id, post.content), comments))
     }
 
     @GetMapping("/{postId}/admin")
@@ -80,7 +88,7 @@ class PostController(
     ): ApiResponse<PostResponse> {
         val post = postService.getPostForAdmin(postId, userId)
         val comments = commentService.getCommentsByPost(postId).map(CommentResponse::of)
-        return ApiResponse.success(PostResponse.of(post, postService.getHtml(post.id, post.content), comments))
+        return ApiResponse.success(PostResponse.of(post, postService.renderHtml(post.id, post.content), comments))
     }
 
     @GetMapping("/popular")
@@ -153,8 +161,8 @@ class PostController(
         @Admin userId: Long,
         @Valid @RequestBody request: PostUpdateRequest
     ): ApiResponse<PostResponse> {
-        val post = postService.updatePost(postId, userId, request.toPostUpdate())
-        return ApiResponse.success(PostResponse.of(post, postService.getHtml(post.id, post.content)))
+        val post = postService.updatePost(postId, userId, request.toCommand())
+        return ApiResponse.success(PostResponse.of(post, postService.renderHtml(post.id, post.content)))
     }
 
     @DeleteMapping("/{postId}")
@@ -167,20 +175,6 @@ class PostController(
         return ApiResponse.success()
     }
 
-    private fun buildPostViewCommand(
-        postId: Long,
-        request: HttpServletRequest,
-    ): PostViewCommand {
-        val authentication = SecurityContextHolder.getContext().authentication
-        val cookieName = "viewed_post_$postId"
-        return PostViewCommand(
-            postId = postId,
-            hasViewedCookie = HttpServletRequestUtils.getCookieValue(request, cookieName) != null,
-            viewerUserId = authentication?.principal as? Long,
-            viewerRole = extractUserRole(authentication),
-        )
-    }
-
     private fun addViewedCookie(response: HttpServletResponse, postId: Long) {
         val cookie = ResponseCookie.from("viewed_post_$postId", "1")
             .httpOnly(true)
@@ -190,11 +184,5 @@ class PostController(
             .secure(true)
             .build()
         response.addHeader("Set-Cookie", cookie.toString())
-    }
-
-    private fun extractUserRole(authentication: org.springframework.security.core.Authentication?): UserRole? {
-        if (authentication == null) return null
-        val hasAdmin = authentication.authorities.any { it.authority == "ROLE_ADMIN" }
-        return if (hasAdmin) UserRole.ADMIN else UserRole.USER
     }
 }

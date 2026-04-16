@@ -16,7 +16,7 @@ class PostCacheEvictListener(
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    fun handle(event: PostCacheEvictEvent) {
+    fun onPostChanged(event: PostCacheEvictEvent) {
         evictHtmlCache(event.postId)
         cacheManager.getCache("popular-posts")?.clear()
     }

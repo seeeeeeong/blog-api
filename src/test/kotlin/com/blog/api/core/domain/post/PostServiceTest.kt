@@ -28,8 +28,8 @@ class PostServiceTest {
         val post = post(id = 1L, userId = 10L, status = PostStatus.PUBLISHED)
         `when`(postRepository.findById(1L)).thenReturn(Optional.of(post))
 
-        val command = PostViewCommand(postId = 1L, hasViewedCookie = false)
-        val result = service.getPost(command)
+        val viewCommand = PostViewCommand(postId = 1L, hasViewedCookie = false)
+        val result = service.getPost(viewCommand)
 
         assertEquals(1L, result.id)
         verify(eventPublisher).publishEvent(PostViewedEvent(1L))
@@ -43,8 +43,8 @@ class PostServiceTest {
         val post = post(id = 1L, userId = 10L, status = PostStatus.PUBLISHED)
         `when`(postRepository.findById(1L)).thenReturn(Optional.of(post))
 
-        val command = PostViewCommand(postId = 1L, hasViewedCookie = true)
-        val result = service.getPost(command)
+        val viewCommand = PostViewCommand(postId = 1L, hasViewedCookie = true)
+        val result = service.getPost(viewCommand)
 
         assertEquals(1L, result.id)
         verify(eventPublisher, never()).publishEvent(PostViewedEvent(1L))
@@ -57,13 +57,13 @@ class PostServiceTest {
         val post = post(id = 2L, userId = 10L, status = PostStatus.DRAFT)
         `when`(postRepository.findById(2L)).thenReturn(Optional.of(post))
 
-        val command = PostViewCommand(
+        val viewCommand = PostViewCommand(
             postId = 2L,
             hasViewedCookie = false,
             viewerUserId = 10L,
             viewerRole = UserRole.ADMIN,
         )
-        val result = service.getPost(command)
+        val result = service.getPost(viewCommand)
 
         assertEquals(PostStatus.DRAFT, result.status)
     }
@@ -75,14 +75,14 @@ class PostServiceTest {
         val post = post(id = 3L, userId = 10L, status = PostStatus.DRAFT)
         `when`(postRepository.findById(3L)).thenReturn(Optional.of(post))
 
-        val command = PostViewCommand(
+        val viewCommand = PostViewCommand(
             postId = 3L,
             hasViewedCookie = false,
             viewerUserId = 99L,
             viewerRole = UserRole.ADMIN,
         )
         val exception = assertThrows(CoreException::class.java) {
-            service.getPost(command)
+            service.getPost(viewCommand)
         }
 
         assertEquals(ErrorType.POST_NOT_FOUND, exception.errorType)
@@ -122,19 +122,19 @@ class PostServiceTest {
     }
 
     @Test
-    fun `getHtml 마크다운 변환 실패 시 HTML 이스케이프된 content를 반환한다`() {
+    fun `renderHtml 마크다운 변환 실패 시 HTML 이스케이프된 content를 반환한다`() {
         val converter = mock(PostMarkdownConverter::class.java)
         val input = "<script>alert('xss')</script>"
         `when`(converter.convertToHtml(input)).thenThrow(RuntimeException("parse error"))
         val service = fixture(postMarkdownConverter = converter)
 
-        val result = service.getHtml(1L, input)
+        val result = service.renderHtml(1L, input)
 
         assertEquals("&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;", result)
     }
 
     @Test
-    fun `getHtml 변환 실패 시 캐시에 저장하지 않는다`() {
+    fun `renderHtml 변환 실패 시 캐시에 저장하지 않는다`() {
         val converter = mock(PostMarkdownConverter::class.java)
         val mockCache = mock(org.springframework.cache.Cache::class.java)
         val cacheManager = mock(CacheManager::class.java)
@@ -148,18 +148,18 @@ class PostServiceTest {
             eventPublisher = mock(ApplicationEventPublisher::class.java),
         )
 
-        service.getHtml(1L, "bad")
+        service.renderHtml(1L, "bad")
 
         verify(mockCache, never()).put(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString())
     }
 
     @Test
-    fun `getHtml 캐시가 없으면 변환 결과를 반환한다`() {
+    fun `renderHtml 캐시가 없으면 변환 결과를 반환한다`() {
         val converter = mock(PostMarkdownConverter::class.java)
         `when`(converter.convertToHtml("# hello")).thenReturn("<h1>hello</h1>")
         val service = fixture(postMarkdownConverter = converter)
 
-        val result = service.getHtml(1L, "# hello")
+        val result = service.renderHtml(1L, "# hello")
 
         assertEquals("<h1>hello</h1>", result)
     }

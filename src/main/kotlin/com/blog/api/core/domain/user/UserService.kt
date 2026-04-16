@@ -21,15 +21,15 @@ class UserService(
             ?: throw CoreException(ErrorType.USER_NOT_FOUND)
         validatePassword(userLogin.password, user.password)
         val userId = requireNotNull(user.id) { "UserEntity.id must not be null after persistence" }
-        return createUserToken(userId, user.role.name)
+        return issueTokens(userId, user.role.name)
     }
 
     fun refreshAccessToken(refreshToken: String): UserToken {
         val claims = jwtProvider.parseRefreshTokenClaims(refreshToken)
-        return createUserToken(claims.userId, claims.roleName)
+        return issueTokens(claims.userId, claims.roleName)
     }
 
-    private fun createUserToken(userId: Long, roleName: String): UserToken {
+    private fun issueTokens(userId: Long, roleName: String): UserToken {
         return UserToken(
             accessToken = jwtProvider.generateAccessToken(userId, roleName),
             refreshToken = jwtProvider.generateRefreshToken(userId, roleName),

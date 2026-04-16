@@ -35,53 +35,44 @@ class PostService(
     }
 
     @Transactional
-    fun createPost(postCreate: PostCreate): Post {
-        val entity = createEntity(postCreate)
+    fun createPost(newPost: PostCreate): Post {
+        val entity = createEntity(newPost)
         return postRepository.save(entity).toPost()
     }
 
     @Transactional
-    fun getPost(command: PostViewCommand): Post {
-        val post = findPostById(command.postId)
+    fun getPost(viewCommand: PostViewCommand): Post {
+        val post = getPostById(viewCommand.postId)
         return when (post.status) {
             PostStatus.DELETED -> throw CoreException(ErrorType.POST_NOT_FOUND)
-            PostStatus.DRAFT -> {
-                val accessible = canAccessDraft(post, command)
-                if (accessible) return post.toPost()
-                throw CoreException(ErrorType.POST_NOT_FOUND)
-            }
-            PostStatus.PUBLISHED -> {
-                if (!command.hasViewedCookie) {
-                    eventPublisher.publishEvent(PostViewedEvent(command.postId))
-                }
-                post.toPost()
-            }
+            PostStatus.DRAFT -> handleDraftAccess(post, viewCommand)
+            PostStatus.PUBLISHED -> handlePublishedAccess(post, viewCommand)
         }
     }
 
     fun getPostForAdmin(postId: Long, userId: Long): Post {
-        val post = findPostById(postId)
+        val post = getPostById(postId)
         if (post.status == PostStatus.DELETED) {
             throw CoreException(ErrorType.POST_NOT_FOUND)
         }
-        checkOwnership(post, userId)
+        requireOwner(post, userId)
         return post.toPost()
     }
 
-    fun getHtml(postId: Long, content: String): String {
+    fun renderHtml(postId: Long, content: String): String {
         val cache = cacheManager.getCache("post-html")
-            ?: return convertToHtmlSafely(postId, content)
+            ?: return renderMarkdownOrEscape(postId, content)
 
         return try {
             cache.get(postId, String::class.java)
-                ?: convertAndCache(cache, postId, content)
+                ?: cacheAndReturn(cache, postId, content)
         } catch (e: Exception) {
             log.warn(e) { "Cache read failed: postId=$postId" }
-            convertToHtmlSafely(postId, content)
+            renderMarkdownOrEscape(postId, content)
         }
     }
 
-    private fun convertAndCache(cache: Cache, postId: Long, content: String): String {
+    private fun cacheAndReturn(cache: Cache, postId: Long, content: String): String {
         val html = try {
             postMarkdownConverter.convertToHtml(content)
         } catch (e: Exception) {
@@ -96,7 +87,7 @@ class PostService(
         return html
     }
 
-    private fun convertToHtmlSafely(postId: Long, content: String): String {
+    private fun renderMarkdownOrEscape(postId: Long, content: String): String {
         return try {
             postMarkdownConverter.convertToHtml(content)
         } catch (e: Exception) {
@@ -127,13 +118,13 @@ class PostService(
         if (query.isBlank()) {
             return Page.empty(pageable)
         }
-        return searchByQuery(query, categoryId, pageable).map { it.toPost() }
+        return postRepository.searchByKeyword(query, categoryId, pageable).map { it.toPost() }
     }
 
     @Transactional
     fun updatePost(postId: Long, userId: Long, postUpdate: PostUpdate): Post {
-        val post = findPostById(postId)
-        checkOwnership(post, userId)
+        val post = getPostById(postId)
+        requireOwner(post, userId)
 
         post.updateContent(
             categoryId = postUpdate.categoryId,
@@ -150,40 +141,45 @@ class PostService(
 
     @Transactional
     fun deletePost(postId: Long, userId: Long) {
-        val post = findPostById(postId)
-        checkOwnership(post, userId)
+        val post = getPostById(postId)
+        requireOwner(post, userId)
         post.softDelete()
         eventPublisher.publishEvent(PostCacheEvictEvent(postId))
     }
 
-    private fun findPostById(postId: Long): PostEntity =
+    private fun getPostById(postId: Long): PostEntity =
         postRepository.findById(postId).orElseThrow { CoreException(ErrorType.POST_NOT_FOUND) }
 
-    private fun createEntity(postCreate: PostCreate): PostEntity {
+    private fun createEntity(newPost: PostCreate): PostEntity {
         return PostEntity(
-            userId = postCreate.userId,
-            categoryId = postCreate.categoryId,
-            title = postCreate.title,
-            content = postCreate.content,
-            thumbnailUrl = postCreate.thumbnailUrl,
-            status = postCreate.status,
+            userId = newPost.userId,
+            categoryId = newPost.categoryId,
+            title = newPost.title,
+            content = newPost.content,
+            thumbnailUrl = newPost.thumbnailUrl,
+            status = newPost.status,
         )
     }
 
-    private fun searchByQuery(query: String, categoryId: Long?, pageable: Pageable): Page<PostEntity> {
-        if (categoryId == null) {
-            return postRepository.searchByKeyword(query, pageable)
-        }
-        return postRepository.searchByKeywordWithCategory(query, categoryId, pageable)
-    }
-
-    private fun checkOwnership(post: PostEntity, userId: Long) {
+    private fun requireOwner(post: PostEntity, userId: Long) {
         if (post.userId != userId) throw CoreException(ErrorType.FORBIDDEN)
     }
 
-    private fun canAccessDraft(post: PostEntity, command: PostViewCommand): Boolean {
-        return command.viewerRole == UserRole.ADMIN &&
-            command.viewerUserId != null &&
-            post.userId == command.viewerUserId
+    private fun isDraftAuthor(post: PostEntity, viewCommand: PostViewCommand): Boolean {
+        return viewCommand.viewerRole == UserRole.ADMIN &&
+            viewCommand.viewerUserId != null &&
+            post.userId == viewCommand.viewerUserId
+    }
+
+    private fun handleDraftAccess(post: PostEntity, viewCommand: PostViewCommand): Post {
+        if (isDraftAuthor(post, viewCommand)) return post.toPost()
+        throw CoreException(ErrorType.POST_NOT_FOUND)
+    }
+
+    private fun handlePublishedAccess(post: PostEntity, viewCommand: PostViewCommand): Post {
+        if (!viewCommand.hasViewedCookie) {
+            eventPublisher.publishEvent(PostViewedEvent(viewCommand.postId))
+        }
+        return post.toPost()
     }
 }

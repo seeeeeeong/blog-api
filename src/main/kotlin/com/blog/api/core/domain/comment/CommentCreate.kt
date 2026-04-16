@@ -4,6 +4,6 @@ data class CommentCreate(
     val postId: Long,
     val nickname: String,
     val password: String,
-    val parentId: Long,
+    val parentId: Long?,
     val content: String,
 )

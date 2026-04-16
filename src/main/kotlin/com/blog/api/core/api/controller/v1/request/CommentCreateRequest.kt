@@ -14,7 +14,7 @@ data class CommentCreateRequest(
         postId = postId,
         nickname = nickname,
         password = password,
-        parentId = parentId ?: 0L,
+        parentId = parentId,
         content = content,
     )
 }

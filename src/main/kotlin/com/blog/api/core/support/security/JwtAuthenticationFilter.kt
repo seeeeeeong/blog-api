@@ -2,6 +2,7 @@ package com.blog.api.core.support.security
 
 import com.blog.api.core.support.error.CoreException
 import com.blog.api.core.support.web.HttpServletRequestUtils
+import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -17,6 +18,7 @@ class JwtAuthenticationFilter(
 ) : OncePerRequestFilter() {
 
     companion object {
+        private val log = KotlinLogging.logger {}
         private val COMMENT_PATH_REGEX = Regex("^/api/v1/posts/\\d+/comments(?:/.*)?$")
     }
 
@@ -46,7 +48,8 @@ class JwtAuthenticationFilter(
             val authentication = UsernamePasswordAuthenticationToken(userId, null, authorities)
             SecurityContextHolder.getContext().authentication = authentication
         } catch (e: CoreException) {
-            // 타입/클레임 불일치 토큰은 SecurityContext를 비우고 요청 흐름을 유지한다.
+            // Token with mismatched type or claims — clear SecurityContext and let the request continue.
+            log.debug(e) { "Token authentication skipped: ${e.message}" }
         }
     }
 }

@@ -16,7 +16,7 @@ class PostViewCountUpdater(
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    fun handle(event: PostViewedEvent) {
+    fun onPostViewed(event: PostViewedEvent) {
         postRepository.incrementViewCount(event.postId)
     }
 }
