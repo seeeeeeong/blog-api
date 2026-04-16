@@ -10,6 +10,7 @@ import com.blog.api.storage.post.PostRepository
 import com.blog.api.storage.post.toPost
 import com.github.benmanes.caffeine.cache.Caffeine
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.dao.DataAccessException
 import org.springframework.cache.CacheManager
 import org.springframework.cache.annotation.Cacheable
 import org.springframework.data.domain.Page
@@ -47,6 +48,7 @@ class PostService(
         return postRepository.save(entity).toPost()
     }
 
+    @Transactional
     fun getPost(command: PostViewCommand): Post {
         val post = findPostById(command.postId)
         return when (post.status) {
@@ -152,8 +154,12 @@ class PostService(
         val key = "$postId:${clientIp.trim().ifBlank { "unknown" }}"
         val alreadyViewed = recentViews.getIfPresent(key) != null
         if (alreadyViewed) return
-        recentViews.put(key, true)
-        postRepository.incrementViewCount(postId)
+        try {
+            postRepository.incrementViewCount(postId)
+            recentViews.put(key, true)
+        } catch (e: DataAccessException) {
+            log.warn(e) { "Failed to increment view count: postId=$postId" }
+        }
     }
 
     private fun evictHtmlCache(postId: Long) {
