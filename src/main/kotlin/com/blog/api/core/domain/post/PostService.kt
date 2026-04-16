@@ -9,7 +9,6 @@ import com.blog.api.storage.post.PostEntity
 import com.blog.api.storage.post.PostRepository
 import com.blog.api.storage.post.toPost
 import io.github.oshai.kotlinlogging.KotlinLogging
-import jakarta.servlet.http.Cookie
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.cache.CacheManager
 import org.springframework.cache.annotation.Cacheable
@@ -42,6 +41,7 @@ class PostService(
         return postRepository.save(entity).toPost()
     }
 
+    @Transactional
     fun getPost(command: PostViewCommand): Post {
         val post = findPostById(command.postId)
         return when (post.status) {
@@ -150,12 +150,14 @@ class PostService(
     }
 
     private fun addViewedCookie(response: HttpServletResponse, postId: Long) {
-        val cookie = Cookie("viewed_post_$postId", "1").apply {
-            isHttpOnly = true
-            path = "/"
-            maxAge = VIEW_COOKIE_MAX_AGE
-        }
-        response.addCookie(cookie)
+        val header = org.springframework.http.ResponseCookie.from("viewed_post_$postId", "1")
+            .httpOnly(true)
+            .path("/")
+            .maxAge(VIEW_COOKIE_MAX_AGE.toLong())
+            .sameSite("None")
+            .secure(true)
+            .build()
+        response.addHeader("Set-Cookie", header.toString())
     }
 
     private fun evictHtmlCache(postId: Long) {
