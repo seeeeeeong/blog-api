@@ -99,7 +99,6 @@ class CommentService(
 
     private fun getActiveComment(commentId: Long): CommentEntity =
         commentRepository.findByIdOrNull(commentId)
-            ?.takeIf { it.isActive() }
             ?: throw CoreException(ErrorType.COMMENT_NOT_FOUND)
 
     private fun requireBelongsToPost(comment: CommentEntity, postId: Long) {

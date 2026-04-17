@@ -9,14 +9,18 @@ import jakarta.persistence.Id
 import jakarta.persistence.Index
 import jakarta.persistence.Table
 import org.hibernate.Hibernate
+import org.hibernate.annotations.SQLDelete
+import org.hibernate.annotations.SQLRestriction
 
 @Entity
 @Table(
     name = "comments",
     indexes = [
         Index(name = "idx_comment_post_deleted_created", columnList = "post_id,is_deleted,created_at"),
-    ]
+    ],
 )
+@SQLDelete(sql = "UPDATE comments SET is_deleted = true WHERE id = ?")
+@SQLRestriction("is_deleted = false")
 class CommentEntity(
 
     @Id
