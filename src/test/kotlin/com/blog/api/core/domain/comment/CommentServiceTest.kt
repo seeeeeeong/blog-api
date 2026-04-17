@@ -1,7 +1,7 @@
 package com.blog.api.core.domain.comment
 
-import com.blog.api.core.support.converter.MarkdownRenderer
 import com.blog.api.core.support.converter.PostMarkdownConverter
+import com.blog.api.core.support.nickname.RandomNicknameGenerator
 import com.blog.api.storage.comment.CommentEntity
 import com.blog.api.storage.comment.CommentRepository
 import com.blog.api.storage.post.PostRepository
@@ -9,73 +9,60 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
-import org.springframework.security.crypto.password.PasswordEncoder
 
 class CommentServiceTest {
 
     @Test
-    fun `댓글 조회 시 contentHtml이 null이고 변환 실패하면 HTML 이스케이프된 content를 반환한다`() {
+    fun `댓글 조회 시 contentHtml이 있으면 그대로 반환한다`() {
         val commentRepository = mock(CommentRepository::class.java)
-        val converter = mock(PostMarkdownConverter::class.java)
-        val service = fixture(commentRepository = commentRepository, postMarkdownConverter = converter)
-
-        val input = "<script>alert('xss')</script>"
-        val comment = CommentEntity(
-            id = 1L,
-            postId = 10L,
-            nickname = "tester",
-            password = "encoded",
-            parentId = null,
-            content = input,
-            contentHtml = null,
-        )
-        `when`(commentRepository.findRootCommentsByPostId(10L)).thenReturn(listOf(comment))
-        `when`(commentRepository.findReplyCommentsByPostId(10L)).thenReturn(emptyList())
-        `when`(converter.convertToHtml(input)).thenThrow(RuntimeException("parse error"))
-
-        val result = service.getCommentsByPost(10L)
-
-        assertEquals(1, result.size)
-        assertEquals("&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;", result[0].comment.contentHtml)
-    }
-
-    @Test
-    fun `댓글 조회 시 contentHtml이 있으면 변환하지 않고 그대로 반환한다`() {
-        val commentRepository = mock(CommentRepository::class.java)
-        val converter = mock(PostMarkdownConverter::class.java)
-        val service = fixture(commentRepository = commentRepository, postMarkdownConverter = converter)
+        val service = fixture(commentRepository = commentRepository)
 
         val comment = CommentEntity(
             id = 1L,
             postId = 10L,
-            nickname = "tester",
-            password = "encoded",
-            parentId = null,
+            nickname = "행복한 고양이",
             content = "hello",
             contentHtml = "<p>hello</p>",
         )
-        `when`(commentRepository.findRootCommentsByPostId(10L)).thenReturn(listOf(comment))
-        `when`(commentRepository.findReplyCommentsByPostId(10L)).thenReturn(emptyList())
+        `when`(commentRepository.findByPostId(10L)).thenReturn(listOf(comment))
 
         val result = service.getCommentsByPost(10L)
 
         assertEquals(1, result.size)
-        assertEquals("<p>hello</p>", result[0].comment.contentHtml)
+        assertEquals("<p>hello</p>", result[0].contentHtml)
+    }
+
+    @Test
+    fun `댓글 조회 시 contentHtml이 null이면 content를 그대로 반환한다`() {
+        val commentRepository = mock(CommentRepository::class.java)
+        val service = fixture(commentRepository = commentRepository)
+
+        val comment = CommentEntity(
+            id = 1L,
+            postId = 10L,
+            nickname = "용감한 토끼",
+            content = "plain text",
+            contentHtml = null,
+        )
+        `when`(commentRepository.findByPostId(10L)).thenReturn(listOf(comment))
+
+        val result = service.getCommentsByPost(10L)
+
+        assertEquals(1, result.size)
+        assertEquals("plain text", result[0].contentHtml)
     }
 
     private fun fixture(
         commentRepository: CommentRepository = mock(CommentRepository::class.java),
         postRepository: PostRepository = mock(PostRepository::class.java),
         postMarkdownConverter: PostMarkdownConverter = mock(PostMarkdownConverter::class.java),
-        markdownRenderer: MarkdownRenderer = MarkdownRenderer(postMarkdownConverter),
-        passwordEncoder: PasswordEncoder = mock(PasswordEncoder::class.java),
+        nicknameGenerator: RandomNicknameGenerator = RandomNicknameGenerator(),
     ): CommentService {
         return CommentService(
             commentRepository = commentRepository,
             postRepository = postRepository,
             postMarkdownConverter = postMarkdownConverter,
-            markdownRenderer = markdownRenderer,
-            passwordEncoder = passwordEncoder,
+            nicknameGenerator = nicknameGenerator,
         )
     }
 }

@@ -133,6 +133,15 @@ class PostController(
         return ApiResponse.success()
     }
 
+    @PostMapping("/{postId}/restore")
+    fun restorePost(
+        @PathVariable postId: Long,
+        @Admin userId: Long,
+    ): ApiResponse<PostResponse> {
+        val post = postService.restorePost(postId, userId)
+        return ApiResponse.success(PostResponse.of(post, postReader.renderHtml(post.id, post.content)))
+    }
+
     companion object {
         private const val DEFAULT_PAGE_SIZE = 10
     }

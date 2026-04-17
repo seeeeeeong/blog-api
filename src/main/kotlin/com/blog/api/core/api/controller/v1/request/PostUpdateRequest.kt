@@ -11,6 +11,7 @@ data class PostUpdateRequest(
     @field:Size(max = 200)
     val title: String,
     @field:NotBlank
+    @field:Size(max = 50000)
     val content: String,
     val thumbnailUrl: String? = null,
     val isDraft: Boolean = false

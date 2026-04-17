@@ -33,12 +33,6 @@ class CommentEntity(
     @Column(nullable = false, length = 50)
     val nickname: String,
 
-    @Column(nullable = false)
-    val password: String,
-
-    @Column(name = "parent_id")
-    val parentId: Long? = null,
-
     content: String,
     contentHtml: String? = null,
 
@@ -55,16 +49,9 @@ class CommentEntity(
     var contentHtml: String? = contentHtml
         protected set
 
-    fun updateContent(newContent: String, newContentHtml: String) {
-        this.content = newContent
-        this.contentHtml = newContentHtml
-    }
-
     fun delete() {
         this.deleted = true
     }
-
-    fun isActive(): Boolean = !deleted
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

@@ -17,77 +17,34 @@ class CommentRepositoryTest @Autowired constructor(
 ) {
 
     @Test
-    fun `findRootCommentsByPostId returns only active root comments`() {
+    fun `findByPostId returns only active comments`() {
         val active = commentRepository.save(
             CommentEntity(
                 postId = 1L,
-                nickname = "user1",
-                password = "pw",
-                parentId = null,
-                content = "active root",
+                nickname = "행��한 고양이",
+                content = "active comment",
             ),
         )
         val deleted = commentRepository.save(
             CommentEntity(
                 postId = 1L,
-                nickname = "user2",
-                password = "pw",
-                parentId = null,
-                content = "deleted root",
+                nickname = "용감한 사자",
+                content = "deleted comment",
             ),
         )
         deleted.delete()
         entityManager.flush()
         entityManager.clear()
 
-        val result = commentRepository.findRootCommentsByPostId(1L)
+        val result = commentRepository.findByPostId(1L)
 
         assertEquals(1, result.size)
         assertEquals(active.id, result[0].id)
     }
 
     @Test
-    fun `findReplyCommentsByPostId returns only active reply comments`() {
-        val root = commentRepository.save(
-            CommentEntity(
-                postId = 1L,
-                nickname = "user1",
-                password = "pw",
-                parentId = null,
-                content = "root",
-            ),
-        )
-        val activeReply = commentRepository.save(
-            CommentEntity(
-                postId = 1L,
-                nickname = "user2",
-                password = "pw",
-                parentId = root.id,
-                content = "active reply",
-            ),
-        )
-        val deletedReply = commentRepository.save(
-            CommentEntity(
-                postId = 1L,
-                nickname = "user3",
-                password = "pw",
-                parentId = root.id,
-                content = "deleted reply",
-            ),
-        )
-        deletedReply.delete()
-        entityManager.flush()
-        entityManager.clear()
-
-        val result = commentRepository.findReplyCommentsByPostId(1L)
-
-        assertEquals(1, result.size)
-        assertEquals(activeReply.id, result[0].id)
-    }
-
-    @Test
-    fun `findRootCommentsByPostId returns empty list for post with no comments`() {
-        val result = commentRepository.findRootCommentsByPostId(999L)
+    fun `findByPostId returns empty list for post with no comments`() {
+        val result = commentRepository.findByPostId(999L)
         assertTrue(result.isEmpty())
     }
 }

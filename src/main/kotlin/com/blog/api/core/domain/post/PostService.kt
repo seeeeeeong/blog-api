@@ -1,7 +1,9 @@
 package com.blog.api.core.domain.post
 
+import com.blog.api.core.enum.PostStatus
 import com.blog.api.core.support.error.CoreException
 import com.blog.api.core.support.error.ErrorType
+import com.blog.api.storage.category.CategoryRepository
 import com.blog.api.storage.post.PostEntity
 import com.blog.api.storage.post.PostRepository
 import com.blog.api.storage.post.toPost
@@ -13,11 +15,13 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class PostService(
     private val postRepository: PostRepository,
+    private val categoryRepository: CategoryRepository,
     private val eventPublisher: ApplicationEventPublisher,
 ) {
 
     @Transactional
     fun createPost(newPost: PostCreate): Post {
+        requireCategoryExists(newPost.categoryId)
         val entity = PostEntity(
             userId = newPost.userId,
             categoryId = newPost.categoryId,
@@ -31,6 +35,7 @@ class PostService(
 
     @Transactional
     fun updatePost(postId: Long, userId: Long, postUpdate: PostUpdate): Post {
+        requireCategoryExists(postUpdate.categoryId)
         val post = getPostById(postId)
         requireOwner(post, userId)
 
@@ -53,6 +58,28 @@ class PostService(
         requireOwner(post, userId)
         post.softDelete()
         eventPublisher.publishEvent(PostCacheEvictEvent(postId))
+        eventPublisher.publishEvent(
+            PostDeletedEvent(
+                postId = requireNotNull(post.id),
+                userId = post.userId,
+                thumbnailUrl = post.thumbnailUrl,
+                content = post.content,
+            ),
+        )
+    }
+
+    @Transactional
+    fun restorePost(postId: Long, userId: Long): Post {
+        val post = getPostById(postId)
+        requireOwner(post, userId)
+        if (post.status != PostStatus.DELETED) throw CoreException(ErrorType.INVALID_INPUT)
+        post.restore()
+        return post.toPost()
+    }
+
+    private fun requireCategoryExists(categoryId: Long) {
+        if (categoryRepository.existsById(categoryId)) return
+        throw CoreException(ErrorType.CATEGORY_NOT_FOUND)
     }
 
     private fun getPostById(postId: Long): PostEntity =

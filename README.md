@@ -26,7 +26,7 @@ com.blog.api
 └── storage
 ```
 
-Use [docs/conventions/clean-code.md](/Users/sinseonglee/Desktop/blog-api/docs/conventions/clean-code.md) as the repository-wide refactoring baseline.
+Use [docs/conventions/clean-code.md](docs/conventions/clean-code.md) as the repository-wide refactoring baseline.
 
 ## Quality Gates
 

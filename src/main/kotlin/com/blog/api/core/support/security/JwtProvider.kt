@@ -4,6 +4,7 @@ import com.blog.api.core.support.error.CoreException
 import com.blog.api.core.support.error.ErrorType
 import com.blog.api.core.support.properties.JwtProperties
 import io.jsonwebtoken.Claims
+import io.jsonwebtoken.ExpiredJwtException
 import io.jsonwebtoken.JwtBuilder
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys
@@ -77,13 +78,17 @@ class JwtProvider(
     }
 
     private fun parseClaims(token: String): Claims =
-        runCatching {
+        try {
             Jwts.parser()
                 .verifyWith(secretKey)
                 .build()
                 .parseSignedClaims(token)
                 .payload
-        }.getOrElse { throw CoreException(ErrorType.INVALID_TOKEN) }
+        } catch (e: ExpiredJwtException) {
+            throw CoreException(ErrorType.EXPIRED_TOKEN)
+        } catch (e: Exception) {
+            throw CoreException(ErrorType.INVALID_TOKEN)
+        }
 
     private fun Claims.getOrNull(key: String): String? = try {
         get(key, String::class.java)

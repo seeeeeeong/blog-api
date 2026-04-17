@@ -1,12 +1,25 @@
-다음을 리팩토링해줘: $ARGUMENTS
+Refactor the following: $ARGUMENTS
 
-## 리팩토링 원칙
-1. 동작 변경 없이 구조만 개선
-2. 기존 테스트 전부 통과해야 함
-3. 변경 전후 API 스펙 동일 유지
+## Principles
 
-## 순서
-1. 대상 코드 분석
-2. 리팩토링 계획 수립
-3. 단계별 수정 (한 번에 큰 변경 X)
-4. ./gradlew test 실행해서 전체 통과 확인
+1. **Improve structure without changing behavior** — API spec must remain identical
+2. All existing tests must pass
+3. Never mix large renames with logic changes in the same step
+
+## Order
+
+1. Analyze target code — understand current structure and dependencies
+2. Plan the refactoring (which files change and how)
+3. Apply changes incrementally:
+   - Improve naming (names should reveal intent)
+   - Flatten nesting with guard clauses
+   - Extract Command objects for 4+ parameters
+   - Extract duplicated logic into private methods (avoid premature abstraction)
+4. Run `./gradlew test` — all tests must pass
+
+## Checklist
+
+- [ ] Follows clean-code.md rules
+- [ ] Trailing commas preserved
+- [ ] Entity → Domain → Response layer separation maintained
+- [ ] ArchUnit tests pass (layer dependency enforcement)

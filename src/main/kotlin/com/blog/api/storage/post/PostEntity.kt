@@ -79,6 +79,10 @@ class PostEntity(
         this.status = PostStatus.DELETED
     }
 
+    fun restore() {
+        this.status = PostStatus.DRAFT
+    }
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || Hibernate.getClass(this) != Hibernate.getClass(other)) return false

@@ -1,12 +1,17 @@
-다음 버그를 수정해줘: $ARGUMENTS
+Fix the following bug: $ARGUMENTS
 
-## 수정 순서
-1. 버그 재현 경로 파악 — 관련 코드 추적
-2. 근본 원인 분석
-3. 최소 범위로 수정 (불필요한 리팩토링 하지 않기)
-4. 버그 재발 방지 테스트 작성
-5. ./gradlew test 실행해서 전체 통과 확인
+## Fix Order
 
-## 주의
-- 버그와 무관한 코드 수정하지 마
-- 기존 테스트 깨뜨리지 마
+1. Trace the bug path — follow controller → service → storage
+2. Identify root cause (not just symptoms)
+3. Apply minimal fix — do not touch unrelated code
+4. Write a regression test to prevent recurrence
+5. Run `./gradlew test` — all tests must pass
+
+## Rules
+
+- Do not refactor unrelated code alongside the fix
+- Do not break existing tests
+- Never swallow errors with `runCatching { }.getOrDefault()`
+- Throw errors explicitly as `CoreException(ErrorType.XXX)`
+- Log in English using KotlinLogging

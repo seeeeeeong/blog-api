@@ -1,17 +1,34 @@
-다음 기능을 구현해줘: $ARGUMENTS
+Implement the following feature: $ARGUMENTS
 
-## 구현 순서
-1. 기존 코드 분석 — 관련 도메인 파악
-2. domain/ 패키지에 커맨드 객체 + 도메인 모델 설계
-3. Entity + Repository 작성
-4. Service 로직 구현 (@Transactional 적용)
-5. Controller + Request DTO (nested class, toCommand()) + Response DTO (dto/ 패키지, companion from())
-6. 테스트 작성
-7. ./gradlew test 실행해서 전체 통과 확인
+## Implementation Order
 
-## 반드시 지켜야 할 것
-- CLAUDE.md의 코드 컨벤션 전부 준수
-- trailing comma 사용
-- 모든 API 응답은 ApiResponse<T>로 래핑
-- 에러는 CoreException(ErrorType.XXX) throw
-- 기존 코드 스타일과 일관성 유지
+1. Analyze existing code — identify related domain and similar features
+2. Domain layer first:
+   - Command object in `core/domain/{context}/` (`{Entity}Create`, etc.)
+   - Domain model (data class)
+   - Service with `@Transactional`, validation via `require{Condition}` private methods
+3. Storage layer:
+   - Entity in `storage/{context}/` (extend `BaseTimeEntity`, `protected set`)
+   - Repository (JpaRepository, `@Query` if needed)
+   - Extensions (`toEntity()`, `toDomain()`)
+4. API layer:
+   - Request DTO with `toCommand()` method, `@field:` validation
+   - Response DTO with `companion object { fun of() }` pattern
+   - Controller returning `ApiResponse.success()`
+5. Security:
+   - Add endpoint authorization in SecurityConfig
+   - Use `@Admin userId: Long` for authenticated endpoints
+6. Add error type to `ErrorType` enum if needed
+7. Add Flyway migration for schema changes (currently at V8)
+8. Write tests (unit: Mockito fixture pattern, integration: @DataJpaTest)
+9. Run `./gradlew test` — all tests must pass
+
+## Must Follow
+
+- All conventions in CLAUDE.md
+- Trailing commas
+- No `!!` operator
+- All API responses wrapped in `ApiResponse<T>`
+- Errors thrown as `CoreException(ErrorType.XXX)`
+- Never expose entities to controllers
+- Consistent naming and style with existing code

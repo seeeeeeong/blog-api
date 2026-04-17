@@ -1,14 +1,20 @@
-변경된 파일들을 코드 리뷰해줘.
+Review the changed files.
 
-## 리뷰 관점
-1. **버그**: NPE, 경계값, 동시성 문제
-2. **성능**: N+1 쿼리, 불필요한 DB 호출, 인덱스 누락
-3. **보안**: SQL injection, 인증/인가 누락
-4. **컨벤션 위반**: CLAUDE.md 규칙 미준수
-5. **테스트 누락**: 새 기능에 테스트 없는 경우
+## Review Criteria (by priority)
 
-## 출력 형식
-각 항목별로:
-- 파일:라인 — 문제 설명
-- 심각도: 높음 / 중간 / 낮음
-- 제안: 수정 방법
+1. **Security**: SQL injection, XSS, missing auth/authz, token/password exposure
+2. **Bugs**: NPE, boundary values, concurrency, transaction scope
+3. **Performance**: N+1 queries, unnecessary DB calls, missing indexes, uncached hot paths
+4. **Layer violations**: Controller↔Storage direct dependency, entity exposure in responses
+5. **Convention violations**: CLAUDE.md / clean-code.md rule breaches
+6. **Missing tests**: New features or bugfixes without test coverage
+7. **Error handling**: Swallowed errors, incorrect ErrorType usage
+
+## Output Format
+
+Per finding:
+- `file:line` — description of the issue
+- Severity: **Critical** / **Major** / **Minor**
+- Suggestion: specific fix
+
+End with an overall summary (pass/fail + key improvements needed).

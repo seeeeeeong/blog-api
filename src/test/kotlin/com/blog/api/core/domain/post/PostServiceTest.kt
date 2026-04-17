@@ -3,6 +3,7 @@ package com.blog.api.core.domain.post
 import com.blog.api.core.enum.PostStatus
 import com.blog.api.core.support.error.CoreException
 import com.blog.api.core.support.error.ErrorType
+import com.blog.api.storage.category.CategoryRepository
 import com.blog.api.storage.post.PostEntity
 import com.blog.api.storage.post.PostRepository
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -66,11 +67,16 @@ class PostServiceTest {
 
     private fun fixture(
         postRepository: PostRepository = mock(PostRepository::class.java),
+        categoryRepository: CategoryRepository = mock(CategoryRepository::class.java),
         eventPublisher: ApplicationEventPublisher = mock(ApplicationEventPublisher::class.java),
-    ) = PostService(
-        postRepository = postRepository,
-        eventPublisher = eventPublisher,
-    )
+    ): PostService {
+        `when`(categoryRepository.existsById(1L)).thenReturn(true)
+        return PostService(
+            postRepository = postRepository,
+            categoryRepository = categoryRepository,
+            eventPublisher = eventPublisher,
+        )
+    }
 
     private fun post(id: Long, userId: Long, status: PostStatus) = PostEntity(
         id = id,

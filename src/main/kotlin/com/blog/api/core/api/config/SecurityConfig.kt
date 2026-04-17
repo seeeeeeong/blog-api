@@ -72,6 +72,7 @@ class SecurityConfig(
     ) {
         authorize
             .requestMatchers(HttpMethod.POST, "/api/v1/posts").hasRole("ADMIN")
+            .requestMatchers(HttpMethod.POST, "/api/v1/posts/*/restore").hasRole("ADMIN")
             .requestMatchers(
                 mvc.pattern(HttpMethod.PUT, "/api/v1/posts/{postId:[0-9]+}")
             ).hasRole("ADMIN")
@@ -102,8 +103,6 @@ class SecurityConfig(
             .requestMatchers(HttpMethod.DELETE, "/api/v1/posts/*/comments/*/admin").hasRole("ADMIN")
             .requestMatchers(HttpMethod.GET, "/api/v1/posts/*/comments/**").permitAll()
             .requestMatchers(HttpMethod.POST, "/api/v1/posts/*/comments/**").permitAll()
-            .requestMatchers(HttpMethod.PUT, "/api/v1/posts/*/comments/**").permitAll()
-            .requestMatchers(HttpMethod.DELETE, "/api/v1/posts/*/comments/**").permitAll()
     }
 
     private fun authorizeImages(
