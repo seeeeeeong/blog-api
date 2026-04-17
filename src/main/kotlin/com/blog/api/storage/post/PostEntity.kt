@@ -11,7 +11,6 @@ import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Index
 import jakarta.persistence.Table
-import org.hibernate.Hibernate
 
 @Entity
 @Table(
@@ -82,13 +81,4 @@ class PostEntity(
     fun restore() {
         this.status = PostStatus.DRAFT
     }
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other == null || Hibernate.getClass(this) != Hibernate.getClass(other)) return false
-        other as PostEntity
-        return id != null && id == other.id
-    }
-
-    override fun hashCode(): Int = Hibernate.getClass(this).hashCode()
 }
