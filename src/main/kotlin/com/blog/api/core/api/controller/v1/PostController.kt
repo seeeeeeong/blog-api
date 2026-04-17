@@ -1,18 +1,19 @@
 package com.blog.api.core.api.controller.v1
 
-import com.blog.api.core.support.response.ApiResponse
-import com.blog.api.core.support.response.PageResponse
+import com.blog.api.core.api.controller.v1.request.PostCreateRequest
+import com.blog.api.core.api.controller.v1.request.PostUpdateRequest
+import com.blog.api.core.api.controller.v1.response.CommentResponse
+import com.blog.api.core.api.controller.v1.response.PostResponse
+import com.blog.api.core.api.controller.v1.response.PostSummaryResponse
+import com.blog.api.core.domain.comment.CommentService
+import com.blog.api.core.domain.post.PostReader
+import com.blog.api.core.domain.post.PostService
+import com.blog.api.core.enum.UserRole
 import com.blog.api.core.support.auth.Admin
 import com.blog.api.core.support.auth.CurrentUser
 import com.blog.api.core.support.auth.ResolveCurrentUser
-import com.blog.api.core.api.controller.v1.request.PostCreateRequest
-import com.blog.api.core.api.controller.v1.request.PostUpdateRequest
-import com.blog.api.core.api.controller.v1.response.PostResponse
-import com.blog.api.core.api.controller.v1.response.CommentResponse
-import com.blog.api.core.api.controller.v1.response.PostSummaryResponse
-import com.blog.api.core.domain.comment.CommentService
-import com.blog.api.core.domain.post.PostService
-import com.blog.api.core.enum.UserRole
+import com.blog.api.core.support.response.ApiResponse
+import com.blog.api.core.support.response.PageResponse
 import jakarta.validation.Valid
 import org.springframework.data.domain.Pageable
 import org.springframework.data.web.PageableDefault
@@ -34,6 +35,7 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/v1/posts")
 class PostController(
     private val postService: PostService,
+    private val postReader: PostReader,
     private val commentService: CommentService,
 ) {
 
@@ -41,10 +43,10 @@ class PostController(
     @ResponseStatus(HttpStatus.CREATED)
     fun createPost(
         @Admin userId: Long,
-        @Valid @RequestBody request: PostCreateRequest
+        @Valid @RequestBody request: PostCreateRequest,
     ): ApiResponse<PostResponse> {
         val post = postService.createPost(request.toCommand(userId))
-        return ApiResponse.success(PostResponse.of(post, postService.renderHtml(post.id, post.content)))
+        return ApiResponse.success(PostResponse.of(post, postReader.renderHtml(post.id, post.content)))
     }
 
     @GetMapping("/{postId}")
@@ -52,9 +54,9 @@ class PostController(
         @PathVariable postId: Long,
         @ResolveCurrentUser currentUser: CurrentUser,
     ): ApiResponse<PostResponse> {
-        val post = postService.getPost(postId, currentUser.userId, currentUser.role == UserRole.ADMIN)
-        val comments = commentService.getCommentsByPost(postId).map(CommentResponse::of)
-        return ApiResponse.success(PostResponse.of(post, postService.renderHtml(post.id, post.content), comments))
+        val post = postReader.getPost(postId, currentUser.userId, currentUser.role == UserRole.ADMIN)
+        val comments = commentService.getCommentsByPost(postId).map { CommentResponse.of(it) }
+        return ApiResponse.success(PostResponse.of(post, postReader.renderHtml(post.id, post.content), comments))
     }
 
     @GetMapping("/{postId}/admin")
@@ -62,49 +64,40 @@ class PostController(
         @PathVariable postId: Long,
         @Admin userId: Long,
     ): ApiResponse<PostResponse> {
-        val post = postService.getPostForAdmin(postId, userId)
-        val comments = commentService.getCommentsByPost(postId).map(CommentResponse::of)
-        return ApiResponse.success(PostResponse.of(post, postService.renderHtml(post.id, post.content), comments))
+        val post = postReader.getPostForAdmin(postId, userId)
+        val comments = commentService.getCommentsByPost(postId).map { CommentResponse.of(it) }
+        return ApiResponse.success(PostResponse.of(post, postReader.renderHtml(post.id, post.content), comments))
     }
 
     @GetMapping
     fun getAllPosts(
-        @PageableDefault(size = 10) pageable: Pageable
+        @PageableDefault(size = DEFAULT_PAGE_SIZE) pageable: Pageable,
     ): ApiResponse<PageResponse<PostSummaryResponse>> {
-        val posts = postService.getAllPosts(pageable)
+        val posts = postReader.getAllPosts(pageable)
         return ApiResponse.success(
-            PageResponse(
-                posts.content.map(PostSummaryResponse.Companion::of),
-                posts.hasNext()
-            )
+            PageResponse(posts.content.map { PostSummaryResponse.of(it) }, posts.hasNext()),
         )
     }
 
     @GetMapping("/categories/{categoryId}")
     fun getPostsByCategory(
         @PathVariable categoryId: Long,
-        @PageableDefault(size = 10) pageable: Pageable
+        @PageableDefault(size = DEFAULT_PAGE_SIZE) pageable: Pageable,
     ): ApiResponse<PageResponse<PostSummaryResponse>> {
-        val posts = postService.getPostsByCategory(categoryId, pageable)
+        val posts = postReader.getPostsByCategory(categoryId, pageable)
         return ApiResponse.success(
-            PageResponse(
-                posts.content.map(PostSummaryResponse.Companion::of),
-                posts.hasNext()
-            )
+            PageResponse(posts.content.map { PostSummaryResponse.of(it) }, posts.hasNext()),
         )
     }
 
     @GetMapping("/drafts")
     fun getDraftPosts(
         @Admin userId: Long,
-        @PageableDefault(size = 10) pageable: Pageable
+        @PageableDefault(size = DEFAULT_PAGE_SIZE) pageable: Pageable,
     ): ApiResponse<PageResponse<PostSummaryResponse>> {
-        val posts = postService.getDraftPosts(userId, pageable)
+        val posts = postReader.getDraftPosts(userId, pageable)
         return ApiResponse.success(
-            PageResponse(
-                posts.content.map(PostSummaryResponse.Companion::of),
-                posts.hasNext()
-            )
+            PageResponse(posts.content.map { PostSummaryResponse.of(it) }, posts.hasNext()),
         )
     }
 
@@ -112,14 +105,11 @@ class PostController(
     fun searchPosts(
         @RequestParam query: String,
         @RequestParam(required = false) categoryId: Long?,
-        @PageableDefault(size = 10) pageable: Pageable
+        @PageableDefault(size = DEFAULT_PAGE_SIZE) pageable: Pageable,
     ): ApiResponse<PageResponse<PostSummaryResponse>> {
-        val posts = postService.searchPosts(query, categoryId, pageable)
+        val posts = postReader.searchPosts(query, categoryId, pageable)
         return ApiResponse.success(
-            PageResponse(
-                posts.content.map(PostSummaryResponse.Companion::of),
-                posts.hasNext()
-            )
+            PageResponse(posts.content.map { PostSummaryResponse.of(it) }, posts.hasNext()),
         )
     }
 
@@ -127,19 +117,23 @@ class PostController(
     fun updatePost(
         @PathVariable postId: Long,
         @Admin userId: Long,
-        @Valid @RequestBody request: PostUpdateRequest
+        @Valid @RequestBody request: PostUpdateRequest,
     ): ApiResponse<PostResponse> {
         val post = postService.updatePost(postId, userId, request.toCommand())
-        return ApiResponse.success(PostResponse.of(post, postService.renderHtml(post.id, post.content)))
+        return ApiResponse.success(PostResponse.of(post, postReader.renderHtml(post.id, post.content)))
     }
 
     @DeleteMapping("/{postId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun deletePost(
         @PathVariable postId: Long,
-        @Admin userId: Long
+        @Admin userId: Long,
     ): ApiResponse<Any> {
         postService.deletePost(postId, userId)
         return ApiResponse.success()
+    }
+
+    companion object {
+        private const val DEFAULT_PAGE_SIZE = 10
     }
 }

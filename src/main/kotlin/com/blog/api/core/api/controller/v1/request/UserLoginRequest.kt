@@ -9,12 +9,10 @@ data class UserLoginRequest(
     @field:NotBlank
     val email: String,
     @field:NotBlank
-    val password: String
+    val password: String,
 ) {
-    fun toUserLogin(): UserLogin {
-        return UserLogin(
-            email = email,
-            password = password
-        )
-    }
+    fun toCommand() = UserLogin(
+        email = email,
+        password = password,
+    )
 }

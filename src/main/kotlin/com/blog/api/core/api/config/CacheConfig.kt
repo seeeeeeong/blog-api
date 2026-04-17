@@ -13,18 +13,23 @@ import java.time.Duration
 @EnableCaching
 class CacheConfig : CachingConfigurer {
 
+    companion object {
+        const val POST_HTML = "post-html"
+        const val CATEGORIES = "categories"
+    }
+
     @Bean
     override fun cacheManager(): CacheManager {
         return CaffeineCacheManager().apply {
             registerCustomCache(
-                "post-html",
+                POST_HTML,
                 Caffeine.newBuilder()
                     .expireAfterWrite(Duration.ofHours(24))
                     .maximumSize(500)
                     .build(),
             )
             registerCustomCache(
-                "categories",
+                CATEGORIES,
                 Caffeine.newBuilder()
                     .expireAfterAccess(Duration.ofMinutes(10))
                     .maximumSize(50)

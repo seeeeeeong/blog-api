@@ -16,6 +16,6 @@ class CategoryController(
     @GetMapping
     fun getAllCategories(): ApiResponse<List<CategoryResponse>> {
         val categories = categoryService.getAllCategories()
-        return ApiResponse.success(categories.map(CategoryResponse.Companion::of))
+        return ApiResponse.success(categories.map { CategoryResponse.of(it) })
     }
 }

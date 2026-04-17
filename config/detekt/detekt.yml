@@ -11,6 +11,7 @@ complexity:
     threshold: 2
   TooManyFunctions:
     thresholdInClasses: 15
+    thresholdInFiles: 10
 
 naming:
   active: true
@@ -20,6 +21,7 @@ style:
   MaxLineLength:
     active: true
     maxLineLength: 120
+    excludeCommentStatements: true
   MagicNumber:
     active: true
     ignoreNumbers:
@@ -27,11 +29,22 @@ style:
       - '0'
       - '1'
       - '2'
+    ignoreAnnotation: true
+    ignorePropertyDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
   WildcardImport:
     active: true
   UseCheckOrError:
     active: true
   UseRequire:
+    active: true
+  ReturnCount:
+    active: true
+    max: 3
+    excludeGuardClauses: true
+  UnnecessaryLet:
+    active: true
+  UnnecessaryApply:
     active: true
   ForbiddenMethodCall:
     active: true
@@ -45,4 +58,5 @@ potential-bugs:
   active: true
   UnreachableCode:
     active: true
-
+  DoubleMutabilityForCollection:
+    active: true

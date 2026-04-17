@@ -41,7 +41,7 @@ class CommentController(
         @PathVariable postId: Long,
     ): ApiResponse<List<CommentResponse>> {
         val comments = commentService.getCommentsByPost(postId)
-        return ApiResponse.success(comments.map(CommentResponse.Companion::of))
+        return ApiResponse.success(comments.map { CommentResponse.of(it) })
     }
 
     @PutMapping("/{commentId}")

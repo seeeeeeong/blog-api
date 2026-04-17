@@ -1,5 +1,6 @@
 package com.blog.api.core.domain.post
 
+import com.blog.api.core.api.config.CacheConfig
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.cache.CacheManager
 import org.springframework.stereotype.Component
@@ -22,7 +23,7 @@ class PostCacheEvictListener(
 
     private fun evictHtmlCache(postId: Long) {
         try {
-            cacheManager.getCache("post-html")?.evict(postId)
+            cacheManager.getCache(CacheConfig.POST_HTML)?.evict(postId)
         } catch (e: Exception) {
             log.warn(e) { "Cache evict failed: postId=$postId" }
         }

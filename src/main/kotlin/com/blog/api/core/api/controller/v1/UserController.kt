@@ -21,7 +21,7 @@ class UserController(
     fun login(
         @Valid @RequestBody request: UserLoginRequest,
     ): ApiResponse<UserTokenResponse> {
-        val userToken = userService.login(request.toUserLogin())
+        val userToken = userService.login(request.toCommand())
         return ApiResponse.success(UserTokenResponse.of(userToken))
     }
 

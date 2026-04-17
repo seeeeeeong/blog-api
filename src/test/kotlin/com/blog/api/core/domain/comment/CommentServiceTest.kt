@@ -1,5 +1,6 @@
 package com.blog.api.core.domain.comment
 
+import com.blog.api.core.support.converter.MarkdownRenderer
 import com.blog.api.core.support.converter.PostMarkdownConverter
 import com.blog.api.storage.comment.CommentEntity
 import com.blog.api.storage.comment.CommentRepository
@@ -66,12 +67,14 @@ class CommentServiceTest {
         commentRepository: CommentRepository = mock(CommentRepository::class.java),
         postRepository: PostRepository = mock(PostRepository::class.java),
         postMarkdownConverter: PostMarkdownConverter = mock(PostMarkdownConverter::class.java),
+        markdownRenderer: MarkdownRenderer = MarkdownRenderer(postMarkdownConverter),
         passwordEncoder: PasswordEncoder = mock(PasswordEncoder::class.java),
     ): CommentService {
         return CommentService(
             commentRepository = commentRepository,
             postRepository = postRepository,
             postMarkdownConverter = postMarkdownConverter,
+            markdownRenderer = markdownRenderer,
             passwordEncoder = passwordEncoder,
         )
     }

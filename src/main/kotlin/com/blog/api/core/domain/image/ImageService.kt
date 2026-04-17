@@ -53,17 +53,13 @@ class ImageService(
 
     fun deleteImage(adminUserId: Long, key: String) {
         val normalizedKey = key.trim()
-        val owned = isOwnedKey(adminUserId, normalizedKey)
-        if (owned) {
-            s3Client.deleteObject(
-                DeleteObjectRequest.builder()
-                    .bucket(s3Properties.bucket)
-                    .key(normalizedKey)
-                    .build()
-            )
-            return
-        }
-        throw CoreException(ErrorType.FORBIDDEN)
+        requireOwnership(adminUserId, normalizedKey)
+        s3Client.deleteObject(
+            DeleteObjectRequest.builder()
+                .bucket(s3Properties.bucket)
+                .key(normalizedKey)
+                .build()
+        )
     }
 
     private fun generateKey(adminUserId: Long, folder: String, contentType: String): String {
@@ -83,25 +79,25 @@ class ImageService(
     private fun normalizeContentType(contentType: String): String = contentType.trim().lowercase()
 
     private fun validateContentType(contentType: String) {
-        if (contentType !in imagePresignedProperties.allowedContentTypes) {
-            throw CoreException(
-                errorType = ErrorType.INVALID_INPUT,
-                data = mapOf(
-                    "field" to "contentType",
-                    "value" to contentType,
-                    "allowedContentTypes" to imagePresignedProperties.allowedContentTypes,
-                ),
-            )
-        }
+        if (contentType in imagePresignedProperties.allowedContentTypes) return
+        throw CoreException(
+            errorType = ErrorType.INVALID_INPUT,
+            data = mapOf(
+                "field" to "contentType",
+                "value" to contentType,
+                "allowedContentTypes" to imagePresignedProperties.allowedContentTypes,
+            ),
+        )
     }
 
     private fun resolveFolder(folder: String?): String {
         val candidate = folder?.trim()?.lowercase().orEmpty().ifBlank { s3Properties.defaultFolder.lowercase() }
-        if (candidate !in imagePresignedProperties.allowedFolders) throw CoreException(ErrorType.INVALID_INPUT)
-        return candidate
+        if (candidate in imagePresignedProperties.allowedFolders) return candidate
+        throw CoreException(ErrorType.INVALID_INPUT)
     }
 
-    private fun isOwnedKey(adminUserId: Long, key: String): Boolean {
-        return key.startsWith("$ROOT_FOLDER_PREFIX/$adminUserId/")
+    private fun requireOwnership(adminUserId: Long, key: String) {
+        if (key.startsWith("$ROOT_FOLDER_PREFIX/$adminUserId/")) return
+        throw CoreException(ErrorType.FORBIDDEN)
     }
 }

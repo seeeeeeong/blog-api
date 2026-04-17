@@ -1,5 +1,6 @@
 package com.blog.api.core.domain.category
 
+import com.blog.api.core.api.config.CacheConfig
 import com.blog.api.storage.category.CategoryRepository
 import com.blog.api.storage.category.toCategory
 import org.springframework.cache.annotation.Cacheable
@@ -12,8 +13,7 @@ class CategoryService(
     private val categoryRepository: CategoryRepository,
 ) {
 
-    @Cacheable("categories", sync = true)
-    fun getAllCategories(): List<Category> {
-        return categoryRepository.findAll().map { it.toCategory() }
-    }
+    @Cacheable(CacheConfig.CATEGORIES, sync = true)
+    fun getAllCategories(): List<Category> =
+        categoryRepository.findAll().map { it.toCategory() }
 }
