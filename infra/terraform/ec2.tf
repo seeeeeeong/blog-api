@@ -57,7 +57,7 @@ resource "aws_iam_role_policy" "ec2_ecr" {
       {
         Effect   = "Allow"
         Action   = ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"]
-        Resource = [aws_ecr_repository.blog_api.arn, aws_ecr_repository.devlog_archive.arn]
+        Resource = [aws_ecr_repository.blog_api.arn]
       },
     ]
   })
@@ -75,7 +75,6 @@ resource "aws_iam_role_policy" "ec2_ssm_parameter_read" {
         Action = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"]
         Resource = [
           "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${trimprefix(var.ssm_parameter_prefix, "/")}/*",
-          "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${trimprefix(var.devlog_archive_ssm_parameter_prefix, "/")}/*",
         ]
       },
       {
@@ -193,7 +192,7 @@ resource "aws_instance" "main" {
 
     # Runtime directories
     mkdir -p /opt/services/{bin,env}
-    mkdir -p /opt/services/data/{redis,devlog-postgres,caddy}
+    mkdir -p /opt/services/data/{redis,caddy}
     mkdir -p /opt/services/config/caddy
     mkdir -p /home/ec2-user/app
     chown ec2-user:ec2-user /home/ec2-user/app

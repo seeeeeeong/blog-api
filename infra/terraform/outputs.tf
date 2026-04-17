@@ -37,11 +37,6 @@ output "ecr_registry_url" {
   value       = aws_ecr_repository.blog_api.repository_url
 }
 
-output "devlog_archive_ecr_registry_url" {
-  description = "devlog-archive ECR URL"
-  value       = aws_ecr_repository.devlog_archive.repository_url
-}
-
 # ── CDN ──────────────────────────────────────
 
 output "image_cdn_domain" {
@@ -86,11 +81,6 @@ output "cors_allowed_origins" {
 output "github_actions_role_arn" {
   description = "blog-api GitHub Actions OIDC role ARN"
   value       = aws_iam_role.github_actions.arn
-}
-
-output "devlog_archive_github_actions_role_arn" {
-  description = "devlog-archive GitHub Actions OIDC role ARN"
-  value       = aws_iam_role.devlog_archive_github_actions.arn
 }
 
 output "ssm_session_command" {

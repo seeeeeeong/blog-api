@@ -69,22 +69,10 @@ variable "github_repo" {
   default     = "sinseonglee/blog-api"
 }
 
-variable "devlog_archive_github_repo" {
-  description = "devlog-archive GitHub repo (owner/repo)"
-  type        = string
-  default     = "seeeeeeong/devlog-archive"
-}
-
 variable "ssm_parameter_prefix" {
   description = "SSM prefix for blog-api config"
   type        = string
   default     = "/blog/prod"
-}
-
-variable "devlog_archive_ssm_parameter_prefix" {
-  description = "SSM prefix for devlog-archive config"
-  type        = string
-  default     = "/devlog-archive/prod"
 }
 
 # ── Monitoring ───────────────────────────────
@@ -119,10 +107,3 @@ variable "api_5xx_error_rate_threshold" {
   default     = 1
 }
 
-# ── devlog-archive ───────────────────────────
-
-variable "archive_domain_name" {
-  description = "devlog-archive domain"
-  type        = string
-  default     = "archive.seeeeeeong.com"
-}

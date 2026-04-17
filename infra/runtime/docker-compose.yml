@@ -17,45 +17,6 @@ services:
       retries: 18
       start_period: 90s
 
-  devlog-db:
-    image: pgvector/pgvector:pg15
-    container_name: devlog-postgres
-    restart: always
-    env_file:
-      - /opt/services/env/devlog-db.env
-    volumes:
-      - /opt/services/data/devlog-postgres:/var/lib/postgresql/data
-    networks:
-      - services
-    mem_limit: 256m
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U devlog -d devlog_archive"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 15s
-
-  devlog-archive:
-    image: ${DEVLOG_ARCHIVE_IMAGE}
-    container_name: devlog-archive
-    restart: always
-    ports:
-      - "127.0.0.1:8082:8082"
-    env_file:
-      - /opt/services/env/devlog-archive.env
-    depends_on:
-      devlog-db:
-        condition: service_healthy
-    networks:
-      - services
-    mem_limit: 512m
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8082/actuator/health"]
-      interval: 10s
-      timeout: 10s
-      retries: 18
-      start_period: 90s
-
   caddy:
     image: caddy:2-alpine
     container_name: blog-caddy
@@ -68,7 +29,6 @@ services:
       - /opt/services/config/caddy:/config
     ports:
       - "80:80"
-      - "443:443"
     networks:
       - services
     mem_limit: 32m

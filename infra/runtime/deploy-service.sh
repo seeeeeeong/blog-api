@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-SERVICE="${1:?Usage: deploy-service.sh <blog-api|devlog-archive> <ecr-image>}"
-NEW_IMAGE="${2:?Usage: deploy-service.sh <blog-api|devlog-archive> <ecr-image>}"
+SERVICE="${1:?Usage: deploy-service.sh <blog-api> <ecr-image>}"
+NEW_IMAGE="${2:?Usage: deploy-service.sh <blog-api> <ecr-image>}"
 
 RUNTIME_DIR="/opt/services"
 COMPOSE_FILE="$RUNTIME_DIR/docker-compose.yml"
@@ -10,11 +10,10 @@ COMPOSE_ENV="$RUNTIME_DIR/compose.env"
 ENV_DIR="$RUNTIME_DIR/env"
 AWS_REGION="${SSM_AWS_REGION:-ap-northeast-2}"
 BLOG_SSM="${BLOG_API_SSM_PREFIX:-/blog/prod}"
-DEVLOG_SSM="${DEVLOG_ARCHIVE_SSM_PREFIX:-/devlog-archive/prod}"
 
 case "$SERVICE" in
-  blog-api|devlog-archive) ;;
-  *) echo "Unknown service: $SERVICE (allowed: blog-api, devlog-archive)"; exit 1 ;;
+  blog-api) ;;
+  *) echo "Unknown service: $SERVICE (allowed: blog-api)"; exit 1 ;;
 esac
 
 # --- Helpers ---
@@ -53,19 +52,15 @@ write_env() {
 
 # --- Setup ---
 echo "=== Deploy: $SERVICE ($NEW_IMAGE) ==="
-mkdir -p "$RUNTIME_DIR/bin" "$ENV_DIR" "$RUNTIME_DIR/data/devlog-postgres" "$RUNTIME_DIR/data/caddy" "$RUNTIME_DIR/config/caddy"
+mkdir -p "$RUNTIME_DIR/bin" "$ENV_DIR" "$RUNTIME_DIR/data/caddy" "$RUNTIME_DIR/config/caddy"
 
 REGISTRY="${NEW_IMAGE%%/*}"
 aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$REGISTRY"
 
-CUR_BLOG=$(grep '^BLOG_API_IMAGE=' "$COMPOSE_ENV" 2>/dev/null | cut -d= -f2- || echo "busybox:stable")
-CUR_DEVLOG=$(grep '^DEVLOG_ARCHIVE_IMAGE=' "$COMPOSE_ENV" 2>/dev/null | cut -d= -f2- || echo "busybox:stable")
 CF_SECRET=$(ssm_get "$BLOG_SSM/CLOUDFRONT_SECRET")
 
-# --- Service deploy ---
-case "$SERVICE" in
-  blog-api)
-    write_env "$ENV_DIR/blog-api.env" <<EOF
+# --- blog-api deploy ---
+write_env "$ENV_DIR/blog-api.env" <<EOF
 SPRING_PROFILES_ACTIVE=prod
 DB_HOST=$(ssm_get "$BLOG_SSM/DB_HOST")
 DB_PORT=5432
@@ -82,46 +77,14 @@ JWT_ACCESS_EXPIRATION=$(ssm_get_or "$BLOG_SSM/JWT_ACCESS_EXPIRATION" 3600000)
 JWT_REFRESH_EXPIRATION=$(ssm_get_or "$BLOG_SSM/JWT_REFRESH_EXPIRATION" 1209600000)
 JAVA_TOOL_OPTIONS=-Xms64m -Xmx300m -XX:MaxMetaspaceSize=150m
 EOF
-    write_env "$COMPOSE_ENV" <<EOF
-BLOG_API_IMAGE=$NEW_IMAGE
-DEVLOG_ARCHIVE_IMAGE=$CUR_DEVLOG
-CLOUDFRONT_SECRET=$CF_SECRET
-EOF
-    compose up -d --no-deps --force-recreate blog-api
-    wait_healthy blog-api || { fail_diagnostics blog-api; exit 1; }
-    ;;
 
-  devlog-archive)
-    DA_PW=$(ssm_get "$DEVLOG_SSM/DB_PASSWORD")
-    write_env "$ENV_DIR/devlog-db.env" <<EOF
-POSTGRES_DB=devlog_archive
-POSTGRES_USER=devlog
-POSTGRES_PASSWORD=$DA_PW
-EOF
-    write_env "$ENV_DIR/devlog-archive.env" <<EOF
-SPRING_PROFILES_ACTIVE=prod
-SPRING_DATASOURCE_URL=jdbc:postgresql://devlog-db:5432/devlog_archive
-DB_HOST=devlog-db
-DB_PORT=5432
-DB_NAME=devlog_archive
-DB_USERNAME=devlog
-DB_PASSWORD=$DA_PW
-OPENAI_API_KEY=$(ssm_get "$DEVLOG_SSM/OPENAI_API_KEY")
-OPENAI_EMBEDDING_MODEL=$(ssm_get_or "$DEVLOG_SSM/OPENAI_EMBEDDING_MODEL" text-embedding-3-small)
-ALLOWED_ORIGIN=$(ssm_get "$DEVLOG_SSM/ALLOWED_ORIGIN")
-ADMIN_API_KEY=$(ssm_get "$DEVLOG_SSM/ADMIN_API_KEY")
-EOF
-    write_env "$COMPOSE_ENV" <<EOF
-BLOG_API_IMAGE=$CUR_BLOG
-DEVLOG_ARCHIVE_IMAGE=$NEW_IMAGE
+write_env "$COMPOSE_ENV" <<EOF
+BLOG_API_IMAGE=$NEW_IMAGE
 CLOUDFRONT_SECRET=$CF_SECRET
 EOF
-    compose up -d devlog-db
-    wait_healthy devlog-postgres 30 || { fail_diagnostics devlog-postgres; exit 1; }
-    compose up -d --no-deps --force-recreate devlog-archive
-    wait_healthy devlog-archive || { fail_diagnostics devlog-archive; exit 1; }
-    ;;
-esac
+
+compose up -d --no-deps --force-recreate blog-api
+wait_healthy blog-api || { fail_diagnostics blog-api; exit 1; }
 
 compose up -d caddy
 docker image prune -f &>/dev/null || true
