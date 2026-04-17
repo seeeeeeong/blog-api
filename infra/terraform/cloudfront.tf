@@ -1,11 +1,12 @@
-# =============================================
-# CloudFront OAC
-# =============================================
+# ── Locals ───────────────────────────────────
+
 locals {
   use_custom_cloudfront_domain = var.domain_name != "" && var.cloudfront_acm_certificate_arn != ""
   frontend_aliases             = local.use_custom_cloudfront_domain ? [var.domain_name, "www.${var.domain_name}"] : []
   api_aliases                  = local.use_custom_cloudfront_domain ? ["api.${var.domain_name}"] : []
 }
+
+# ── OAC (S3 origin access) ──────────────────
 
 resource "aws_cloudfront_origin_access_control" "images" {
   name                              = "${var.project_name}-images-oac"
@@ -21,35 +22,33 @@ resource "aws_cloudfront_origin_access_control" "frontend" {
   signing_protocol                  = "sigv4"
 }
 
-# =============================================
-# CloudFront - 이미지 CDN
-# =============================================
+# ── CloudFront: Image CDN ───────────────────
+
 resource "aws_cloudfront_distribution" "images" {
+  enabled         = true
+  is_ipv6_enabled = true
+  comment         = "${var.project_name} - Image CDN"
+
   origin {
     domain_name              = aws_s3_bucket.images.bucket_regional_domain_name
     origin_id                = "s3-images"
     origin_access_control_id = aws_cloudfront_origin_access_control.images.id
   }
 
-  enabled         = true
-  is_ipv6_enabled = true
-  comment         = "${var.project_name} - Image CDN"
-
   default_cache_behavior {
-    allowed_methods  = ["GET", "HEAD"]
-    cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "s3-images"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "s3-images"
+    viewer_protocol_policy = "redirect-to-https"
+    compress               = true
+    min_ttl                = 0
+    default_ttl            = 86400
+    max_ttl                = 31536000
 
     forwarded_values {
       query_string = false
       cookies { forward = "none" }
     }
-
-    viewer_protocol_policy = "redirect-to-https"
-    min_ttl                = 0
-    default_ttl            = 86400
-    max_ttl                = 31536000
-    compress               = true
   }
 
   restrictions {
@@ -63,11 +62,14 @@ resource "aws_cloudfront_distribution" "images" {
   tags = { Name = "${var.project_name}-images-cdn" }
 }
 
-# =============================================
-# CloudFront - 프론트엔드 SPA
-# =============================================
+# ── CloudFront: Frontend SPA ────────────────
+
 resource "aws_cloudfront_distribution" "frontend" {
-  aliases = local.frontend_aliases
+  aliases             = local.frontend_aliases
+  enabled             = true
+  is_ipv6_enabled     = true
+  comment             = "${var.project_name} - Frontend SPA"
+  default_root_object = "index.html"
 
   origin {
     domain_name              = aws_s3_bucket.frontend.bucket_regional_domain_name
@@ -75,31 +77,24 @@ resource "aws_cloudfront_distribution" "frontend" {
     origin_access_control_id = aws_cloudfront_origin_access_control.frontend.id
   }
 
-  enabled             = true
-  is_ipv6_enabled     = true
-  comment             = "${var.project_name} - Frontend SPA"
-  default_root_object = "index.html"
-
   default_cache_behavior {
-    allowed_methods  = ["GET", "HEAD"]
-    cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "s3-frontend"
+    allowed_methods            = ["GET", "HEAD"]
+    cached_methods             = ["GET", "HEAD"]
+    target_origin_id           = "s3-frontend"
+    viewer_protocol_policy     = "redirect-to-https"
+    compress                   = true
+    min_ttl                    = 0
+    default_ttl                = 3600
+    max_ttl                    = 86400
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.frontend.id
 
     forwarded_values {
       query_string = false
       cookies { forward = "none" }
     }
-
-    viewer_protocol_policy = "redirect-to-https"
-    min_ttl                = 0
-    default_ttl            = 3600
-    max_ttl                = 86400
-    compress               = true
-
-    response_headers_policy_id = aws_cloudfront_response_headers_policy.frontend.id
   }
 
-  # SPA 라우팅
+  # SPA routing: serve index.html for 403/404
   custom_error_response {
     error_code            = 403
     response_code         = 200
@@ -128,11 +123,13 @@ resource "aws_cloudfront_distribution" "frontend" {
   tags = { Name = "${var.project_name}-frontend-cdn" }
 }
 
-# =============================================
-# CloudFront - API Proxy (HTTPS)
-# =============================================
+# ── CloudFront: API Proxy ───────────────────
+
 resource "aws_cloudfront_distribution" "api" {
-  aliases = local.api_aliases
+  aliases         = local.api_aliases
+  enabled         = true
+  is_ipv6_enabled = true
+  comment         = "${var.project_name} - API Proxy"
 
   origin {
     domain_name = aws_instance.main.public_dns
@@ -151,26 +148,21 @@ resource "aws_cloudfront_distribution" "api" {
     }
   }
 
-  enabled         = true
-  is_ipv6_enabled = true
-  comment         = "${var.project_name} - API Proxy"
-
   default_cache_behavior {
-    allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "ec2-api"
+    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "ec2-api"
+    viewer_protocol_policy = "redirect-to-https"
+    compress               = true
+    min_ttl                = 0
+    default_ttl            = 0
+    max_ttl                = 0
 
     forwarded_values {
       query_string = true
       headers      = ["Authorization", "Origin", "Access-Control-Request-Headers", "Access-Control-Request-Method"]
       cookies { forward = "all" }
     }
-
-    viewer_protocol_policy = "redirect-to-https"
-    min_ttl                = 0
-    default_ttl            = 0
-    max_ttl                = 0
-    compress               = true
   }
 
   restrictions {
@@ -187,9 +179,8 @@ resource "aws_cloudfront_distribution" "api" {
   tags = { Name = "${var.project_name}-api-cdn" }
 }
 
-# =============================================
-# Security Headers
-# =============================================
+# ── Security Headers Policy ─────────────────
+
 resource "aws_cloudfront_response_headers_policy" "frontend" {
   name = "${var.project_name}-security-headers"
 
@@ -198,17 +189,14 @@ resource "aws_cloudfront_response_headers_policy" "frontend" {
       frame_option = "DENY"
       override     = true
     }
-
     content_type_options {
       override = true
     }
-
     xss_protection {
       mode_block = true
       protection = true
       override   = true
     }
-
     strict_transport_security {
       access_control_max_age_sec = 31536000
       include_subdomains         = true

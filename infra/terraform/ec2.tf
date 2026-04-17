@@ -1,18 +1,15 @@
-# =============================================
-# EC2 IAM Role (S3 접근용)
-# =============================================
+# ── EC2 IAM Role ─────────────────────────────
+
 resource "aws_iam_role" "ec2" {
   name = "${var.project_name}-ec2-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Action    = "sts:AssumeRole"
-        Effect    = "Allow"
-        Principal = { Service = "ec2.amazonaws.com" }
-      }
-    ]
+    Statement = [{
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { Service = "ec2.amazonaws.com" }
+    }]
   })
 }
 
@@ -24,37 +21,23 @@ resource "aws_iam_role_policy" "ec2_s3" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow"
-        Action = [
-          "s3:PutObject",
-          "s3:GetObject",
-          "s3:DeleteObject"
-        ]
+        Effect   = "Allow"
+        Action   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
         Resource = "${aws_s3_bucket.images.arn}/admin/*"
       },
       {
-        Effect = "Allow"
-        Action = [
-          "s3:PutObject",
-          "s3:GetObject"
-        ]
+        Effect   = "Allow"
+        Action   = ["s3:PutObject", "s3:GetObject"]
         Resource = "${aws_s3_bucket.images.arn}/backups/*"
       },
       {
-        Effect = "Allow"
-        Action = [
-          "s3:ListBucket"
-        ]
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
         Resource = aws_s3_bucket.images.arn
         Condition = {
-          StringLike = {
-            "s3:prefix" = [
-              "admin/*",
-              "backups/*"
-            ]
-          }
+          StringLike = { "s3:prefix" = ["admin/*", "backups/*"] }
         }
-      }
+      },
     ]
   })
 }
@@ -67,23 +50,15 @@ resource "aws_iam_role_policy" "ec2_ecr" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow"
-        Action = [
-          "ecr:GetAuthorizationToken"
-        ]
+        Effect   = "Allow"
+        Action   = ["ecr:GetAuthorizationToken"]
         Resource = "*"
       },
       {
-        Effect = "Allow"
-        Action = [
-          "ecr:BatchGetImage",
-          "ecr:GetDownloadUrlForLayer"
-        ]
-        Resource = [
-          aws_ecr_repository.blog_api.arn,
-          aws_ecr_repository.devlog_archive.arn
-        ]
-      }
+        Effect   = "Allow"
+        Action   = ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"]
+        Resource = [aws_ecr_repository.blog_api.arn, aws_ecr_repository.devlog_archive.arn]
+      },
     ]
   })
 }
@@ -97,48 +72,39 @@ resource "aws_iam_role_policy" "ec2_ssm_parameter_read" {
     Statement = [
       {
         Effect = "Allow"
-        Action = [
-          "ssm:GetParameter",
-          "ssm:GetParameters",
-          "ssm:GetParametersByPath"
-        ]
+        Action = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"]
         Resource = [
           "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${trimprefix(var.ssm_parameter_prefix, "/")}/*",
-          "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${trimprefix(var.devlog_archive_ssm_parameter_prefix, "/")}/*"
+          "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${trimprefix(var.devlog_archive_ssm_parameter_prefix, "/")}/*",
         ]
       },
       {
-        Effect = "Allow"
-        Action = [
-          "kms:Decrypt"
-        ]
-        Resource = "*"
-        Condition = {
-          StringEquals = {
-            "kms:ViaService" = "ssm.${var.aws_region}.amazonaws.com"
-          }
-        }
-      }
+        Effect    = "Allow"
+        Action    = ["kms:Decrypt"]
+        Resource  = "*"
+        Condition = { StringEquals = { "kms:ViaService" = "ssm.${var.aws_region}.amazonaws.com" } }
+      },
     ]
   })
 }
 
-resource "aws_iam_role_policy" "ec2_cloudwatch_put_metric" {
-  name = "${var.project_name}-ec2-cloudwatch-put-metric"
+resource "aws_iam_role_policy" "ec2_cloudwatch" {
+  name = "${var.project_name}-ec2-cloudwatch"
   role = aws_iam_role.ec2.id
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "cloudwatch:PutMetricData"
-        ]
-        Resource = "*"
-      }
-    ]
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["cloudwatch:PutMetricData"]
+      Resource = "*"
+    }]
   })
+}
+
+resource "aws_iam_role_policy_attachment" "ec2_ssm" {
+  role       = aws_iam_role.ec2.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
 resource "aws_iam_instance_profile" "ec2" {
@@ -146,9 +112,8 @@ resource "aws_iam_instance_profile" "ec2" {
   role = aws_iam_role.ec2.name
 }
 
-# =============================================
-# Amazon Linux 2023 ARM64 AMI
-# =============================================
+# ── AMI ──────────────────────────────────────
+
 data "aws_ami" "amazon_linux" {
   most_recent = true
   owners      = ["amazon"]
@@ -164,13 +129,7 @@ data "aws_ami" "amazon_linux" {
   }
 }
 
-# =============================================
-# EC2 Instance
-# =============================================
-resource "aws_iam_role_policy_attachment" "ec2_ssm" {
-  role       = aws_iam_role.ec2.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-}
+# ── EC2 Instance ─────────────────────────────
 
 resource "aws_instance" "main" {
   ami                    = data.aws_ami.amazon_linux.id
@@ -189,61 +148,53 @@ resource "aws_instance" "main" {
     #!/bin/bash
     set -e
 
-    # Swap 2GB 설정
+    # 2GB swap
     fallocate -l 2G /swapfile
     chmod 600 /swapfile
     mkswap /swapfile
     swapon /swapfile
     echo '/swapfile swap swap defaults 0 0' >> /etc/fstab
 
-    # Docker / CloudWatch Agent / PostgreSQL client 설치
+    # Install packages
     dnf update -y
     dnf install -y docker git amazon-cloudwatch-agent cronie postgresql15
-    systemctl start docker
-    systemctl enable docker
-    systemctl start crond
-    systemctl enable crond
+    systemctl start docker && systemctl enable docker
+    systemctl start crond && systemctl enable crond
     usermod -aG docker ec2-user
 
-    # CloudWatch Agent 메트릭 설정 (mem_used_percent, disk_used_percent)
+    # CloudWatch Agent config (memory + disk metrics)
     cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'CWCONFIG'
     {
-      "agent": {
-        "metrics_collection_interval": 60,
-        "run_as_user": "root"
-      },
+      "agent": { "metrics_collection_interval": 60, "run_as_user": "root" },
       "metrics": {
         "namespace": "CWAgent",
-        "append_dimensions": {
-          "InstanceId": "$${aws:InstanceId}"
-        },
+        "append_dimensions": { "InstanceId": "$${aws:InstanceId}" },
         "aggregation_dimensions": [["InstanceId"]],
         "metrics_collected": {
-          "mem": {
-            "measurement": ["mem_used_percent"]
-          },
+          "mem": { "measurement": ["mem_used_percent"] },
           "disk": {
             "measurement": ["used_percent"],
             "resources": ["/"],
-            "ignore_file_system_types": ["sysfs", "devtmpfs", "tmpfs", "squashfs", "overlay", "proc", "devfs"]
+            "ignore_file_system_types": ["sysfs","devtmpfs","tmpfs","squashfs","overlay","proc","devfs"]
           }
         }
       }
     }
     CWCONFIG
-    /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s || true
+    /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+      -a fetch-config -m ec2 \
+      -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s || true
 
-    # Docker Compose 설치
+    # Docker Compose
     DOCKER_COMPOSE_VERSION="v2.24.5"
-    curl -L "https://github.com/docker/compose/releases/download/$${DOCKER_COMPOSE_VERSION}/docker-compose-linux-aarch64" -o /usr/local/bin/docker-compose
+    curl -L "https://github.com/docker/compose/releases/download/$${DOCKER_COMPOSE_VERSION}/docker-compose-linux-aarch64" \
+      -o /usr/local/bin/docker-compose
     chmod +x /usr/local/bin/docker-compose
 
-    # 공용 런타임 디렉토리 생성
-    mkdir -p /opt/services/bin /opt/services/env
+    # Runtime directories
+    mkdir -p /opt/services/{bin,env}
     mkdir -p /opt/services/data/{redis,devlog-postgres,caddy}
     mkdir -p /opt/services/config/caddy
-
-    # 레거시 호환 (기존 배포 경로)
     mkdir -p /home/ec2-user/app
     chown ec2-user:ec2-user /home/ec2-user/app
   EOF
@@ -255,15 +206,11 @@ resource "aws_instance" "main" {
 
   tags = { Name = "${var.project_name}-server" }
 
-  lifecycle {
-    # Avoid unintended instance replacement when latest AMI moves.
-    ignore_changes = [ami]
-  }
+  lifecycle { ignore_changes = [ami] }
 }
 
-# =============================================
-# Elastic IP (고정 IP)
-# =============================================
+# ── Elastic IP ───────────────────────────────
+
 resource "aws_eip" "main" {
   instance = aws_instance.main.id
   domain   = "vpc"

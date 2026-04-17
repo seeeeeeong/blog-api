@@ -1,6 +1,5 @@
-# =============================================
-# VPC (심플 구성 - public subnet만)
-# =============================================
+# ── VPC (public subnets only) ────────────────
+
 resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_hostnames = true
@@ -31,11 +30,6 @@ resource "aws_subnet" "public_2" {
   tags = { Name = "${var.project_name}-public-2" }
 }
 
-resource "aws_route_table_association" "public_2" {
-  subnet_id      = aws_subnet.public_2.id
-  route_table_id = aws_route_table.public.id
-}
-
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 
@@ -58,10 +52,14 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# =============================================
-# Security Group (EC2용)
-# =============================================
-# CloudFront managed prefix list (origin-facing IP 범위)
+resource "aws_route_table_association" "public_2" {
+  subnet_id      = aws_subnet.public_2.id
+  route_table_id = aws_route_table.public.id
+}
+
+# ── Security Group (EC2) ────────────────────
+
+# CloudFront managed prefix list for origin-facing IPs
 data "aws_ec2_managed_prefix_list" "cloudfront" {
   name = "com.amazonaws.global.cloudfront.origin-facing"
 }
@@ -70,25 +68,17 @@ resource "aws_security_group" "ec2" {
   name_prefix = "${var.project_name}-ec2-"
   vpc_id      = aws_vpc.main.id
 
-  # CloudFront prefix list는 SG 쿼터(기본 60)를 초과함.
-  # AWS Service Quotas에서 "Security group rules per security group"을
-  # 300 이상으로 증가 신청 후 terraform apply 하면 아래 코드가 적용됨.
-  # TODO: 쿼터 증가 후 아래 cidr_blocks 방식을 prefix_list_ids 방식으로 교체
-  # CloudFront prefix list는 SG 쿼터(기본 60)를 초과함.
-  # AWS Service Quotas에서 "Security group rules per security group"을
-  # 300 이상으로 증가 신청 후 terraform apply 하면 아래 코드가 적용됨.
-  # TODO: 쿼터 증가 후 아래 cidr_blocks 방식을 prefix_list_ids 방식으로 교체
+  # TODO: Replace cidr_blocks with prefix_list_ids after SG quota increase (>300 rules)
   ingress {
     description = "HTTP from CloudFront"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-    # prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront.id]
   }
 
   ingress {
-    description = "HTTPS for archive.seeeeeeong.com (Caddy TLS termination)"
+    description = "HTTPS for Caddy TLS termination"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"

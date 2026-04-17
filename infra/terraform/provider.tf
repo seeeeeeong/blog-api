@@ -8,7 +8,6 @@ terraform {
     }
   }
 
-  # Use -backend-config (e.g. backend.hcl) at init time.
   backend "s3" {}
 }
 
@@ -23,7 +22,7 @@ provider "aws" {
   }
 }
 
-# CloudFront ACM 인증서는 us-east-1 필수
+# CloudFront ACM certificates must be in us-east-1
 provider "aws" {
   alias  = "us_east_1"
   region = "us-east-1"

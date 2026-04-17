@@ -1,8 +1,7 @@
 data "aws_caller_identity" "current" {}
 
-# =============================================
-# S3 - 이미지 버킷
-# =============================================
+# ── S3: Image Bucket ────────────────────────
+
 resource "aws_s3_bucket" "images" {
   bucket = "${var.project_name}-images-${data.aws_caller_identity.current.account_id}"
 
@@ -17,15 +16,14 @@ resource "aws_s3_bucket_cors_configuration" "images" {
     allowed_methods = ["PUT", "POST"]
     allowed_origins = local.use_custom_cloudfront_domain ? [
       "https://${var.domain_name}",
-      "https://www.${var.domain_name}"
+      "https://www.${var.domain_name}",
     ] : ["https://${aws_cloudfront_distribution.frontend.domain_name}"]
     max_age_seconds = 3600
   }
 }
 
 resource "aws_s3_bucket_public_access_block" "images" {
-  bucket = aws_s3_bucket.images.id
-
+  bucket                  = aws_s3_bucket.images.id
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
@@ -37,26 +35,19 @@ resource "aws_s3_bucket_policy" "images" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Sid       = "AllowCloudFrontOAC"
-        Effect    = "Allow"
-        Principal = { Service = "cloudfront.amazonaws.com" }
-        Action    = "s3:GetObject"
-        Resource  = "${aws_s3_bucket.images.arn}/*"
-        Condition = {
-          StringEquals = {
-            "AWS:SourceArn" = aws_cloudfront_distribution.images.arn
-          }
-        }
-      }
-    ]
+    Statement = [{
+      Sid       = "AllowCloudFrontOAC"
+      Effect    = "Allow"
+      Principal = { Service = "cloudfront.amazonaws.com" }
+      Action    = "s3:GetObject"
+      Resource  = "${aws_s3_bucket.images.arn}/*"
+      Condition = { StringEquals = { "AWS:SourceArn" = aws_cloudfront_distribution.images.arn } }
+    }]
   })
 }
 
-# =============================================
-# S3 - 프론트엔드 버킷
-# =============================================
+# ── S3: Frontend Bucket ──────────────────────
+
 resource "aws_s3_bucket" "frontend" {
   bucket = "${var.project_name}-frontend-${data.aws_caller_identity.current.account_id}"
 
@@ -64,8 +55,7 @@ resource "aws_s3_bucket" "frontend" {
 }
 
 resource "aws_s3_bucket_public_access_block" "frontend" {
-  bucket = aws_s3_bucket.frontend.id
-
+  bucket                  = aws_s3_bucket.frontend.id
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
@@ -77,19 +67,13 @@ resource "aws_s3_bucket_policy" "frontend" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Sid       = "AllowCloudFrontOAC"
-        Effect    = "Allow"
-        Principal = { Service = "cloudfront.amazonaws.com" }
-        Action    = "s3:GetObject"
-        Resource  = "${aws_s3_bucket.frontend.arn}/*"
-        Condition = {
-          StringEquals = {
-            "AWS:SourceArn" = aws_cloudfront_distribution.frontend.arn
-          }
-        }
-      }
-    ]
+    Statement = [{
+      Sid       = "AllowCloudFrontOAC"
+      Effect    = "Allow"
+      Principal = { Service = "cloudfront.amazonaws.com" }
+      Action    = "s3:GetObject"
+      Resource  = "${aws_s3_bucket.frontend.arn}/*"
+      Condition = { StringEquals = { "AWS:SourceArn" = aws_cloudfront_distribution.frontend.arn } }
+    }]
   })
 }

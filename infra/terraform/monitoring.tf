@@ -1,18 +1,23 @@
+# ── SNS Topic (optional email alerts) ────────
+
 locals {
-  cloudwatch_alarm_actions = var.monitoring_alert_email != "" ? [aws_sns_topic.monitoring_alerts[0].arn] : []
+  alerts_enabled          = var.monitoring_alert_email != ""
+  cloudwatch_alarm_actions = local.alerts_enabled ? [aws_sns_topic.monitoring_alerts[0].arn] : []
 }
 
 resource "aws_sns_topic" "monitoring_alerts" {
-  count = var.monitoring_alert_email != "" ? 1 : 0
+  count = local.alerts_enabled ? 1 : 0
   name  = "${var.project_name}-monitoring-alerts"
 }
 
 resource "aws_sns_topic_subscription" "monitoring_email" {
-  count     = var.monitoring_alert_email != "" ? 1 : 0
+  count     = local.alerts_enabled ? 1 : 0
   topic_arn = aws_sns_topic.monitoring_alerts[0].arn
   protocol  = "email"
   endpoint  = var.monitoring_alert_email
 }
+
+# ── CloudWatch Alarms ────────────────────────
 
 resource "aws_cloudwatch_metric_alarm" "ec2_cpu_high" {
   alarm_name          = "${var.project_name}-ec2-cpu-high"
@@ -23,15 +28,11 @@ resource "aws_cloudwatch_metric_alarm" "ec2_cpu_high" {
   period              = 300
   statistic           = "Average"
   threshold           = var.cpu_alarm_threshold
-  alarm_description   = "EC2 CPU 사용률이 높습니다."
+  alarm_description   = "EC2 CPU utilization exceeded threshold"
   treat_missing_data  = "missing"
-
-  dimensions = {
-    InstanceId = aws_instance.main.id
-  }
-
-  alarm_actions = local.cloudwatch_alarm_actions
-  ok_actions    = local.cloudwatch_alarm_actions
+  dimensions          = { InstanceId = aws_instance.main.id }
+  alarm_actions       = local.cloudwatch_alarm_actions
+  ok_actions          = local.cloudwatch_alarm_actions
 }
 
 resource "aws_cloudwatch_metric_alarm" "ec2_status_check_failed" {
@@ -43,15 +44,11 @@ resource "aws_cloudwatch_metric_alarm" "ec2_status_check_failed" {
   period              = 60
   statistic           = "Maximum"
   threshold           = 0
-  alarm_description   = "EC2 상태 점검 실패가 감지되었습니다."
+  alarm_description   = "EC2 status check failed"
   treat_missing_data  = "missing"
-
-  dimensions = {
-    InstanceId = aws_instance.main.id
-  }
-
-  alarm_actions = local.cloudwatch_alarm_actions
-  ok_actions    = local.cloudwatch_alarm_actions
+  dimensions          = { InstanceId = aws_instance.main.id }
+  alarm_actions       = local.cloudwatch_alarm_actions
+  ok_actions          = local.cloudwatch_alarm_actions
 }
 
 resource "aws_cloudwatch_metric_alarm" "ec2_memory_high" {
@@ -63,15 +60,11 @@ resource "aws_cloudwatch_metric_alarm" "ec2_memory_high" {
   period              = 300
   statistic           = "Average"
   threshold           = var.memory_alarm_threshold
-  alarm_description   = "EC2 메모리 사용률이 높습니다."
+  alarm_description   = "EC2 memory utilization exceeded threshold"
   treat_missing_data  = "missing"
-
-  dimensions = {
-    InstanceId = aws_instance.main.id
-  }
-
-  alarm_actions = local.cloudwatch_alarm_actions
-  ok_actions    = local.cloudwatch_alarm_actions
+  dimensions          = { InstanceId = aws_instance.main.id }
+  alarm_actions       = local.cloudwatch_alarm_actions
+  ok_actions          = local.cloudwatch_alarm_actions
 }
 
 resource "aws_cloudwatch_metric_alarm" "ec2_disk_high" {
@@ -83,15 +76,11 @@ resource "aws_cloudwatch_metric_alarm" "ec2_disk_high" {
   period              = 300
   statistic           = "Average"
   threshold           = var.disk_alarm_threshold
-  alarm_description   = "EC2 루트 디스크 사용률이 높습니다."
+  alarm_description   = "EC2 root disk utilization exceeded threshold"
   treat_missing_data  = "missing"
-
-  dimensions = {
-    InstanceId = aws_instance.main.id
-  }
-
-  alarm_actions = local.cloudwatch_alarm_actions
-  ok_actions    = local.cloudwatch_alarm_actions
+  dimensions          = { InstanceId = aws_instance.main.id }
+  alarm_actions       = local.cloudwatch_alarm_actions
+  ok_actions          = local.cloudwatch_alarm_actions
 }
 
 resource "aws_cloudwatch_metric_alarm" "api_5xx_error_rate_high" {
@@ -103,15 +92,9 @@ resource "aws_cloudwatch_metric_alarm" "api_5xx_error_rate_high" {
   period              = 300
   statistic           = "Average"
   threshold           = var.api_5xx_error_rate_threshold
-  alarm_description   = "CloudFront API 5xx 비율이 임계치를 초과했습니다."
+  alarm_description   = "CloudFront API 5xx error rate exceeded threshold"
   treat_missing_data  = "notBreaching"
-
-  dimensions = {
-    DistributionId = aws_cloudfront_distribution.api.id
-    Region         = "Global"
-  }
-
-  alarm_actions = local.cloudwatch_alarm_actions
-  ok_actions    = local.cloudwatch_alarm_actions
+  dimensions          = { DistributionId = aws_cloudfront_distribution.api.id, Region = "Global" }
+  alarm_actions       = local.cloudwatch_alarm_actions
+  ok_actions          = local.cloudwatch_alarm_actions
 }
-
