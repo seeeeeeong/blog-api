@@ -23,6 +23,7 @@ services:
     restart: always
     environment:
       - CLOUDFRONT_SECRET=${CLOUDFRONT_SECRET}
+      - BLOG_AI_UPSTREAM=${BLOG_AI_UPSTREAM}
     volumes:
       - /opt/services/Caddyfile:/etc/caddy/Caddyfile:ro
       - /opt/services/data/caddy:/data

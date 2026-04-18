@@ -16,6 +16,13 @@
         respond 403
     }
 
+    @blog_ai path /api/v1/chat /api/v1/chat/* /api/v1/similar /api/v1/similar/*
+    handle @blog_ai {
+        reverse_proxy {env.BLOG_AI_UPSTREAM} {
+            flush_interval -1
+        }
+    }
+
     handle {
         reverse_proxy blog-api:8080
     }
