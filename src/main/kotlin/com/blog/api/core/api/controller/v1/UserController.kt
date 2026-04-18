@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.RestController
 class UserController(
     private val userService: UserService,
 ) {
-
     @PostMapping("/login")
     fun login(
         @Valid @RequestBody request: UserLoginRequest,
@@ -28,7 +27,6 @@ class UserController(
     @PostMapping("/refresh")
     fun refreshToken(
         @RequestBody request: UserTokenRequest,
-    ): ApiResponse<UserTokenResponse> {
-        return ApiResponse.success(UserTokenResponse.of(userService.refreshAccessToken(request.refreshToken)))
-    }
+    ): ApiResponse<UserTokenResponse> =
+        ApiResponse.success(UserTokenResponse.of(userService.refreshAccessToken(request.refreshToken)))
 }

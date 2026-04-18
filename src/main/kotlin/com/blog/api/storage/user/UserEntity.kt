@@ -14,23 +14,18 @@ import jakarta.persistence.Table
 @Entity
 @Table(name = "users")
 class UserEntity(
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
-
     @Column(nullable = false, unique = true, length = 100)
     val email: String,
-
     password: String,
     nickname: String,
     profileImageUrl: String? = null,
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    val role: UserRole = UserRole.USER
+    val role: UserRole = UserRole.USER,
 ) : BaseTimeEntity() {
-
     @Column(nullable = false)
     var password: String = password
         protected set

@@ -9,14 +9,15 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class JwtProviderTest {
-
-    private val jwtProvider = JwtProvider(
-        jwtProperties = JwtProperties(
-            secret = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-            accessExpiration = 60_000L,
-            refreshExpiration = 120_000L,
-        ),
-    )
+    private val jwtProvider =
+        JwtProvider(
+            jwtProperties =
+                JwtProperties(
+                    secret = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                    accessExpiration = 60_000L,
+                    refreshExpiration = 120_000L,
+                ),
+        )
 
     @Test
     fun `USER_ACCESS 토큰은 user access 검증만 통과한다`() {
@@ -31,9 +32,10 @@ class JwtProviderTest {
         val accessToken = jwtProvider.generateAccessToken(userId = 1L, role = "ADMIN")
 
         val refreshClaims = jwtProvider.parseRefreshTokenClaims(refreshToken)
-        val exception = assertThrows(CoreException::class.java) {
-            jwtProvider.parseRefreshTokenClaims(accessToken)
-        }
+        val exception =
+            assertThrows(CoreException::class.java) {
+                jwtProvider.parseRefreshTokenClaims(accessToken)
+            }
 
         assertEquals(1L, refreshClaims.userId)
         assertEquals("ADMIN", refreshClaims.roleName)
@@ -44,9 +46,10 @@ class JwtProviderTest {
     fun `토큰 타입이 다르면 role 조회를 거부한다`() {
         val refreshToken = jwtProvider.generateRefreshToken(userId = 1L, role = "ADMIN")
 
-        val exception = assertThrows(CoreException::class.java) {
-            jwtProvider.getRoleFromToken(refreshToken)
-        }
+        val exception =
+            assertThrows(CoreException::class.java) {
+                jwtProvider.getRoleFromToken(refreshToken)
+            }
         assertEquals(ErrorType.INVALID_TOKEN, exception.errorType)
     }
 }

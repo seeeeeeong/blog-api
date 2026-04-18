@@ -16,7 +16,11 @@ import org.springframework.security.web.servlet.util.matcher.MvcRequestMatcher
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
+import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer
 import org.springframework.web.servlet.handler.HandlerMappingIntrospector
+
+private typealias AuthRegistry =
+    AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry
 
 @Configuration
 @EnableWebSecurity
@@ -24,18 +28,18 @@ class SecurityConfig(
     private val jwtAuthenticationFilter: JwtAuthenticationFilter,
     private val corsProperties: CorsProperties,
 ) {
-
     companion object {
         private const val CORS_MAX_AGE_SECONDS = 3600L
     }
 
     @Bean
-    fun passwordEncoder(): PasswordEncoder {
-        return BCryptPasswordEncoder()
-    }
+    fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()
 
     @Bean
-    fun securityFilterChain(http: HttpSecurity, introspector: HandlerMappingIntrospector): SecurityFilterChain {
+    fun securityFilterChain(
+        http: HttpSecurity,
+        introspector: HandlerMappingIntrospector,
+    ): SecurityFilterChain {
         val mvc = MvcRequestMatcher.Builder(introspector)
         http
             .csrf { it.disable() }
@@ -44,44 +48,48 @@ class SecurityConfig(
             .formLogin { it.disable() }
             .sessionManagement {
                 it.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            }
-            .authorizeHttpRequests { authorize ->
+            }.authorizeHttpRequests { authorize ->
                 authorizeAuth(authorize)
                 authorizePosts(authorize, mvc)
                 authorizeComments(authorize)
                 authorizeImages(authorize)
                 authorize.anyRequest().authenticated()
-            }
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
+            }.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
 
         return http.build()
     }
 
     private fun authorizeAuth(
-        authorize: org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry,
+        authorize: AuthRegistry,
     ) {
         authorize
-            .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-            .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
-            .requestMatchers(HttpMethod.POST, "/api/v1/users/login", "/api/v1/users/refresh").permitAll()
+            .requestMatchers(HttpMethod.OPTIONS, "/**")
+            .permitAll()
+            .requestMatchers("/actuator/health/**", "/actuator/info")
+            .permitAll()
+            .requestMatchers(HttpMethod.POST, "/api/v1/users/login", "/api/v1/users/refresh")
+            .permitAll()
     }
 
     private fun authorizePosts(
-        authorize: org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry,
+        authorize: AuthRegistry,
         mvc: MvcRequestMatcher.Builder,
     ) {
         authorize
-            .requestMatchers(HttpMethod.POST, "/api/v1/posts").hasRole("ADMIN")
-            .requestMatchers(HttpMethod.POST, "/api/v1/posts/*/restore").hasRole("ADMIN")
+            .requestMatchers(HttpMethod.POST, "/api/v1/posts")
+            .hasRole("ADMIN")
+            .requestMatchers(HttpMethod.POST, "/api/v1/posts/*/restore")
+            .hasRole("ADMIN")
             .requestMatchers(
-                mvc.pattern(HttpMethod.PUT, "/api/v1/posts/{postId:[0-9]+}")
+                mvc.pattern(HttpMethod.PUT, "/api/v1/posts/{postId:[0-9]+}"),
             ).hasRole("ADMIN")
             .requestMatchers(
-                mvc.pattern(HttpMethod.DELETE, "/api/v1/posts/{postId:[0-9]+}")
+                mvc.pattern(HttpMethod.DELETE, "/api/v1/posts/{postId:[0-9]+}"),
             ).hasRole("ADMIN")
-            .requestMatchers(HttpMethod.GET, "/api/v1/posts/drafts").hasRole("ADMIN")
+            .requestMatchers(HttpMethod.GET, "/api/v1/posts/drafts")
+            .hasRole("ADMIN")
             .requestMatchers(
-                mvc.pattern(HttpMethod.GET, "/api/v1/posts/{postId:[0-9]+}/admin")
+                mvc.pattern(HttpMethod.GET, "/api/v1/posts/{postId:[0-9]+}/admin"),
             ).hasRole("ADMIN")
             .requestMatchers(
                 HttpMethod.GET,
@@ -91,35 +99,44 @@ class SecurityConfig(
                 "/api/v1/posts/categories/**",
             ).permitAll()
             .requestMatchers(
-                mvc.pattern(HttpMethod.GET, "/api/v1/posts/{postId:[0-9]+}")
+                mvc.pattern(HttpMethod.GET, "/api/v1/posts/{postId:[0-9]+}"),
             ).permitAll()
-            .requestMatchers(HttpMethod.GET, "/api/v1/categories").permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/v1/categories")
+            .permitAll()
     }
 
     private fun authorizeComments(
-        authorize: org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry,
+        authorize: AuthRegistry,
     ) {
         authorize
-            .requestMatchers(HttpMethod.DELETE, "/api/v1/posts/*/comments/*/admin").hasRole("ADMIN")
-            .requestMatchers(HttpMethod.GET, "/api/v1/posts/*/comments/**").permitAll()
-            .requestMatchers(HttpMethod.POST, "/api/v1/posts/*/comments/**").permitAll()
+            .requestMatchers(HttpMethod.DELETE, "/api/v1/posts/*/comments/*/admin")
+            .hasRole("ADMIN")
+            .requestMatchers(HttpMethod.GET, "/api/v1/posts/*/comments/**")
+            .permitAll()
+            .requestMatchers(HttpMethod.POST, "/api/v1/posts/*/comments/**")
+            .permitAll()
     }
 
     private fun authorizeImages(
-        authorize: org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry,
+        authorize: AuthRegistry,
     ) {
         authorize.requestMatchers("/api/images/**").hasRole("ADMIN")
     }
 
     @Bean
     fun corsConfigurationSource(): CorsConfigurationSource {
-        val config = CorsConfiguration().apply {
-            allowedOrigins = corsProperties.allowedOrigins.split(",").map { it.trim() }.filter { it.isNotBlank() }
-            allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "OPTIONS")
-            allowedHeaders = listOf("Content-Type", "Authorization", "X-Requested-With")
-            allowCredentials = true
-            maxAge = CORS_MAX_AGE_SECONDS
-        }
+        val config =
+            CorsConfiguration().apply {
+                allowedOrigins =
+                    corsProperties.allowedOrigins
+                        .split(",")
+                        .map { it.trim() }
+                        .filter { it.isNotBlank() }
+                allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                allowedHeaders = listOf("Content-Type", "Authorization", "X-Requested-With")
+                allowCredentials = true
+                maxAge = CORS_MAX_AGE_SECONDS
+            }
         return UrlBasedCorsConfigurationSource().apply {
             registerCorsConfiguration("/**", config)
         }

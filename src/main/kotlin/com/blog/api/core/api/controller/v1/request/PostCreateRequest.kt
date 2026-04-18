@@ -14,16 +14,15 @@ data class PostCreateRequest(
     @field:Size(max = 50000)
     val content: String,
     val thumbnailUrl: String? = null,
-    val isDraft: Boolean = false
+    val isDraft: Boolean = false,
 ) {
-    fun toCommand(userId: Long): PostCreate {
-        return PostCreate(
+    fun toCommand(userId: Long): PostCreate =
+        PostCreate(
             userId = userId,
             categoryId = categoryId,
             title = title,
             content = content,
             thumbnailUrl = thumbnailUrl,
-            status = if (isDraft) PostStatus.DRAFT else PostStatus.PUBLISHED
+            status = if (isDraft) PostStatus.DRAFT else PostStatus.PUBLISHED,
         )
-    }
 }

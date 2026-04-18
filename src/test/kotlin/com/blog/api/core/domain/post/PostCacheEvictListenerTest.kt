@@ -8,7 +8,6 @@ import org.springframework.cache.Cache
 import org.springframework.cache.CacheManager
 
 class PostCacheEvictListenerTest {
-
     @Test
     fun `이벤트 수신 시 post-html 캐시를 무효화한다`() {
         val cacheManager = mock(CacheManager::class.java)

@@ -11,8 +11,9 @@ data class UserLoginRequest(
     @field:NotBlank
     val password: String,
 ) {
-    fun toCommand() = UserLogin(
-        email = email,
-        password = password,
-    )
+    fun toCommand() =
+        UserLogin(
+            email = email,
+            password = password,
+        )
 }

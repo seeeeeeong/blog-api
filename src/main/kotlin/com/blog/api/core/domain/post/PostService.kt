@@ -18,23 +18,27 @@ class PostService(
     private val categoryRepository: CategoryRepository,
     private val eventPublisher: ApplicationEventPublisher,
 ) {
-
     @Transactional
     fun createPost(newPost: PostCreate): Post {
         requireCategoryExists(newPost.categoryId)
-        val entity = PostEntity(
-            userId = newPost.userId,
-            categoryId = newPost.categoryId,
-            title = newPost.title,
-            content = newPost.content,
-            thumbnailUrl = newPost.thumbnailUrl,
-            status = newPost.status,
-        )
+        val entity =
+            PostEntity(
+                userId = newPost.userId,
+                categoryId = newPost.categoryId,
+                title = newPost.title,
+                content = newPost.content,
+                thumbnailUrl = newPost.thumbnailUrl,
+                status = newPost.status,
+            )
         return postRepository.save(entity).toPost()
     }
 
     @Transactional
-    fun updatePost(postId: Long, userId: Long, postUpdate: PostUpdate): Post {
+    fun updatePost(
+        postId: Long,
+        userId: Long,
+        postUpdate: PostUpdate,
+    ): Post {
         requireCategoryExists(postUpdate.categoryId)
         val post = getPostById(postId)
         requireOwner(post, userId)
@@ -53,7 +57,10 @@ class PostService(
     }
 
     @Transactional
-    fun deletePost(postId: Long, userId: Long) {
+    fun deletePost(
+        postId: Long,
+        userId: Long,
+    ) {
         val post = getPostById(postId)
         requireOwner(post, userId)
         post.softDelete()
@@ -69,7 +76,10 @@ class PostService(
     }
 
     @Transactional
-    fun restorePost(postId: Long, userId: Long): Post {
+    fun restorePost(
+        postId: Long,
+        userId: Long,
+    ): Post {
         val post = getPostById(postId)
         requireOwner(post, userId)
         if (post.status != PostStatus.DELETED) throw CoreException(ErrorType.INVALID_INPUT)
@@ -85,7 +95,10 @@ class PostService(
     private fun getPostById(postId: Long): PostEntity =
         postRepository.findByIdOrNull(postId) ?: throw CoreException(ErrorType.POST_NOT_FOUND)
 
-    private fun requireOwner(post: PostEntity, userId: Long) {
+    private fun requireOwner(
+        post: PostEntity,
+        userId: Long,
+    ) {
         if (post.userId == userId) return
         throw CoreException(ErrorType.FORBIDDEN)
     }

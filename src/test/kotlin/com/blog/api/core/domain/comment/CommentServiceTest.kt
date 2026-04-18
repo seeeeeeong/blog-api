@@ -11,19 +11,19 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 
 class CommentServiceTest {
-
     @Test
     fun `댓글 조회 시 contentHtml이 있으면 그대로 반환한다`() {
         val commentRepository = mock(CommentRepository::class.java)
         val service = fixture(commentRepository = commentRepository)
 
-        val comment = CommentEntity(
-            id = 1L,
-            postId = 10L,
-            nickname = "행복한 고양이",
-            content = "hello",
-            contentHtml = "<p>hello</p>",
-        )
+        val comment =
+            CommentEntity(
+                id = 1L,
+                postId = 10L,
+                nickname = "행복한 고양이",
+                content = "hello",
+                contentHtml = "<p>hello</p>",
+            )
         `when`(commentRepository.findByPostId(10L)).thenReturn(listOf(comment))
 
         val result = service.getCommentsByPost(10L)
@@ -37,13 +37,14 @@ class CommentServiceTest {
         val commentRepository = mock(CommentRepository::class.java)
         val service = fixture(commentRepository = commentRepository)
 
-        val comment = CommentEntity(
-            id = 1L,
-            postId = 10L,
-            nickname = "용감한 토끼",
-            content = "plain text",
-            contentHtml = null,
-        )
+        val comment =
+            CommentEntity(
+                id = 1L,
+                postId = 10L,
+                nickname = "용감한 토끼",
+                content = "plain text",
+                contentHtml = null,
+            )
         `when`(commentRepository.findByPostId(10L)).thenReturn(listOf(comment))
 
         val result = service.getCommentsByPost(10L)
@@ -57,12 +58,11 @@ class CommentServiceTest {
         postRepository: PostRepository = mock(PostRepository::class.java),
         postMarkdownConverter: PostMarkdownConverter = mock(PostMarkdownConverter::class.java),
         nicknameGenerator: RandomNicknameGenerator = RandomNicknameGenerator(),
-    ): CommentService {
-        return CommentService(
+    ): CommentService =
+        CommentService(
             commentRepository = commentRepository,
             postRepository = postRepository,
             postMarkdownConverter = postMarkdownConverter,
             nicknameGenerator = nicknameGenerator,
         )
-    }
 }

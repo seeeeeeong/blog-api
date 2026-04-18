@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.RestController
 class ImageController(
     private val imageService: ImageService,
 ) {
-
     @GetMapping("/presigned-url")
     fun getPresignedUrl(
         @Admin userId: Long,

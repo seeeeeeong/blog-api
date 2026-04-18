@@ -12,7 +12,6 @@ import org.springframework.web.method.support.ModelAndViewContainer
 
 @Component
 class AdminArgumentResolver : HandlerMethodArgumentResolver {
-
     override fun supportsParameter(parameter: MethodParameter): Boolean =
         parameter.hasParameterAnnotation(Admin::class.java)
 
@@ -20,10 +19,11 @@ class AdminArgumentResolver : HandlerMethodArgumentResolver {
         parameter: MethodParameter,
         mavContainer: ModelAndViewContainer?,
         webRequest: NativeWebRequest,
-        binderFactory: WebDataBinderFactory?
+        binderFactory: WebDataBinderFactory?,
     ): Long {
-        val authentication = SecurityContextHolder.getContext().authentication
-            ?: throw CoreException(ErrorType.UNAUTHORIZED)
+        val authentication =
+            SecurityContextHolder.getContext().authentication
+                ?: throw CoreException(ErrorType.UNAUTHORIZED)
 
         val hasAdminRole = authentication.authorities.any { it.authority == "ROLE_ADMIN" }
         if (hasAdminRole) Unit else throw CoreException(ErrorType.FORBIDDEN)

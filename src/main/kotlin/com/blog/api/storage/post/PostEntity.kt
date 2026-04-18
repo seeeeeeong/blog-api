@@ -22,23 +22,19 @@ import jakarta.persistence.Table
         Index(name = "idx_post_created_at", columnList = "created_at"),
         Index(name = "idx_post_user_status", columnList = "user_id,status"),
         Index(name = "idx_post_category_status", columnList = "category_id,status"),
-    ]
+    ],
 )
 class PostEntity(
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
-
     val userId: Long,
     categoryId: Long,
     title: String,
     content: String,
     thumbnailUrl: String? = null,
-
     status: PostStatus = PostStatus.PUBLISHED,
 ) : BaseTimeEntity() {
-
     @Column(nullable = false)
     var categoryId: Long = categoryId
         protected set
@@ -65,7 +61,7 @@ class PostEntity(
         title: String,
         content: String,
         thumbnailUrl: String?,
-        status: PostStatus
+        status: PostStatus,
     ) {
         this.categoryId = categoryId
         this.title = title

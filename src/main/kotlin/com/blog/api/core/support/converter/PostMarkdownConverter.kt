@@ -9,16 +9,19 @@ import org.springframework.stereotype.Component
 
 @Component
 class PostMarkdownConverter {
-
     private val extensions = listOf(TablesExtension.create())
 
-    private val parser: Parser = Parser.builder()
-        .extensions(extensions)
-        .build()
+    private val parser: Parser =
+        Parser
+            .builder()
+            .extensions(extensions)
+            .build()
 
-    private val renderer: HtmlRenderer = HtmlRenderer.builder()
-        .extensions(extensions)
-        .build()
+    private val renderer: HtmlRenderer =
+        HtmlRenderer
+            .builder()
+            .extensions(extensions)
+            .build()
 
     fun convertToHtml(markdown: String): String {
         val document = parser.parse(markdown)
@@ -27,16 +30,18 @@ class PostMarkdownConverter {
     }
 
     private fun sanitizeHtml(html: String): String {
-        val safelist = Safelist.relaxed()
-            .addTags("h1", "h2", "h3", "h4", "h5", "h6")
-            .addTags("pre", "code", "span")
-            .addTags("hr", "strong", "b", "em")
-            .addTags("table", "thead", "tbody", "tr", "th", "td")
-            .addAttributes("code", "class")
-            .addAttributes("span", "class")
-            .addAttributes("pre", "class")
-            .addProtocols("a", "href", "http", "https", "mailto")
-            .addProtocols("img", "src", "http", "https")
+        val safelist =
+            Safelist
+                .relaxed()
+                .addTags("h1", "h2", "h3", "h4", "h5", "h6")
+                .addTags("pre", "code", "span")
+                .addTags("hr", "strong", "b", "em")
+                .addTags("table", "thead", "tbody", "tr", "th", "td")
+                .addAttributes("code", "class")
+                .addAttributes("span", "class")
+                .addAttributes("pre", "class")
+                .addProtocols("a", "href", "http", "https", "mailto")
+                .addProtocols("img", "src", "http", "https")
 
         return Jsoup.clean(html, safelist)
     }

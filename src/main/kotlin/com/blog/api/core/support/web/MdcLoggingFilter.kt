@@ -17,7 +17,6 @@ import java.util.UUID
 class MdcLoggingFilter(
     private val blogProperties: BlogProperties,
 ) : OncePerRequestFilter() {
-
     companion object {
         private val log = KotlinLogging.logger {}
         private const val REQUEST_ID_LENGTH = 8
@@ -37,7 +36,9 @@ class MdcLoggingFilter(
         } finally {
             val elapsedMs = (System.nanoTime() - startNs) / NANOS_PER_MILLI
             if (elapsedMs >= blogProperties.slowRequestThresholdMs) {
-                log.warn { "Slow request: method=${request.method}, uri=${request.requestURI}, status=${response.status}, elapsedMs=$elapsedMs" }
+                log.warn {
+                    "Slow request: method=${request.method}, uri=${request.requestURI}, status=${response.status}, elapsedMs=$elapsedMs"
+                }
             }
             MDC.clear()
         }

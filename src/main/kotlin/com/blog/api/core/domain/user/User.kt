@@ -9,5 +9,5 @@ data class User(
     val nickname: String,
     val profileImageUrl: String,
     val role: UserRole,
-    val createdAt: LocalDateTime
+    val createdAt: LocalDateTime,
 )

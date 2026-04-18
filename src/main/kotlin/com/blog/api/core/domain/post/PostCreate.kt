@@ -8,5 +8,5 @@ data class PostCreate(
     val title: String,
     val content: String,
     val thumbnailUrl: String?,
-    val status: PostStatus
+    val status: PostStatus,
 )

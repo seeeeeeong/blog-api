@@ -17,8 +17,9 @@ class UserService(
 ) {
     fun login(userLogin: UserLogin): UserToken {
         val normalizedEmail = normalizeEmail(userLogin.email)
-        val user = userRepository.findByEmail(normalizedEmail)
-            ?: throw CoreException(ErrorType.USER_NOT_FOUND)
+        val user =
+            userRepository.findByEmail(normalizedEmail)
+                ?: throw CoreException(ErrorType.USER_NOT_FOUND)
         validatePassword(userLogin.password, user.password)
         val userId = requireNotNull(user.id) { "UserEntity.id must not be null after persistence" }
         return issueTokens(userId, user.role.name)
@@ -29,14 +30,19 @@ class UserService(
         return issueTokens(claims.userId, claims.roleName)
     }
 
-    private fun issueTokens(userId: Long, roleName: String): UserToken {
-        return UserToken(
+    private fun issueTokens(
+        userId: Long,
+        roleName: String,
+    ): UserToken =
+        UserToken(
             accessToken = jwtProvider.generateAccessToken(userId, roleName),
             refreshToken = jwtProvider.generateRefreshToken(userId, roleName),
         )
-    }
 
-    private fun validatePassword(rawPassword: String, encodedPassword: String) {
+    private fun validatePassword(
+        rawPassword: String,
+        encodedPassword: String,
+    ) {
         val isValid = passwordEncoder.matches(rawPassword, encodedPassword)
         if (isValid) return
         throw CoreException(ErrorType.INVALID_PASSWORD)

@@ -20,30 +20,31 @@ class CommentService(
     private val postMarkdownConverter: PostMarkdownConverter,
     private val nicknameGenerator: RandomNicknameGenerator,
 ) {
-
     @Transactional
     fun createComment(commentCreate: CommentCreate): Comment {
         requirePublishedPost(commentCreate.postId)
 
         val contentHtml = postMarkdownConverter.convertToHtml(commentCreate.content)
-        val saved = commentRepository.save(
-            CommentEntity(
-                postId = commentCreate.postId,
-                nickname = nicknameGenerator.generate(),
-                content = commentCreate.content,
-                contentHtml = contentHtml,
-            ),
-        )
+        val saved =
+            commentRepository.save(
+                CommentEntity(
+                    postId = commentCreate.postId,
+                    nickname = nicknameGenerator.generate(),
+                    content = commentCreate.content,
+                    contentHtml = contentHtml,
+                ),
+            )
 
         return saved.toComment()
     }
 
-    fun getCommentsByPost(postId: Long): List<Comment> {
-        return commentRepository.findByPostId(postId).map { it.toComment() }
-    }
+    fun getCommentsByPost(postId: Long): List<Comment> = commentRepository.findByPostId(postId).map { it.toComment() }
 
     @Transactional
-    fun deleteCommentByAdmin(postId: Long, commentId: Long) {
+    fun deleteCommentByAdmin(
+        postId: Long,
+        commentId: Long,
+    ) {
         val comment = getActiveComment(commentId)
         requireBelongsToPost(comment, postId)
         comment.delete()
@@ -58,7 +59,10 @@ class CommentService(
     private fun getActiveComment(commentId: Long): CommentEntity =
         commentRepository.findById(commentId).orElseThrow { CoreException(ErrorType.COMMENT_NOT_FOUND) }
 
-    private fun requireBelongsToPost(comment: CommentEntity, postId: Long) {
+    private fun requireBelongsToPost(
+        comment: CommentEntity,
+        postId: Long,
+    ) {
         if (comment.postId == postId) return
         throw CoreException(ErrorType.COMMENT_NOT_FOUND)
     }

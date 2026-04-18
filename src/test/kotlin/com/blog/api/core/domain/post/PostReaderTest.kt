@@ -15,7 +15,6 @@ import org.springframework.cache.CacheManager
 import java.util.Optional
 
 class PostReaderTest {
-
     @Test
     fun `published 글을 조회할 수 있다`() {
         val postRepository = mock(PostRepository::class.java)
@@ -47,9 +46,10 @@ class PostReaderTest {
         val post = post(id = 3L, userId = 10L, status = PostStatus.DRAFT)
         `when`(postRepository.findById(3L)).thenReturn(Optional.of(post))
 
-        val exception = assertThrows(CoreException::class.java) {
-            reader.getPost(3L, userId = 99L, isAdmin = true)
-        }
+        val exception =
+            assertThrows(CoreException::class.java) {
+                reader.getPost(3L, userId = 99L, isAdmin = true)
+            }
 
         assertEquals(ErrorType.POST_NOT_FOUND, exception.errorType)
     }
@@ -87,7 +87,11 @@ class PostReaderTest {
         cacheManager = mock(CacheManager::class.java),
     )
 
-    private fun post(id: Long, userId: Long, status: PostStatus) = PostEntity(
+    private fun post(
+        id: Long,
+        userId: Long,
+        status: PostStatus,
+    ) = PostEntity(
         id = id,
         userId = userId,
         categoryId = 1L,

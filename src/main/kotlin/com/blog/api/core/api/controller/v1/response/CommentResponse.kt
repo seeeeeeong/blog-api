@@ -11,14 +11,13 @@ data class CommentResponse(
     val createdAt: LocalDateTime,
 ) {
     companion object {
-        fun of(comment: Comment): CommentResponse {
-            return CommentResponse(
+        fun of(comment: Comment): CommentResponse =
+            CommentResponse(
                 id = comment.id,
                 nickname = comment.nickname,
                 content = comment.content,
                 contentHtml = comment.contentHtml,
                 createdAt = comment.createdAt,
             )
-        }
     }
 }

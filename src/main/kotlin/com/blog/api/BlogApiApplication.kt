@@ -13,5 +13,5 @@ import org.springframework.scheduling.annotation.EnableAsync
 class BlogApiApplication
 
 fun main(args: Array<String>) {
-	runApplication<BlogApiApplication>(*args)
+    runApplication<BlogApiApplication>(*args)
 }

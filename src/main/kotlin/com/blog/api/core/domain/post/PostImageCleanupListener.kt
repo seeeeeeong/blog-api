@@ -14,7 +14,6 @@ class PostImageCleanupListener(
     private val s3Client: S3Client,
     private val s3Properties: S3Properties,
 ) {
-
     companion object {
         private val log = KotlinLogging.logger {}
         private val IMAGE_URL_REGEX = Regex("""!\[.*?]\((https?://\S+?)\)""")
@@ -29,7 +28,8 @@ class PostImageCleanupListener(
         keys.forEach { key ->
             try {
                 s3Client.deleteObject(
-                    DeleteObjectRequest.builder()
+                    DeleteObjectRequest
+                        .builder()
                         .bucket(s3Properties.bucket)
                         .key(key)
                         .build(),
@@ -60,11 +60,17 @@ class PostImageCleanupListener(
         val s3Host = "${s3Properties.bucket}.s3.${s3Properties.region}.amazonaws.com"
 
         return when {
-            cloudfrontDomain.isNotBlank() && url.contains(cloudfrontDomain) ->
+            cloudfrontDomain.isNotBlank() && url.contains(cloudfrontDomain) -> {
                 url.substringAfter("$cloudfrontDomain/")
-            url.contains(s3Host) ->
+            }
+
+            url.contains(s3Host) -> {
                 url.substringAfter("$s3Host/")
-            else -> null
+            }
+
+            else -> {
+                null
+            }
         }
     }
 }

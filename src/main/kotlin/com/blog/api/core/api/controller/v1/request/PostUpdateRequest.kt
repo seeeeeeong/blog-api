@@ -14,15 +14,14 @@ data class PostUpdateRequest(
     @field:Size(max = 50000)
     val content: String,
     val thumbnailUrl: String? = null,
-    val isDraft: Boolean = false
+    val isDraft: Boolean = false,
 ) {
-    fun toCommand(): PostUpdate {
-        return PostUpdate(
+    fun toCommand(): PostUpdate =
+        PostUpdate(
             categoryId = categoryId,
             title = title,
             content = content,
             thumbnailUrl = thumbnailUrl,
-            status = if (isDraft) PostStatus.DRAFT else PostStatus.PUBLISHED
+            status = if (isDraft) PostStatus.DRAFT else PostStatus.PUBLISHED,
         )
-    }
 }

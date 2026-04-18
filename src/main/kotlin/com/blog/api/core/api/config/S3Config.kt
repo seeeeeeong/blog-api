@@ -10,22 +10,21 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner
 
 @Configuration
 class S3Config(
-    private val s3Properties: S3Properties
+    private val s3Properties: S3Properties,
 ) {
-
     @Bean
-    fun s3Client(): S3Client {
-        return S3Client.builder()
+    fun s3Client(): S3Client =
+        S3Client
+            .builder()
             .region(Region.of(s3Properties.region))
             .credentialsProvider(DefaultCredentialsProvider.create())
             .build()
-    }
 
     @Bean
-    fun s3Presigner(): S3Presigner {
-        return S3Presigner.builder()
+    fun s3Presigner(): S3Presigner =
+        S3Presigner
+            .builder()
             .region(Region.of(s3Properties.region))
             .credentialsProvider(DefaultCredentialsProvider.create())
             .build()
-    }
 }

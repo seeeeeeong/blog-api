@@ -13,13 +13,13 @@ data class PostSummaryResponse(
     val thumbnailUrl: String?,
     val status: PostStatus,
     val createdAt: LocalDateTime,
-    val updatedAt: LocalDateTime
+    val updatedAt: LocalDateTime,
 ) {
     companion object {
         private const val EXCERPT_MAX_LENGTH = 140
 
-        fun of(post: Post): PostSummaryResponse {
-            return PostSummaryResponse(
+        fun of(post: Post): PostSummaryResponse =
+            PostSummaryResponse(
                 id = post.id,
                 userId = post.userId,
                 categoryId = post.categoryId,
@@ -28,8 +28,7 @@ data class PostSummaryResponse(
                 thumbnailUrl = post.thumbnailUrl,
                 status = post.status,
                 createdAt = post.createdAt,
-                updatedAt = post.updatedAt
+                updatedAt = post.updatedAt,
             )
-        }
     }
 }

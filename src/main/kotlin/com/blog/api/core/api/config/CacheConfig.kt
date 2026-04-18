@@ -12,29 +12,29 @@ import java.time.Duration
 @Configuration
 @EnableCaching
 class CacheConfig : CachingConfigurer {
-
     companion object {
         const val POST_HTML = "post-html"
         const val CATEGORIES = "categories"
     }
 
     @Bean
-    override fun cacheManager(): CacheManager {
-        return CaffeineCacheManager().apply {
+    override fun cacheManager(): CacheManager =
+        CaffeineCacheManager().apply {
             registerCustomCache(
                 POST_HTML,
-                Caffeine.newBuilder()
+                Caffeine
+                    .newBuilder()
                     .expireAfterWrite(Duration.ofHours(24))
                     .maximumSize(500)
                     .build(),
             )
             registerCustomCache(
                 CATEGORIES,
-                Caffeine.newBuilder()
+                Caffeine
+                    .newBuilder()
                     .expireAfterAccess(Duration.ofMinutes(10))
                     .maximumSize(50)
                     .build(),
             )
         }
-    }
 }

@@ -6,5 +6,5 @@ data class Category(
     val id: Long,
     val name: String,
     val slug: String,
-    val createdAt: LocalDateTime
+    val createdAt: LocalDateTime,
 )

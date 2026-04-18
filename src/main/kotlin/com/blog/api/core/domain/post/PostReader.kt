@@ -23,24 +23,36 @@ class PostReader(
     private val markdownRenderer: MarkdownRenderer,
     private val cacheManager: CacheManager,
 ) {
-
     companion object {
         private val log = KotlinLogging.logger {}
     }
 
-    fun getPost(postId: Long, userId: Long? = null, isAdmin: Boolean = false): Post {
+    fun getPost(
+        postId: Long,
+        userId: Long? = null,
+        isAdmin: Boolean = false,
+    ): Post {
         val post = findPostById(postId)
         return when (post.status) {
-            PostStatus.DELETED -> throw CoreException(ErrorType.POST_NOT_FOUND)
+            PostStatus.DELETED -> {
+                throw CoreException(ErrorType.POST_NOT_FOUND)
+            }
+
             PostStatus.DRAFT -> {
                 val isOwner = isAdmin && userId == post.userId
                 if (isOwner) post else throw CoreException(ErrorType.POST_NOT_FOUND)
             }
-            PostStatus.PUBLISHED -> post
+
+            PostStatus.PUBLISHED -> {
+                post
+            }
         }
     }
 
-    fun getPostForAdmin(postId: Long, userId: Long): Post {
+    fun getPostForAdmin(
+        postId: Long,
+        userId: Long,
+    ): Post {
         val post = findPostById(postId)
         if (post.status == PostStatus.DELETED) throw CoreException(ErrorType.POST_NOT_FOUND)
         if (post.userId == userId) return post
@@ -50,25 +62,40 @@ class PostReader(
     fun getAllPosts(pageable: Pageable): Slice<Post> =
         postRepository.findByStatus(PostStatus.PUBLISHED, pageable).map { it.toPost() }
 
-    fun getPostsByCategory(categoryId: Long, pageable: Pageable): Slice<Post> =
+    fun getPostsByCategory(
+        categoryId: Long,
+        pageable: Pageable,
+    ): Slice<Post> =
         postRepository.findByCategoryIdAndStatus(categoryId, PostStatus.PUBLISHED, pageable).map { it.toPost() }
 
-    fun getDraftPosts(userId: Long, pageable: Pageable): Slice<Post> =
-        postRepository.findByUserIdAndStatus(userId, PostStatus.DRAFT, pageable).map { it.toPost() }
+    fun getDraftPosts(
+        userId: Long,
+        pageable: Pageable,
+    ): Slice<Post> = postRepository.findByUserIdAndStatus(userId, PostStatus.DRAFT, pageable).map { it.toPost() }
 
-    fun searchPosts(query: String, categoryId: Long?, pageable: Pageable): Page<Post> {
+    fun searchPosts(
+        query: String,
+        categoryId: Long?,
+        pageable: Pageable,
+    ): Page<Post> {
         if (query.isBlank()) return Page.empty(pageable)
         return postRepository.searchByKeyword(query, categoryId, pageable).map { it.toPost() }
     }
 
-    fun renderHtml(postId: Long, content: String): String {
-        val cache = cacheManager.getCache(CacheConfig.POST_HTML)
-            ?: return markdownRenderer.renderOrEscape(content, postId)
+    fun renderHtml(
+        postId: Long,
+        content: String,
+    ): String {
+        val cache =
+            cacheManager.getCache(CacheConfig.POST_HTML)
+                ?: return markdownRenderer.renderOrEscape(content, postId)
 
         return try {
             cache.get(postId, String::class.java) ?: run {
                 val html = markdownRenderer.renderOrEscape(content, postId)
-                try { cache.put(postId, html) } catch (e: Exception) {
+                try {
+                    cache.put(postId, html)
+                } catch (e: Exception) {
                     log.warn(e) { "Cache write failed: postId=$postId" }
                 }
                 html

@@ -16,7 +16,6 @@ import org.springframework.context.ApplicationEventPublisher
 import java.util.Optional
 
 class PostServiceTest {
-
     @Test
     fun `updatePost 시 PostCacheEvictEvent를 발행한다`() {
         val postRepository = mock(PostRepository::class.java)
@@ -25,13 +24,14 @@ class PostServiceTest {
         val post = post(id = 1L, userId = 10L, status = PostStatus.PUBLISHED)
         `when`(postRepository.findById(1L)).thenReturn(Optional.of(post))
 
-        val postUpdate = PostUpdate(
-            categoryId = 1L,
-            title = "updated",
-            content = "updated content",
-            thumbnailUrl = null,
-            status = PostStatus.PUBLISHED,
-        )
+        val postUpdate =
+            PostUpdate(
+                categoryId = 1L,
+                title = "updated",
+                content = "updated content",
+                thumbnailUrl = null,
+                status = PostStatus.PUBLISHED,
+            )
         service.updatePost(1L, 10L, postUpdate)
 
         verify(eventPublisher).publishEvent(PostCacheEvictEvent(1L))
@@ -58,9 +58,10 @@ class PostServiceTest {
         `when`(postRepository.findById(1L)).thenReturn(Optional.of(post))
 
         val postUpdate = PostUpdate(1L, "title", "content", null, PostStatus.PUBLISHED)
-        val exception = assertThrows(CoreException::class.java) {
-            service.updatePost(1L, 99L, postUpdate)
-        }
+        val exception =
+            assertThrows(CoreException::class.java) {
+                service.updatePost(1L, 99L, postUpdate)
+            }
 
         assertEquals(ErrorType.FORBIDDEN, exception.errorType)
     }
@@ -78,7 +79,11 @@ class PostServiceTest {
         )
     }
 
-    private fun post(id: Long, userId: Long, status: PostStatus) = PostEntity(
+    private fun post(
+        id: Long,
+        userId: Long,
+        status: PostStatus,
+    ) = PostEntity(
         id = id,
         userId = userId,
         categoryId = 1L,

@@ -11,7 +11,6 @@ import org.springframework.transaction.event.TransactionalEventListener
 class PostCacheEvictListener(
     private val cacheManager: CacheManager,
 ) {
-
     companion object {
         private val log = KotlinLogging.logger {}
     }

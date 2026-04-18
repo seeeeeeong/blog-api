@@ -7,9 +7,10 @@ data class UserTokenResponse(
     val refreshToken: String,
 ) {
     companion object {
-        fun of(userToken: UserToken) = UserTokenResponse(
-            accessToken = userToken.accessToken,
-            refreshToken = userToken.refreshToken,
-        )
+        fun of(userToken: UserToken) =
+            UserTokenResponse(
+                accessToken = userToken.accessToken,
+                refreshToken = userToken.refreshToken,
+            )
     }
 }

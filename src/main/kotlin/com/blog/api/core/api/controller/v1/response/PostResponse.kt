@@ -18,8 +18,12 @@ data class PostResponse(
     val updatedAt: LocalDateTime,
 ) {
     companion object {
-        fun of(post: Post, contentHtml: String, comments: List<CommentResponse> = emptyList()): PostResponse {
-            return PostResponse(
+        fun of(
+            post: Post,
+            contentHtml: String,
+            comments: List<CommentResponse> = emptyList(),
+        ): PostResponse =
+            PostResponse(
                 id = post.id,
                 userId = post.userId,
                 categoryId = post.categoryId,
@@ -32,6 +36,5 @@ data class PostResponse(
                 createdAt = post.createdAt,
                 updatedAt = post.updatedAt,
             )
-        }
     }
 }

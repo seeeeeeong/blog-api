@@ -11,15 +11,12 @@ import jakarta.persistence.Table
 @Entity
 @Table(name = "categories")
 class CategoryEntity(
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
-
     name: String,
     slug: String,
 ) : BaseTimeEntity() {
-
     @Column(nullable = false, unique = true, length = 50)
     var name: String = name
         protected set

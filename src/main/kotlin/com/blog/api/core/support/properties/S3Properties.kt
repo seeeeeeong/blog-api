@@ -7,5 +7,5 @@ data class S3Properties(
     val bucket: String,
     val region: String,
     val cloudfrontDomain: String = "",
-    val defaultFolder: String = "blog"
+    val defaultFolder: String = "blog",
 )

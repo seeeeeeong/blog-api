@@ -12,8 +12,6 @@ import org.springframework.transaction.annotation.Transactional
 class CategoryService(
     private val categoryRepository: CategoryRepository,
 ) {
-
     @Cacheable(CacheConfig.CATEGORIES, sync = true)
-    fun getAllCategories(): List<Category> =
-        categoryRepository.findAll().map { it.toCategory() }
+    fun getAllCategories(): List<Category> = categoryRepository.findAll().map { it.toCategory() }
 }

@@ -18,7 +18,6 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 @RestControllerAdvice
 class ApiControllerAdvice {
-
     companion object {
         private val log = KotlinLogging.logger {}
     }
@@ -48,7 +47,10 @@ class ApiControllerAdvice {
     }
 
     @ExceptionHandler(Exception::class)
-    fun handleException(e: Exception, request: HttpServletRequest): ResponseEntity<ApiResponse<Any>> {
+    fun handleException(
+        e: Exception,
+        request: HttpServletRequest,
+    ): ResponseEntity<ApiResponse<Any>> {
         log.error(e) { "Unexpected exception occurred: ${request.method} ${request.requestURI}" }
         val debugMessage = "${e.javaClass.simpleName}: ${e.message}"
         return ResponseEntity(ApiResponse.error(ErrorType.DEFAULT_ERROR, debugMessage), ErrorType.DEFAULT_ERROR.status)

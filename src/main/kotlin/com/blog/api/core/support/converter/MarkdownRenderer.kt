@@ -8,12 +8,14 @@ import org.springframework.web.util.HtmlUtils
 class MarkdownRenderer(
     private val postMarkdownConverter: PostMarkdownConverter,
 ) {
-
     companion object {
         private val log = KotlinLogging.logger {}
     }
 
-    fun renderOrEscape(content: String, contextId: Long? = null): String =
+    fun renderOrEscape(
+        content: String,
+        contextId: Long? = null,
+    ): String =
         try {
             postMarkdownConverter.convertToHtml(content)
         } catch (e: Exception) {

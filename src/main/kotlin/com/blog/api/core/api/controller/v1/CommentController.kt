@@ -21,7 +21,6 @@ import org.springframework.web.bind.annotation.RestController
 class CommentController(
     private val commentService: CommentService,
 ) {
-
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun createComment(

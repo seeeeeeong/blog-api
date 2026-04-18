@@ -17,7 +17,6 @@ import javax.crypto.SecretKey
 class JwtProvider(
     private val jwtProperties: JwtProperties,
 ) {
-
     private val secretKey: SecretKey = Keys.hmacShaKeyFor(jwtProperties.secret.toByteArray(Charsets.UTF_8))
 
     companion object {
@@ -27,13 +26,19 @@ class JwtProvider(
         private const val TOKEN_TYPE_USER_REFRESH = "USER_REFRESH"
     }
 
-    fun generateAccessToken(userId: Long, role: String): String =
+    fun generateAccessToken(
+        userId: Long,
+        role: String,
+    ): String =
         generateToken(userId.toString(), jwtProperties.accessExpiration) {
             it.claim(ROLE_CLAIM, role)
             it.claim(TOKEN_TYPE_CLAIM, TOKEN_TYPE_USER_ACCESS)
         }
 
-    fun generateRefreshToken(userId: Long, role: String): String =
+    fun generateRefreshToken(
+        userId: Long,
+        role: String,
+    ): String =
         generateToken(userId.toString(), jwtProperties.refreshExpiration) {
             it.claim(ROLE_CLAIM, role)
             it.claim(TOKEN_TYPE_CLAIM, TOKEN_TYPE_USER_REFRESH)
@@ -60,18 +65,25 @@ class JwtProvider(
         )
     }
 
-    fun validateUserAccessToken(token: String): Boolean = runCatching {
-        val claims = parseClaims(token)
-        claims.getOrNull(TOKEN_TYPE_CLAIM) == TOKEN_TYPE_USER_ACCESS
-    }.getOrDefault(false)
+    fun validateUserAccessToken(token: String): Boolean =
+        runCatching {
+            val claims = parseClaims(token)
+            claims.getOrNull(TOKEN_TYPE_CLAIM) == TOKEN_TYPE_USER_ACCESS
+        }.getOrDefault(false)
 
-    private fun generateToken(subject: String, expirationMillis: Long, claims: (JwtBuilder) -> Unit): String {
+    private fun generateToken(
+        subject: String,
+        expirationMillis: Long,
+        claims: (JwtBuilder) -> Unit,
+    ): String {
         val now = Instant.now()
-        val builder = Jwts.builder()
-            .subject(subject)
-            .issuedAt(Date.from(now))
-            .expiration(Date.from(now.plusMillis(expirationMillis)))
-            .signWith(secretKey)
+        val builder =
+            Jwts
+                .builder()
+                .subject(subject)
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plusMillis(expirationMillis)))
+                .signWith(secretKey)
 
         claims(builder)
         return builder.compact()
@@ -79,7 +91,8 @@ class JwtProvider(
 
     private fun parseClaims(token: String): Claims =
         try {
-            Jwts.parser()
+            Jwts
+                .parser()
                 .verifyWith(secretKey)
                 .build()
                 .parseSignedClaims(token)
@@ -90,13 +103,17 @@ class JwtProvider(
             throw CoreException(ErrorType.INVALID_TOKEN)
         }
 
-    private fun Claims.getOrNull(key: String): String? = try {
-        get(key, String::class.java)
-    } catch (_: Exception) {
-        null
-    }
+    private fun Claims.getOrNull(key: String): String? =
+        try {
+            get(key, String::class.java)
+        } catch (_: Exception) {
+            null
+        }
 
-    private fun requireTokenType(claims: Claims, expectedTokenType: String) {
+    private fun requireTokenType(
+        claims: Claims,
+        expectedTokenType: String,
+    ) {
         if (claims.getOrNull(TOKEN_TYPE_CLAIM) != expectedTokenType) {
             throw CoreException(ErrorType.INVALID_TOKEN)
         }

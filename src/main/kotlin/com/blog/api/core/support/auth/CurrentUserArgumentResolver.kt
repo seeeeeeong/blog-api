@@ -11,7 +11,6 @@ import org.springframework.web.method.support.ModelAndViewContainer
 
 @Component
 class CurrentUserArgumentResolver : HandlerMethodArgumentResolver {
-
     override fun supportsParameter(parameter: MethodParameter): Boolean =
         parameter.hasParameterAnnotation(ResolveCurrentUser::class.java)
 
@@ -21,15 +20,17 @@ class CurrentUserArgumentResolver : HandlerMethodArgumentResolver {
         webRequest: NativeWebRequest,
         binderFactory: WebDataBinderFactory?,
     ): CurrentUser {
-        val authentication = SecurityContextHolder.getContext().authentication
-            ?: return CurrentUser(userId = null, role = null)
+        val authentication =
+            SecurityContextHolder.getContext().authentication
+                ?: return CurrentUser(userId = null, role = null)
 
         val userId = authentication.principal as? Long
-        val role = if (authentication.authorities.any { it.authority == "ROLE_ADMIN" }) {
-            UserRole.ADMIN
-        } else {
-            UserRole.USER
-        }
+        val role =
+            if (authentication.authorities.any { it.authority == "ROLE_ADMIN" }) {
+                UserRole.ADMIN
+            } else {
+                UserRole.USER
+            }
 
         return CurrentUser(userId = userId, role = role)
     }

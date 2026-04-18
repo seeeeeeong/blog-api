@@ -12,5 +12,5 @@ data class Post(
     val thumbnailUrl: String?,
     val status: PostStatus,
     val createdAt: LocalDateTime,
-    val updatedAt: LocalDateTime
+    val updatedAt: LocalDateTime,
 )

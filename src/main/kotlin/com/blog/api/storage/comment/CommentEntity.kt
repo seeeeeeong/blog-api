@@ -21,25 +21,18 @@ import org.hibernate.annotations.SQLRestriction
 @SQLDelete(sql = "UPDATE comments SET is_deleted = true WHERE id = ?")
 @SQLRestriction("is_deleted = false")
 class CommentEntity(
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
-
     @Column(name = "post_id", nullable = false)
     val postId: Long,
-
     @Column(nullable = false, length = 50)
     val nickname: String,
-
     content: String,
     contentHtml: String? = null,
-
     @Column(name = "is_deleted", nullable = false)
     private var deleted: Boolean = false,
-
 ) : BaseTimeEntity() {
-
     @Column(nullable = false, columnDefinition = "TEXT")
     var content: String = content
         protected set

@@ -11,7 +11,6 @@ class WebConfig(
     private val adminArgumentResolver: AdminArgumentResolver,
     private val currentUserArgumentResolver: CurrentUserArgumentResolver,
 ) : WebMvcConfigurer {
-
     override fun addArgumentResolvers(resolvers: MutableList<HandlerMethodArgumentResolver>) {
         resolvers.add(adminArgumentResolver)
         resolvers.add(currentUserArgumentResolver)

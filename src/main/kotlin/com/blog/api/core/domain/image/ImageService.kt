@@ -24,24 +24,30 @@ class ImageService(
         private const val ROOT_FOLDER_PREFIX = "admin"
     }
 
-    fun generatePresignedUrl(adminUserId: Long, contentType: String, folder: String? = null): ImagePresignedUrl {
+    fun generatePresignedUrl(
+        adminUserId: Long,
+        contentType: String,
+        folder: String? = null,
+    ): ImagePresignedUrl {
         val normalizedContentType = normalizeContentType(contentType)
         validateContentType(normalizedContentType)
         val targetFolder = resolveFolder(folder)
         val key = generateKey(adminUserId, targetFolder, normalizedContentType)
 
-        val presignedUrl = s3Presigner.presignPutObject(
-            PutObjectPresignRequest.builder()
-                .signatureDuration(Duration.ofSeconds(imagePresignedProperties.ttlSeconds))
-                .putObjectRequest(
-                    PutObjectRequest.builder()
-                        .bucket(s3Properties.bucket)
-                        .key(key)
-                        .contentType(normalizedContentType)
-                        .build()
-                )
-                .build()
-        )
+        val presignedUrl =
+            s3Presigner.presignPutObject(
+                PutObjectPresignRequest
+                    .builder()
+                    .signatureDuration(Duration.ofSeconds(imagePresignedProperties.ttlSeconds))
+                    .putObjectRequest(
+                        PutObjectRequest
+                            .builder()
+                            .bucket(s3Properties.bucket)
+                            .key(key)
+                            .contentType(normalizedContentType)
+                            .build(),
+                    ).build(),
+            )
 
         return ImagePresignedUrl(
             uploadUrl = presignedUrl.url().toString(),
@@ -51,18 +57,26 @@ class ImageService(
         )
     }
 
-    fun deleteImage(adminUserId: Long, key: String) {
+    fun deleteImage(
+        adminUserId: Long,
+        key: String,
+    ) {
         val normalizedKey = key.trim()
         requireOwnership(adminUserId, normalizedKey)
         s3Client.deleteObject(
-            DeleteObjectRequest.builder()
+            DeleteObjectRequest
+                .builder()
                 .bucket(s3Properties.bucket)
                 .key(normalizedKey)
-                .build()
+                .build(),
         )
     }
 
-    private fun generateKey(adminUserId: Long, folder: String, contentType: String): String {
+    private fun generateKey(
+        adminUserId: Long,
+        folder: String,
+        contentType: String,
+    ): String {
         val extension = contentType.substringAfter("/")
         return "$ROOT_FOLDER_PREFIX/$adminUserId/$folder/${UUID.randomUUID()}.$extension"
     }
@@ -82,21 +96,30 @@ class ImageService(
         if (contentType in imagePresignedProperties.allowedContentTypes) return
         throw CoreException(
             errorType = ErrorType.INVALID_INPUT,
-            data = mapOf(
-                "field" to "contentType",
-                "value" to contentType,
-                "allowedContentTypes" to imagePresignedProperties.allowedContentTypes,
-            ),
+            data =
+                mapOf(
+                    "field" to "contentType",
+                    "value" to contentType,
+                    "allowedContentTypes" to imagePresignedProperties.allowedContentTypes,
+                ),
         )
     }
 
     private fun resolveFolder(folder: String?): String {
-        val candidate = folder?.trim()?.lowercase().orEmpty().ifBlank { s3Properties.defaultFolder.lowercase() }
+        val candidate =
+            folder
+                ?.trim()
+                ?.lowercase()
+                .orEmpty()
+                .ifBlank { s3Properties.defaultFolder.lowercase() }
         if (candidate in imagePresignedProperties.allowedFolders) return candidate
         throw CoreException(ErrorType.INVALID_INPUT)
     }
 
-    private fun requireOwnership(adminUserId: Long, key: String) {
+    private fun requireOwnership(
+        adminUserId: Long,
+        key: String,
+    ) {
         if (key.startsWith("$ROOT_FOLDER_PREFIX/$adminUserId/")) return
         throw CoreException(ErrorType.FORBIDDEN)
     }

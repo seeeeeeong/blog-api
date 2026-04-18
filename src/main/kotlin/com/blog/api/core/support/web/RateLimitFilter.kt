@@ -14,14 +14,17 @@ import java.util.concurrent.atomic.AtomicInteger
 
 @Component
 class RateLimitFilter : OncePerRequestFilter() {
+    private val loginLimiter: LoadingCache<String, AtomicInteger> =
+        Caffeine
+            .newBuilder()
+            .expireAfterWrite(Duration.ofMinutes(1))
+            .build { AtomicInteger(0) }
 
-    private val loginLimiter: LoadingCache<String, AtomicInteger> = Caffeine.newBuilder()
-        .expireAfterWrite(Duration.ofMinutes(1))
-        .build { AtomicInteger(0) }
-
-    private val commentLimiter: LoadingCache<String, AtomicInteger> = Caffeine.newBuilder()
-        .expireAfterWrite(Duration.ofMinutes(1))
-        .build { AtomicInteger(0) }
+    private val commentLimiter: LoadingCache<String, AtomicInteger> =
+        Caffeine
+            .newBuilder()
+            .expireAfterWrite(Duration.ofMinutes(1))
+            .build { AtomicInteger(0) }
 
     companion object {
         private const val LOGIN_MAX_PER_MINUTE = 10
@@ -42,11 +45,12 @@ class RateLimitFilter : OncePerRequestFilter() {
         val clientIp = HttpServletRequestUtils.resolveClientIp(request)
         val path = request.requestURI
 
-        val exceeded = when {
-            isLoginPath(path) -> loginLimiter[clientIp].incrementAndGet() > LOGIN_MAX_PER_MINUTE
-            isCommentPath(path) -> commentLimiter[clientIp].incrementAndGet() > COMMENT_MAX_PER_MINUTE
-            else -> false
-        }
+        val exceeded =
+            when {
+                isLoginPath(path) -> loginLimiter[clientIp].incrementAndGet() > LOGIN_MAX_PER_MINUTE
+                isCommentPath(path) -> commentLimiter[clientIp].incrementAndGet() > COMMENT_MAX_PER_MINUTE
+                else -> false
+            }
 
         if (exceeded) {
             response.status = HttpStatus.TOO_MANY_REQUESTS.value()
@@ -62,6 +66,5 @@ class RateLimitFilter : OncePerRequestFilter() {
 
     private fun isLoginPath(path: String): Boolean = path == "/api/v1/users/login"
 
-    private fun isCommentPath(path: String): Boolean =
-        path.matches(Regex("^/api/v1/posts/\\d+/comments$"))
+    private fun isCommentPath(path: String): Boolean = path.matches(Regex("^/api/v1/posts/\\d+/comments$"))
 }

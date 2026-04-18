@@ -38,7 +38,6 @@ class PostController(
     private val postReader: PostReader,
     private val commentService: CommentService,
 ) {
-
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun createPost(

@@ -10,12 +10,12 @@ import org.testcontainers.junit.jupiter.Testcontainers
 @Testcontainers
 @SpringBootTest
 abstract class IntegrationTestSupport {
-
     companion object {
         @Container
         @JvmStatic
-        val postgres = PostgreSQLContainer("postgres:16-alpine")
-            .withDatabaseName("blog_test")
+        val postgres =
+            PostgreSQLContainer("postgres:16-alpine")
+                .withDatabaseName("blog_test")
 
         @DynamicPropertySource
         @JvmStatic

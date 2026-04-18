@@ -9,13 +9,12 @@ data class ImagePresignedUrlResponse(
     val expiresInSeconds: Long,
 ) {
     companion object {
-        fun of(presignedUrl: ImagePresignedUrl): ImagePresignedUrlResponse {
-            return ImagePresignedUrlResponse(
+        fun of(presignedUrl: ImagePresignedUrl): ImagePresignedUrlResponse =
+            ImagePresignedUrlResponse(
                 uploadUrl = presignedUrl.uploadUrl,
                 fileUrl = presignedUrl.fileUrl,
                 key = presignedUrl.key,
                 expiresInSeconds = presignedUrl.expiresInSeconds,
             )
-        }
     }
 }
