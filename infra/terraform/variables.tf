@@ -75,6 +75,24 @@ variable "ssm_parameter_prefix" {
   default     = "/blog/prod"
 }
 
+variable "blog_ai_instance_type" {
+  description = "blog-ai EC2 instance type"
+  type        = string
+  default     = "t4g.small"
+}
+
+variable "blog_ai_github_repo" {
+  description = "blog-ai GitHub repo (owner/repo)"
+  type        = string
+  default     = "seeeeeeong/blog-ai"
+}
+
+variable "blog_ai_ssm_parameter_prefix" {
+  description = "SSM prefix for blog-ai config"
+  type        = string
+  default     = "/blog-ai/prod"
+}
+
 # ── Monitoring ───────────────────────────────
 
 variable "monitoring_alert_email" {

@@ -88,6 +88,33 @@ output "ssm_session_command" {
   value       = "aws ssm start-session --target ${aws_instance.main.id} --region ${var.aws_region}"
 }
 
+# ── blog-ai ──────────────────────────────────
+
+output "blog_ai_instance_id" {
+  description = "blog-ai EC2 instance ID"
+  value       = aws_instance.blog_ai.id
+}
+
+output "blog_ai_private_ip" {
+  description = "blog-ai private IP (blog-api reaches it here)"
+  value       = aws_instance.blog_ai.private_ip
+}
+
+output "blog_ai_ecr_registry_url" {
+  description = "blog-ai ECR URL"
+  value       = aws_ecr_repository.blog_ai.repository_url
+}
+
+output "blog_ai_github_actions_role_arn" {
+  description = "blog-ai GitHub Actions OIDC role ARN"
+  value       = aws_iam_role.blog_ai_github_actions.arn
+}
+
+output "blog_ai_ssm_session_command" {
+  description = "SSM Session Manager connect command for blog-ai"
+  value       = "aws ssm start-session --target ${aws_instance.blog_ai.id} --region ${var.aws_region}"
+}
+
 # ── Monitoring ───────────────────────────────
 
 output "monitoring_sns_topic_arn" {

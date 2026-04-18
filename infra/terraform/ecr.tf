@@ -28,3 +28,17 @@ resource "aws_ecr_lifecycle_policy" "blog_api" {
   repository = aws_ecr_repository.blog_api.name
   policy     = local.ecr_lifecycle_policy
 }
+
+resource "aws_ecr_repository" "blog_ai" {
+  name                 = "blog-ai"
+  image_tag_mutability = "IMMUTABLE"
+
+  image_scanning_configuration { scan_on_push = true }
+
+  tags = { Name = "blog-ai-ecr" }
+}
+
+resource "aws_ecr_lifecycle_policy" "blog_ai" {
+  repository = aws_ecr_repository.blog_ai.name
+  policy     = local.ecr_lifecycle_policy
+}
