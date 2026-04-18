@@ -52,7 +52,7 @@ write_env() {
 
 # --- Setup ---
 echo "=== Deploy: $SERVICE ($NEW_IMAGE) ==="
-mkdir -p "$RUNTIME_DIR/bin" "$ENV_DIR" "$RUNTIME_DIR/data/caddy" "$RUNTIME_DIR/config/caddy"
+mkdir -p "$RUNTIME_DIR/bin" "$ENV_DIR" "$RUNTIME_DIR/data/caddy" "$RUNTIME_DIR/data/alloy" "$RUNTIME_DIR/config/caddy"
 
 REGISTRY="${NEW_IMAGE%%/*}"
 aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$REGISTRY"
@@ -86,11 +86,14 @@ EOF
 write_env "$COMPOSE_ENV" <<EOF
 BLOG_API_IMAGE=$NEW_IMAGE
 CLOUDFRONT_SECRET=$CF_SECRET
+PROMETHEUS_REMOTE_WRITE_URL=$(ssm_get_or "$BLOG_SSM/PROMETHEUS_REMOTE_WRITE_URL" "")
+PROMETHEUS_USERNAME=$(ssm_get_or "$BLOG_SSM/PROMETHEUS_USERNAME" "")
+PROMETHEUS_PASSWORD=$(ssm_get_or "$BLOG_SSM/PROMETHEUS_PASSWORD" "")
 EOF
 
 compose up -d --no-deps --force-recreate blog-api
 wait_healthy blog-api || { fail_diagnostics blog-api; exit 1; }
 
-compose up -d caddy
+compose up -d caddy node-exporter alloy
 docker image prune -f &>/dev/null || true
 echo "=== $SERVICE deployed ==="

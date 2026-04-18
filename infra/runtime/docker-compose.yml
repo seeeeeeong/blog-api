@@ -48,7 +48,28 @@ services:
       - "--path.sysfs=/host/sys"
       - "--path.rootfs=/rootfs"
       - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    networks:
+      - services
     mem_limit: 24m
+
+  alloy:
+    image: grafana/alloy:v1.5.1
+    container_name: blog-alloy
+    restart: always
+    environment:
+      - PROMETHEUS_REMOTE_WRITE_URL=${PROMETHEUS_REMOTE_WRITE_URL}
+      - PROMETHEUS_USERNAME=${PROMETHEUS_USERNAME}
+      - PROMETHEUS_PASSWORD=${PROMETHEUS_PASSWORD}
+    volumes:
+      - /opt/services/config.alloy:/etc/alloy/config.alloy:ro
+      - /opt/services/data/alloy:/var/lib/alloy/data
+    command:
+      - run
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    networks:
+      - services
+    mem_limit: 128m
 
 networks:
   services:
