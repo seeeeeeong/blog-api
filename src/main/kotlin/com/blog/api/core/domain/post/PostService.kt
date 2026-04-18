@@ -1,22 +1,30 @@
 package com.blog.api.core.domain.post
 
+import com.blog.api.core.domain.postoutbox.EnqueueOutboxCommand
+import com.blog.api.core.domain.postoutbox.PostOutboxService
 import com.blog.api.core.enum.PostStatus
 import com.blog.api.core.support.error.CoreException
 import com.blog.api.core.support.error.ErrorType
+import com.blog.api.core.support.properties.BlogAiProperties
 import com.blog.api.storage.category.CategoryRepository
 import com.blog.api.storage.post.PostEntity
 import com.blog.api.storage.post.PostRepository
 import com.blog.api.storage.post.toPost
+import com.blog.api.storage.postoutbox.OutboxEventType
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 @Service
 class PostService(
     private val postRepository: PostRepository,
     private val categoryRepository: CategoryRepository,
     private val eventPublisher: ApplicationEventPublisher,
+    private val postOutboxService: PostOutboxService,
+    private val blogAiProperties: BlogAiProperties,
 ) {
     @Transactional
     fun createPost(newPost: PostCreate): Post {
@@ -30,7 +38,9 @@ class PostService(
                 thumbnailUrl = newPost.thumbnailUrl,
                 status = newPost.status,
             )
-        return postRepository.save(entity).toPost()
+        val saved = postRepository.save(entity)
+        enqueueIfPublished(saved)
+        return saved.toPost()
     }
 
     @Transactional
@@ -52,6 +62,7 @@ class PostService(
         )
 
         eventPublisher.publishEvent(PostCacheEvictEvent(postId))
+        enqueueSync(post)
 
         return post.toPost()
     }
@@ -73,6 +84,7 @@ class PostService(
                 content = post.content,
             ),
         )
+        enqueueDelete(post)
     }
 
     @Transactional
@@ -84,7 +96,46 @@ class PostService(
         requireOwner(post, userId)
         if (post.status != PostStatus.DELETED) throw CoreException(ErrorType.INVALID_INPUT)
         post.restore()
+        enqueueIfPublished(post)
         return post.toPost()
+    }
+
+    private fun enqueueIfPublished(post: PostEntity) {
+        if (post.status != PostStatus.PUBLISHED) return
+        enqueueSync(post)
+    }
+
+    private fun enqueueSync(post: PostEntity) {
+        if (post.status != PostStatus.PUBLISHED) {
+            enqueueDelete(post)
+            return
+        }
+        postOutboxService.enqueue(
+            EnqueueOutboxCommand(
+                postId = requireNotNull(post.id),
+                eventType = OutboxEventType.UPSERT,
+                sourceUpdatedAt = OffsetDateTime.now(ZoneOffset.UTC),
+                title = post.title,
+                content = post.content,
+                url = buildPostUrl(post.id),
+                publishedAt = post.createdAt.atOffset(ZoneOffset.UTC),
+            ),
+        )
+    }
+
+    private fun enqueueDelete(post: PostEntity) {
+        postOutboxService.enqueue(
+            EnqueueOutboxCommand(
+                postId = requireNotNull(post.id),
+                eventType = OutboxEventType.DELETE,
+                sourceUpdatedAt = OffsetDateTime.now(ZoneOffset.UTC),
+            ),
+        )
+    }
+
+    private fun buildPostUrl(postId: Long?): String {
+        val base = blogAiProperties.webBaseUrl.trimEnd('/')
+        return "$base/posts/$postId"
     }
 
     private fun requireCategoryExists(categoryId: Long) {

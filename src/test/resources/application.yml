@@ -28,3 +28,8 @@ aws:
 
 cors:
   allowed-origins: http://localhost:5173
+
+blog-ai:
+  base-url: http://localhost:8081
+  internal-key: test-internal-key
+  web-base-url: http://localhost:5173
