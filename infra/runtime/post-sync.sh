@@ -10,8 +10,8 @@ chmod +x /opt/services/bin/deploy-service.sh /opt/services/post-sync.sh 2>/dev/n
 
 [ -f "/opt/services/env/blog-api.env" ] || touch "/opt/services/env/blog-api.env"
 
-# Reload Caddy config if running
-docker exec blog-caddy caddy reload --config /etc/caddy/Caddyfile 2>/dev/null || true
+# Restart Caddy to apply new config (reload silently drops route changes in some cases)
+docker restart blog-caddy 2>/dev/null || true
 
 # Reconcile shared services
 if [ -f /opt/services/compose.env ]; then
