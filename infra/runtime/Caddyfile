@@ -1,11 +1,22 @@
 :80 {
+    @health path /actuator/health /actuator/health/*
+    handle @health {
+        reverse_proxy blog-api:8080
+    }
+
     @actuator path /actuator/*
-    respond @actuator 404
+    handle @actuator {
+        respond 404
+    }
 
     @direct_access {
         not header X-CloudFront-Secret {env.CLOUDFRONT_SECRET}
     }
-    respond @direct_access 403
+    handle @direct_access {
+        respond 403
+    }
 
-    reverse_proxy blog-api:8080
+    handle {
+        reverse_proxy blog-api:8080
+    }
 }
