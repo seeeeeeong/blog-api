@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
+import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -16,7 +17,6 @@ import org.springframework.security.web.servlet.util.matcher.MvcRequestMatcher
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
-import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer
 import org.springframework.web.servlet.handler.HandlerMappingIntrospector
 
 private typealias AuthRegistry =
@@ -59,9 +59,7 @@ class SecurityConfig(
         return http.build()
     }
 
-    private fun authorizeAuth(
-        authorize: AuthRegistry,
-    ) {
+    private fun authorizeAuth(authorize: AuthRegistry) {
         authorize
             .requestMatchers(HttpMethod.OPTIONS, "/**")
             .permitAll()
@@ -105,9 +103,7 @@ class SecurityConfig(
             .permitAll()
     }
 
-    private fun authorizeComments(
-        authorize: AuthRegistry,
-    ) {
+    private fun authorizeComments(authorize: AuthRegistry) {
         authorize
             .requestMatchers(HttpMethod.DELETE, "/api/v1/posts/*/comments/*/admin")
             .hasRole("ADMIN")
@@ -117,9 +113,7 @@ class SecurityConfig(
             .permitAll()
     }
 
-    private fun authorizeImages(
-        authorize: AuthRegistry,
-    ) {
+    private fun authorizeImages(authorize: AuthRegistry) {
         authorize.requestMatchers("/api/images/**").hasRole("ADMIN")
     }
 
