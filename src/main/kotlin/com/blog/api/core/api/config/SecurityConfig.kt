@@ -63,7 +63,7 @@ class SecurityConfig(
         authorize
             .requestMatchers(HttpMethod.OPTIONS, "/**")
             .permitAll()
-            .requestMatchers("/actuator/health/**", "/actuator/info")
+            .requestMatchers("/actuator/health/**", "/actuator/info", "/actuator/prometheus")
             .permitAll()
             .requestMatchers(HttpMethod.POST, "/api/v1/users/login", "/api/v1/users/refresh")
             .permitAll()
