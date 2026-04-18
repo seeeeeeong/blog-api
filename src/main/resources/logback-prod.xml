@@ -55,10 +55,16 @@
         <appender-ref ref="ERROR_FILE"/>
     </appender>
 
+    <appender name="SENTRY" class="io.sentry.logback.SentryAppender">
+        <minimumEventLevel>ERROR</minimumEventLevel>
+        <minimumBreadcrumbLevel>INFO</minimumBreadcrumbLevel>
+    </appender>
+
     <logger name="com.blog.api" level="INFO" additivity="false">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="ASYNC_FILE"/>
         <appender-ref ref="ASYNC_ERROR_FILE"/>
+        <appender-ref ref="SENTRY"/>
     </logger>
 
     <logger name="org.springframework" level="WARN"/>
@@ -68,5 +74,6 @@
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="ASYNC_FILE"/>
         <appender-ref ref="ASYNC_ERROR_FILE"/>
+        <appender-ref ref="SENTRY"/>
     </root>
 </configuration>
