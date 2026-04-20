@@ -53,6 +53,7 @@ class SecurityConfig(
                 authorizePosts(authorize, mvc)
                 authorizeComments(authorize)
                 authorizeImages(authorize)
+                authorizeBackfill(authorize)
                 authorize.anyRequest().authenticated()
             }.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
 
@@ -115,6 +116,10 @@ class SecurityConfig(
 
     private fun authorizeImages(authorize: AuthRegistry) {
         authorize.requestMatchers("/api/images/**").hasRole("ADMIN")
+    }
+
+    private fun authorizeBackfill(authorize: AuthRegistry) {
+        authorize.requestMatchers("/api/v1/admin/backfill/**").hasRole("ADMIN")
     }
 
     @Bean
