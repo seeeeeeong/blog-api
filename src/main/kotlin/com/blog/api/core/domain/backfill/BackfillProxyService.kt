@@ -8,6 +8,7 @@ import org.springframework.web.client.RestClient
 @Service
 class BackfillProxyService(
     private val blogAiRestClient: RestClient,
+    private val blogAiBackfillRestClient: RestClient,
     private val blogAiProperties: BlogAiProperties,
 ) {
     companion object {
@@ -17,7 +18,7 @@ class BackfillProxyService(
     fun backfillContent(batchSize: Int): Int {
         log.info { "Backfill content triggered: batchSize=$batchSize" }
         val result =
-            blogAiRestClient
+            blogAiBackfillRestClient
                 .post()
                 .uri("/api/v1/admin/backfill/content?batchSize=$batchSize")
                 .header("X-Admin-Key", blogAiProperties.internalKey)
@@ -29,7 +30,7 @@ class BackfillProxyService(
     fun backfillEmbedding(): Int {
         log.info { "Backfill embedding triggered" }
         val result =
-            blogAiRestClient
+            blogAiBackfillRestClient
                 .post()
                 .uri("/api/v1/admin/backfill/embedding")
                 .header("X-Admin-Key", blogAiProperties.internalKey)

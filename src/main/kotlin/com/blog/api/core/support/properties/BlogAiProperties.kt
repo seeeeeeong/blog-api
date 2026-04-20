@@ -8,5 +8,6 @@ data class BlogAiProperties(
     val internalKey: String,
     val connectTimeoutMs: Long = 2_000,
     val readTimeoutMs: Long = 5_000,
+    val backfillReadTimeoutMs: Long = 300_000,
     val webBaseUrl: String,
 )

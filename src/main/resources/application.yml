@@ -46,6 +46,7 @@ blog-ai:
   internal-key: ${BLOG_AI_INTERNAL_KEY:dev-internal-key}
   connect-timeout-ms: ${BLOG_AI_CONNECT_TIMEOUT_MS:2000}
   read-timeout-ms: ${BLOG_AI_READ_TIMEOUT_MS:5000}
+  backfill-read-timeout-ms: ${BLOG_AI_BACKFILL_READ_TIMEOUT_MS:300000}
   web-base-url: ${BLOG_WEB_BASE_URL:http://localhost:5173}
   relay:
     interval-ms: ${BLOG_AI_RELAY_INTERVAL_MS:5000}
