@@ -22,18 +22,4 @@ class BlogAiClientConfig {
             .requestFactory(factory)
             .build()
     }
-
-    @Bean
-    fun blogAiBackfillRestClient(properties: BlogAiProperties): RestClient {
-        val factory =
-            SimpleClientHttpRequestFactory().apply {
-                setConnectTimeout(Duration.ofMillis(properties.connectTimeoutMs))
-                setReadTimeout(Duration.ofMillis(properties.backfillReadTimeoutMs))
-            }
-        return RestClient
-            .builder()
-            .baseUrl(properties.baseUrl)
-            .requestFactory(factory)
-            .build()
-    }
 }
