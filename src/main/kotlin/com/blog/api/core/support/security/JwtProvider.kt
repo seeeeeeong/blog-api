@@ -66,10 +66,12 @@ class JwtProvider(
     }
 
     fun validateUserAccessToken(token: String): Boolean =
-        runCatching {
+        try {
             val claims = parseClaims(token)
             claims.getOrNull(TOKEN_TYPE_CLAIM) == TOKEN_TYPE_USER_ACCESS
-        }.getOrDefault(false)
+        } catch (e: CoreException) {
+            false
+        }
 
     private fun generateToken(
         subject: String,

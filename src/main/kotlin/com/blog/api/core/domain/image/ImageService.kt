@@ -106,12 +106,8 @@ class ImageService(
     }
 
     private fun resolveFolder(folder: String?): String {
-        val candidate =
-            folder
-                ?.trim()
-                ?.lowercase()
-                .orEmpty()
-                .ifBlank { s3Properties.defaultFolder.lowercase() }
+        val normalized = folder?.trim().orEmpty().lowercase()
+        val candidate = if (normalized.isNotBlank()) normalized else s3Properties.defaultFolder.lowercase()
         if (candidate in imagePresignedProperties.allowedFolders) return candidate
         throw CoreException(ErrorType.INVALID_INPUT)
     }

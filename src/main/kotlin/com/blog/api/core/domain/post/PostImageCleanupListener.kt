@@ -44,12 +44,12 @@ class PostImageCleanupListener(
     private fun extractS3Keys(event: PostDeletedEvent): List<String> {
         val keys = mutableListOf<String>()
 
-        event.thumbnailUrl?.let { url ->
-            extractKeyFromUrl(url)?.let { keys.add(it) }
-        }
+        val thumbnailKey = event.thumbnailUrl?.let(::extractKeyFromUrl)
+        if (thumbnailKey != null) keys.add(thumbnailKey)
 
         IMAGE_URL_REGEX.findAll(event.content).forEach { match ->
-            extractKeyFromUrl(match.groupValues[1])?.let { keys.add(it) }
+            val key = extractKeyFromUrl(match.groupValues[1]) ?: return@forEach
+            keys.add(key)
         }
 
         return keys.distinct()
