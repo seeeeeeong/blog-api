@@ -1,14 +1,15 @@
 package com.blog.api.core.api.controller.v1.response
 
 import com.blog.api.core.domain.comment.Comment
-import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 data class CommentResponse(
     val id: Long,
     val nickname: String,
     val content: String,
     val contentHtml: String,
-    val createdAt: LocalDateTime,
+    val createdAt: OffsetDateTime,
 ) {
     companion object {
         fun of(comment: Comment): CommentResponse =
@@ -17,7 +18,7 @@ data class CommentResponse(
                 nickname = comment.nickname,
                 content = comment.content,
                 contentHtml = comment.contentHtml,
-                createdAt = comment.createdAt,
+                createdAt = comment.createdAt.atOffset(ZoneOffset.UTC),
             )
     }
 }
