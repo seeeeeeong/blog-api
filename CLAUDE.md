@@ -70,6 +70,60 @@ com.blog.api
 - Keep branching flat with guard clauses (max 2 levels of nesting)
 - Functions must stay under 40 lines
 - Log in English using KotlinLogging
+- Split files by *public coupling*, not by "one type per file." A type lives in its own file when it is part of a **public contract** — Request/Response DTOs (Controller↔Service boundary), domain models, types accepted from or returned to another bounded context, Commands consumed by multiple services, Events (cross-service via Spring's event bus), Hits/Results visible across layers. **Internal implementation data types** of a single feature flow — Snapshots, intermediate aggregates, Commands consumed only by helpers of one service — go in a sibling **`{Feature}Internals.kt`** file next to the owner service/reader in the same package. **Helper services / Spring components** always live in their own `.kt` file even when they're scoped to one flow — never colocate `@Service` / `@Component` classes with data classes in `Internals.kt`, and never put data classes inside the same file as a service class. The aim is "follow one feature in two or three files (use-case service + Internals.kt + helper service if any)," not "one type per file regardless." If a type acquires a caller outside its origin feature, promote it to its own file.
+
+```kotlin
+// Good — service files hold only services; Internals.kt holds only data classes
+// PostService.kt                  → use-case service only
+class PostService(...) { ... }
+
+// PostInternals.kt                → sibling file, data classes only
+internal data class PostUpdateContext(...)        // single-flow scratch
+internal data class PostSearchProjection(...)     // helper aggregate
+
+// Public Request/Response/domain model/Event — still own file
+// PostCreateRequest.kt, PostResponse.kt, Post.kt, PostDeletedEvent.kt
+```
+
+  Prefer `internal` visibility for co-located data types — it documents the single-owner intent and stops cross-package callers from forming. Treat it as a recommendation, not a hard rule: Spring DI (a `public` service cannot accept an `internal` constructor parameter — Kotlin's `EXPOSED_PARAMETER_TYPE`), public method signatures that include the type, Jackson serialization, or test access may legitimately require broader visibility. Drop `internal` when one of those constraints actually bites; don't add it just to satisfy a checklist.
+- Keep `if` conditions plain. Avoid `!`, avoid safe-call chains (`x?.foo() == true`), avoid null comparisons buried in compound conditions. Flatten the value first — with `?: return`, `?: continue`, `takeIf { ... }`, or a named boolean — so the `if` itself reads as a domain concept on a non-nullable receiver. Prefer a positive condition with early return, then handle the failure case after; the happy path reads forward instead of as "not the bad thing." Prefer the positive form of negated extension calls (`isNotBlank()` over `!isNullOrBlank()`, `isNotEmpty()` over `!isEmpty()`).
+
+```kotlin
+// Bad — negation buried in a method call
+if (!postRepository.existsById(postId)) {
+    throw CoreException(ErrorType.POST_NOT_FOUND)
+}
+
+// Good — name the boolean, branch positively, throw after
+val postExists = postRepository.existsById(postId)
+if (postExists) return
+throw CoreException(ErrorType.POST_NOT_FOUND)
+
+// Bad — negated extension call, or safe-call chain in the condition
+if (!nickname.isNullOrBlank()) return nickname
+if (nickname?.isNotBlank() == true) return nickname
+
+// Good — flatten with `?: return`, then a plain positive check
+val nickname = request.nickname ?: return defaultNickname()
+if (nickname.isNotBlank()) return nickname
+```
+
+- Use `?.` (safe-call) sparingly — only when each step in the chain has a genuinely nullable receiver from an external boundary you don't control. Don't paper over branching logic with long `?.foo()?.bar()?.baz()` chains; flatten to non-null at the earliest point with `?: return` / `?: continue`, then operate on the non-nullable value. Multiple `?.` calls in a row are a code smell — usually one of the receivers is non-nullable in practice and the chain is hiding a clearer guard. Two `?.` calls walking a third-party object graph are fine — that's the "necessary moment."
+
+```kotlin
+// Bad — long safe-call chain hiding the control flow
+val nickname = request.profile
+    ?.displayName
+    ?.trim()
+    ?.takeIf { it.isNotBlank() }
+return nickname ?: defaultNickname()
+
+// Good — bail out early via elvis, then work on a non-null String
+val profile = request.profile ?: return defaultNickname()
+val nickname = profile.displayName?.trim().orEmpty()
+if (nickname.isNotBlank()) return nickname
+return defaultNickname()
+```
 
 ### API Response
 
@@ -149,7 +203,6 @@ class PostEntity(
 - Extend `BaseTimeEntity` (auto-managed `createdAt`, `updatedAt`)
 - Mutable fields: constructor param → body `var ... protected set`
 - Encapsulate state changes behind methods (`softDelete()`, `restore()`, `updateContent()`)
-- Use `Hibernate.getClass(this)` for `equals`/`hashCode` (proxy-safe)
 
 ### Extension Functions
 
