@@ -5,11 +5,14 @@ resource "aws_security_group" "rds" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description     = "PostgreSQL from EC2"
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.ec2.id]
+    description = "PostgreSQL from blog-api / blog-ai EC2s"
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    security_groups = [
+      aws_security_group.ec2.id,
+      aws_security_group.blog_ai_ec2.id,
+    ]
   }
 
   egress {

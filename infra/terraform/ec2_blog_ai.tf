@@ -173,7 +173,7 @@ resource "aws_instance" "blog_ai" {
 
     # Runtime directories
     mkdir -p /opt/services/{bin,env}
-    mkdir -p /opt/services/data/{postgres,alloy}
+    mkdir -p /opt/services/data/alloy
     mkdir -p /home/ec2-user/app
     chown ec2-user:ec2-user /home/ec2-user/app
   EOF
