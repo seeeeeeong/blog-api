@@ -8,6 +8,7 @@ import com.blog.api.core.support.error.ErrorType
 import com.blog.api.storage.post.PostRepository
 import com.blog.api.storage.post.toPost
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.cache.Cache
 import org.springframework.cache.CacheManager
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -90,19 +91,33 @@ class PostReader(
             cacheManager.getCache(CacheConfig.POST_HTML)
                 ?: return markdownRenderer.renderOrEscape(content, postId)
 
-        return try {
-            cache.get(postId, String::class.java) ?: run {
-                val html = markdownRenderer.renderOrEscape(content, postId)
-                try {
-                    cache.put(postId, html)
-                } catch (e: Exception) {
-                    log.warn(e) { "Cache write failed: postId=$postId" }
-                }
-                html
-            }
+        readCachedHtml(cache, postId)?.let { return it }
+
+        val html = markdownRenderer.renderOrEscape(content, postId)
+        writeCachedHtml(cache, postId, html)
+        return html
+    }
+
+    private fun readCachedHtml(
+        cache: Cache,
+        postId: Long,
+    ): String? =
+        try {
+            cache.get(postId, String::class.java)
         } catch (e: Exception) {
             log.warn(e) { "Cache read failed: postId=$postId" }
-            markdownRenderer.renderOrEscape(content, postId)
+            null
+        }
+
+    private fun writeCachedHtml(
+        cache: Cache,
+        postId: Long,
+        html: String,
+    ) {
+        try {
+            cache.put(postId, html)
+        } catch (e: Exception) {
+            log.warn(e) { "Cache write failed: postId=$postId" }
         }
     }
 

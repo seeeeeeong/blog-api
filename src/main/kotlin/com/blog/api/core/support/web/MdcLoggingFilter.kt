@@ -37,7 +37,8 @@ class MdcLoggingFilter(
             val elapsedMs = (System.nanoTime() - startNs) / NANOS_PER_MILLI
             if (elapsedMs >= blogProperties.slowRequestThresholdMs) {
                 log.warn {
-                    "Slow request: method=${request.method}, uri=${request.requestURI}, status=${response.status}, elapsedMs=$elapsedMs"
+                    "Slow request: method=${request.method}, uri=${request.requestURI}, " +
+                        "status=${response.status}, elapsedMs=$elapsedMs"
                 }
             }
             MDC.clear()

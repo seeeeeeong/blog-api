@@ -69,7 +69,7 @@ class JwtProvider(
         try {
             val claims = parseClaims(token)
             claims.getOrNull(TOKEN_TYPE_CLAIM) == TOKEN_TYPE_USER_ACCESS
-        } catch (e: CoreException) {
+        } catch (_: CoreException) {
             false
         }
 
@@ -100,9 +100,9 @@ class JwtProvider(
                 .parseSignedClaims(token)
                 .payload
         } catch (e: ExpiredJwtException) {
-            throw CoreException(ErrorType.EXPIRED_TOKEN)
+            throw CoreException(ErrorType.EXPIRED_TOKEN, e)
         } catch (e: Exception) {
-            throw CoreException(ErrorType.INVALID_TOKEN)
+            throw CoreException(ErrorType.INVALID_TOKEN, e)
         }
 
     private fun Claims.getOrNull(key: String): String? =
