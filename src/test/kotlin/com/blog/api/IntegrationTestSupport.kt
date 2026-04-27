@@ -9,7 +9,7 @@ import org.testcontainers.junit.jupiter.Testcontainers
 
 @Testcontainers
 @SpringBootTest
-abstract class IntegrationTestSupport {
+abstract class IntegrationTestSupport protected constructor() {
     companion object {
         @Container
         @JvmStatic

@@ -9,7 +9,5 @@
     <ID>SwallowedException:JwtProvider.kt:JwtProvider$e: Exception</ID>
     <ID>SwallowedException:JwtProvider.kt:JwtProvider$e: ExpiredJwtException</ID>
     <ID>ThrowsCount:AdminArgumentResolver.kt:AdminArgumentResolver$override fun resolveArgument: Long</ID>
-    <ID>UnusedParameter:CommentController.kt:CommentController$@Admin userId: Long</ID>
-    <ID>UtilityClassWithPublicConstructor:IntegrationTestSupport.kt:IntegrationTestSupport</ID>
   </CurrentIssues>
 </SmellBaseline>

@@ -44,7 +44,7 @@ class CommentController(
     fun deleteCommentByAdmin(
         @PathVariable postId: Long,
         @PathVariable commentId: Long,
-        @Admin userId: Long,
+        @Suppress("UnusedParameter") @Admin userId: Long,
     ): ApiResponse<Any> {
         commentService.deleteCommentByAdmin(postId, commentId)
         return ApiResponse.success()
